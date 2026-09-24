@@ -173,7 +173,7 @@
     <div class="note">鍵を入れた端末では、背景の登録・フチ色の変更・削除が全端末に反映されます（反映まで1〜2分）。鍵はこの端末の中だけに保存されます。</div>
   </div></section>
 
-  <section class="card"><h2>背景セットの削除</h2><div class="in">
+  <section class="card"><h2>背景セットの管理</h2><div class="in">
     <div class="row" id="delList"></div>
   </div></section>
 
@@ -298,6 +298,20 @@ $('ghSave').onclick=async()=>{ const v=$('ghToken').value.trim(); if(!v || v==='
   }catch(e){ ghMsg('確認できませんでした（通信を確認してください）'); } };
 $('ghClear').onclick=()=>{ try{ localStorage.removeItem('promo_ghToken'); }catch(e){} $('ghToken').value=''; ghMsg('鍵なし'); };
 
+// 端末だけの背景セットを全端末共通にする（背景画像を bg/ に保存し、sets.json に登録）
+async function toJpegData(src){ if (src.startsWith('data:image/jpeg')) return src;
+  const i=new Image(); i.src=src; await i.decode(); const c=document.createElement('canvas'); c.width=i.width; c.height=i.height;
+  c.getContext('2d').drawImage(i,0,0); return c.toDataURL('image/jpeg',0.92); }
+function shareSlot(n){ const t=sets[n]; if(!t) return;
+  const path=`bg/slot${n}-${Date.now()}.jpg`, edge=t.edge;
+  return ghRun(`${SLOTS[n][0]}を全端末に保存`,async()=>{
+    const data=await toJpegData(t.bg);
+    await ghApi(path,{method:'PUT',body:JSON.stringify({message:'背景を追加（アプリから）',content:data.split(',')[1],branch:GH.branch})});
+    let old=null; await ghEditSets(j=>{ old=j.sets.find(x=>x.slot===n)?.bg; j.sets=j.sets.filter(x=>x.slot!==n); j.sets.push({slot:n,bg:path,edge}); });
+    if (old && old!==path && old.startsWith('bg/')) await ghDeleteFile(old);
+    if (sets[n]){ sets[n].shared=true; sets[n].path=path; } saveSets(); renderSets();
+  }); }
+
 // ---- 背景セット：色分けされた10個の枠に「背景＋フチ色」を1セットで保存（IndexedDBに保存） ----
 const SLOTS=[['ピンク','#ff7eb6'],['レッド','#ff5a6e'],['オレンジ','#ffa24c'],['イエロー','#ffd23f'],['グリーン','#6fd67a'],
              ['ミント','#4fd8c4'],['ブルー','#5aa9ff'],['パープル','#a98be0'],['ブラウン','#b98a6a'],['グレー','#a8a3ad']];
@@ -322,6 +336,8 @@ function renderSets(){
     d.style.setProperty('--slot',col); d.textContent='🗑 '+name;
     d.onclick=()=>{ if(d.dataset.sure){ const t=sets[n]; sets[n]=null; saveSets(); selectSet(n);
       if (t?.shared && ghToken()) ghRun('全端末から削除',async()=>{ let old=null; await ghEditSets(j=>{ old=j.sets.find(x=>x.slot===n)?.bg; j.sets=j.sets.filter(x=>x.slot!==n); }); if(old?.startsWith('bg/')) await ghDeleteFile(old); }); } else { d.dataset.sure=1; d.textContent='もう一度タップで削除'; setTimeout(()=>{ if(d.isConnected){ delete d.dataset.sure; d.textContent='🗑 '+name; } },3000); } }; dl.appendChild(d); });
+  if (ghToken()) SLOTS.forEach(([name,col],n)=>{ if(!sets[n] || sets[n].shared) return; const u=document.createElement('button'); u.type='button'; u.className='delBtn';
+    u.style.setProperty('--slot',col); u.textContent='☁ '+name+'を全端末に共有'; u.onclick=()=>shareSlot(n); dl.appendChild(u); });
   if(!dl.children.length) dl.innerHTML='<div class="note">この端末だけで登録した背景セットはありません（共通の背景セットはここでは削除できません）。</div>';
 }
 function selectSet(n){
@@ -335,13 +351,7 @@ $('bg').addEventListener('change',()=>{ const f=$('bg').files[0]; if(!f) return;
     c.width=Math.round(i.width*k); c.height=Math.round(i.height*k); c.getContext('2d').drawImage(i,0,0,c.width,c.height);
     const n=pickSlot, data=c.toDataURL('image/jpeg',0.92), edge=edgeCandidates(analyzeBg(i))[0].hex;
     sets[n]={bg:data, edge}; saveSets(); selectSet(n);
-    if (ghToken()){ const path=`bg/slot${n}-${Date.now()}.jpg`;
-      ghRun('背景を全端末に保存',async()=>{
-        await ghApi(path,{method:'PUT',body:JSON.stringify({message:'背景を追加（アプリから）',content:data.split(',')[1],branch:GH.branch})});
-        let old=null; await ghEditSets(j=>{ old=j.sets.find(t=>t.slot===n)?.bg; j.sets=j.sets.filter(t=>t.slot!==n); j.sets.push({slot:n,bg:path,edge}); });
-        if (old && old!==path && old.startsWith('bg/')) await ghDeleteFile(old);
-        sets[n].shared=true; sets[n].path=path; saveSets(); renderSets();
-      }); }
+    if (ghToken()) shareSlot(n);
   });
 });
 document.addEventListener('paste',e=>{ const f=[...e.clipboardData.files].find(f=>f.type.startsWith('image/')); if(f) fromFile(f,setShot); });
