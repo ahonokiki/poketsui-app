@@ -179,7 +179,7 @@
 <div id="out" class="sheet" hidden><div class="sheetIn" style="text-align:center">
   <div class="sheetHead">🎁 完成！<button class="close" id="outClose" type="button">✕</button></div>
   <p style="font-weight:900;color:#8a5a86;margin:14px 0 10px">画像を長押しして「"写真"に保存」を選んでね</p>
-  <img id="outImg" alt="完成画像" style="width:100%;border-radius:20px;box-shadow:0 4px 14px #0002;-webkit-touch-callout:default">
+  <img id="outImg" alt="完成画像" style="-webkit-user-select:none;user-select:none;width:100%;border-radius:20px;box-shadow:0 4px 14px #0002;-webkit-touch-callout:default">
 </div></div>
 <div class="bar"><div class="inner"><button class="pill save" id="dl">🎁 画像を保存</button></div></div>
 
@@ -226,18 +226,26 @@ async function readOwned(img){
   const seq=++ocrSeq; $('ownState').textContent='読取中…';
   try{
     if (!window.Tesseract) throw 0;
-    // 所持数の行あたり（スクショ幅基準で上から約140〜162%、左右20〜80%）を読み取り用にコピー
-    const W=img.width, sx=W*.2, sy=W*1.40, sw=W*.6, sh=Math.min(W*.22, img.height-sy);
+    // 画面の下側（スクショ幅の60%より下・左右20〜80%）を読み取り用にコピーして「所持数」の行を探す
+    const W=img.width, sx=W*.2, sy=W*.6, sw=W*.6, sh=img.height-sy;
     if (sh<=0) throw 0;
     const c=document.createElement('canvas'), k=Math.max(1,900/sw); c.width=sw*k; c.height=sh*k;
     const g=c.getContext('2d'); g.drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);
     const base=new URL('ocr/',location.href).href;
     ocrWorker ??= await Tesseract.createWorker('jpn',1,{workerPath:base+'worker.min.js',corePath:base,langPath:base,workerBlobURL:false});
-    const {data:{text}}=await ocrWorker.recognize(c);
+    const {data}=await ocrWorker.recognize(c,{},{text:true,blocks:true});
     if (seq!==ocrSeq) return;
-    const t=text.replace(/\s/g,''), m=t.match(/持数[^0-9]*(\d+)/) || t.match(/(\d+)個/);
-    if (m){ $('owned').value=m[1]; store.set('owned',m[1]); $('count').value=''; $('ownState').textContent='自動'; draw(); }
+    const lines=(data.blocks||[]).flatMap(b=>b.paragraphs.flatMap(p=>p.lines));
+    const line=lines.find(l=>/持数|所持/.test(l.text.replace(/\s/g,'')));
+    if (line){
+      // 切り抜き位置を自動調整：「所持数」の行の少し下を正方形の下端にする（端末ごとの画面の違いに対応）
+      const bottom=sy+line.bbox.y1/k+W*.015;
+      $('ct').value=Math.max(0,+(((bottom-W)/W)*100).toFixed(1));
+    }
+    const t=(line?line.text:data.text).replace(/\s/g,''), m=t.match(/持数[^0-9]*(\d+)/) || t.match(/(\d+)個/);
+    if (m){ $('owned').value=m[1]; store.set('owned',m[1]); $('count').value=''; $('ownState').textContent='自動'; }
     else $('ownState').textContent='読取×';
+    draw();
   }catch(e){ if(seq===ocrSeq) $('ownState').textContent='読取×'; }
 }
 $('shot').addEventListener('change',()=>{ const f=$('shot').files[0]; if(f) fromFile(f,setShot); });
