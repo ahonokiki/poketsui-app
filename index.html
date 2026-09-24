@@ -272,7 +272,7 @@ function detectLayout(img){
 // 画像から「所持数」の行を探し、所持数・切り抜き位置を返す（画像そのものは変更しない）
 let ocrWorker=null, ocrSeq=0;
 async function analyzeShot(img){
-  const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.068, cardBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
+  const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.012, cardBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
   if (!window.Tesseract) return r0;
   // 画面の下側（スクショ幅の60%より下・左右20〜80%）を読み取り用にコピーして「所持数」の行を探す
   const W=img.width, sx=W*.2, sy=W*.6, sw=W*.6, sh=img.height-sy;
@@ -312,7 +312,7 @@ const itemCount=it=>it.count!=null ? it.count : Math.max(0,(it.owned||1)-1);
 async function setItems(files){
   const seq=++ocrSeq; shotImg=null;
   items=[]; for (const f of files.slice(0,12)){ const img=new Image(); img.src=URL.createObjectURL(f); await img.decode();
-    const lay=detectLayout(img); items.push({img, src:img.src, owned:null, count:null, top:lay?lay.top+img.width*.068:img.width*.5, cardBottom:lay?lay.cardBottom:img.width*1.45, reading:true}); }
+    const lay=detectLayout(img); items.push({img, src:img.src, owned:null, count:null, top:lay?lay.top+img.width*.012:img.width*.5, cardBottom:lay?lay.cardBottom:img.width*1.45, reading:true}); }
   if (files.length>12) toast('13個以上は選べないので、最初の12個を使います');
   renderItems(); draw();
   for (const it of items){ try{ const r=await analyzeShot(it.img); if (seq!==ocrSeq) return;
