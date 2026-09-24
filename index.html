@@ -154,7 +154,7 @@
   <section class="card"><h2>フチの色</h2><div class="in">
     <div class="row" id="swatches"></div>
     <div class="row"><label>自由に指定 <input type="color" id="edgeColor" value="#ec5fd0"></label></div>
-    <div class="note">「おすすめ」は背景から浮き上がる同系色のネオンカラー。選んだ色は今の背景セットに保存されます。</div>
+    <div class="note" id="edgeNote">「おすすめ」は背景から浮き上がる同系色のネオンカラー。選んだ色は今の背景セットに保存されます。</div>
   </div></section>
 
   <section class="card"><h2>背景セットの削除</h2><div class="in">
@@ -235,10 +235,10 @@ function renderSets(){
       selectSet(n); };
     box.appendChild(b); });
   const dl=$('delList'); dl.innerHTML='';
-  SLOTS.forEach(([name,col],n)=>{ if(!sets[n]) return; const d=document.createElement('button'); d.type='button'; d.className='delBtn';
+  SLOTS.forEach(([name,col],n)=>{ if(!sets[n] || sets[n].shared) return; const d=document.createElement('button'); d.type='button'; d.className='delBtn';
     d.style.setProperty('--slot',col); d.textContent='🗑 '+name;
     d.onclick=()=>{ if(d.dataset.sure){ sets[n]=null; saveSets(); selectSet(n); } else { d.dataset.sure=1; d.textContent='もう一度タップで削除'; setTimeout(()=>{ if(d.isConnected){ delete d.dataset.sure; d.textContent='🗑 '+name; } },3000); } }; dl.appendChild(d); });
-  if(!dl.children.length) dl.innerHTML='<div class="note">登録済みの背景セットはありません。</div>';
+  if(!dl.children.length) dl.innerHTML='<div class="note">この端末だけで登録した背景セットはありません（共通の背景セットはここでは削除できません）。</div>';
 }
 function selectSet(n){
   cur=n; store.set('curSlot',n); const t=curSet(); renderSets();
@@ -291,7 +291,7 @@ function renderSwatches(list){
     b.onclick=()=>{ $('edgeColor').value=c.hex; saveEdge(); renderSwatches(list); draw(); }; box.appendChild(b); });
 }
 let currentList=[];
-function saveEdge(){ const t=curSet(); if (t){ t.edge=$('edgeColor').value; saveSets(); renderSets(); } }
+function saveEdge(){ const t=curSet(); if (t){ if(t.shared) $('edgeNote').textContent='共通の背景セットです。この端末だけに反映されます（全端末に反映するときはClaudeに色を伝えてください）。'; t.edge=$('edgeColor').value; saveSets(); renderSets(); } }
 $('edgeColor').addEventListener('input',()=>{ saveEdge(); renderSwatches(currentList); draw(); });
 function hsl(r,g,b){ r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2;
   if(mx===mn) return [0,0,l]; const d=mx-mn, s=l>.5?d/(2-mx-mn):d/(mx+mn);
@@ -377,6 +377,12 @@ dbGet('slots').then(v=>{
   if (Array.isArray(v)) sets=v;
   else { try{ JSON.parse(store.get('sets')||'[]').slice(0,10).forEach((t,n)=>sets[n]={bg:t.bg,edge:t.edge}); saveSets(); }catch(e){} } // 旧形式から移行
   selectSet(Math.min(9,Math.max(0,cur||0)));
+  // 全端末共通の背景セット（リポジトリの sets.json）で上書き
+  fetch('sets.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
+    if (!j?.sets) return;
+    j.sets.forEach(t=>{ if (t.slot>=0 && t.slot<10) sets[t.slot]={bg:t.bg, edge:t.edge, shared:true}; });
+    saveSets(); selectSet(cur);
+  }).catch(()=>{});
 });
 $('dl').onclick=()=>{ const name='poketsui-'+Date.now()+'.png';
   cv.toBlob(async blob=>{
