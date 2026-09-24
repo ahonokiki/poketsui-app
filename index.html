@@ -246,10 +246,34 @@ $('showCount').addEventListener('change',draw);
 
 function fromFile(f, cb){ const i=new Image(); i.onload=()=>{cb(i);draw();}; i.src=URL.createObjectURL(f); }
 // ---- アイテム画像：読み込み時に「所持数：○個」を文字認識して所持数に入れる（画像自体は一切変更しない） ----
+// 画像の色の並びから、アイテム欄の上端とピンク欄の下端を探す（文字を読まない方法・端末の画面サイズに左右されない）
+function detectLayout(img){
+  const W=img.width, H=img.height, c=document.createElement('canvas'); c.width=W; c.height=H;
+  const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,0,0);
+  const col=x=>g.getImageData(Math.round(x),0,1,H).data;
+  const mid=col(W*.5), edge=col(W*.03), px=(d,y)=>[d[y*4],d[y*4+1],d[y*4+2]];
+  const lum=([r,g,b])=>.3*r+.59*g+.11*b;
+  // 1) 上から見て、暗い背景の後に明るい白っぽい欄（アイテムの小窓）が始まる所
+  let sheetTop=null;
+  for (let y=Math.round(H*.1); y<H*.7; y++){
+    if (lum(px(mid,y))>228){ let ok=true; for(let k=1;k<W*.03;k+=2){ if(lum(px(mid,y+k))<215){ok=false;break;} } if(ok){ sheetTop=y; break; } }
+  }
+  if (sheetTop==null) return null;
+  // 2) 左端の列で、ピンク欄が白（名前の欄）に変わる所
+  let pinkBottom=null, seenPink=false;
+  for (let y=Math.round(sheetTop+W*.2); y<H; y++){
+    const [r,gg,b]=px(edge,y);
+    if (r-gg>12) seenPink=true;
+    else if (seenPink && r>246 && gg>246 && b>246){ pinkBottom=y; break; }
+  }
+  if (pinkBottom==null) return null;
+  return {top:sheetTop, pinkBottom, cardBottom:pinkBottom+W*.2};
+}
 // 画像から「所持数」の行を探し、所持数・切り抜き位置を返す（画像そのものは変更しない）
 let ocrWorker=null, ocrSeq=0;
 async function analyzeShot(img){
-  if (!window.Tesseract) return null;
+  const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.012, cardBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
+  if (!window.Tesseract) return r0;
   // 画面の下側（スクショ幅の60%より下・左右20〜80%）を読み取り用にコピーして「所持数」の行を探す
   const W=img.width, sx=W*.2, sy=W*.6, sw=W*.6, sh=img.height-sy;
   if (sh<=0) return null;
@@ -260,10 +284,10 @@ async function analyzeShot(img){
   const {data}=await ocrWorker.recognize(c,{},{text:true,blocks:true});
   const lines=(data.blocks||[]).flatMap(b=>b.paragraphs.flatMap(p=>p.lines));
   const line=lines.find(l=>/持数|所持/.test(l.text.replace(/\s/g,'')));
-  const r={};
+  const r={...r0};
   if (line){
     r.squareBottom=sy+line.bbox.y1/k+W*.015;        // 1個のとき：所持数の行の少し下まで（正方形）
-    r.cardBottom=sy+line.bbox.y0/k-W*.012;          // 複数のとき：所持数の行の手前（名前の行まで）
+    if (!lay) r.cardBottom=sy+line.bbox.y0/k-W*.012; // 色で見つからなかったとき：所持数の行の手前まで
   }
   const t=(line?line.text:data.text).replace(/\s/g,''), m=t.match(/持数[^0-9]*(\d+)/) || t.match(/(\d+)個/);
   if (m) r.owned=+m[1];
@@ -288,12 +312,12 @@ const itemCount=it=>it.count!=null ? it.count : Math.max(0,(it.owned||1)-1);
 async function setItems(files){
   const seq=++ocrSeq; shotImg=null;
   items=[]; for (const f of files.slice(0,12)){ const img=new Image(); img.src=URL.createObjectURL(f); await img.decode();
-    items.push({img, src:img.src, owned:null, count:null, top:img.width*.5, cardBottom:img.width*1.45, reading:true}); }
+    const lay=detectLayout(img); items.push({img, src:img.src, owned:null, count:null, top:lay?lay.top+img.width*.012:img.width*.5, cardBottom:lay?lay.cardBottom:img.width*1.45, reading:true}); }
   if (files.length>12) toast('13個以上は選べないので、最初の12個を使います');
   renderItems(); draw();
   for (const it of items){ try{ const r=await analyzeShot(it.img); if (seq!==ocrSeq) return;
       if (r?.owned) it.owned=r.owned;
-      if (r?.cardBottom){ it.cardBottom=r.cardBottom; it.top=Math.max(0,r.squareBottom-it.img.width); }
+      if (r?.cardBottom){ it.cardBottom=r.cardBottom; it.top=r.top ?? Math.max(0,r.squareBottom-it.img.width); }
     }catch(e){} it.reading=false; renderItems(); draw(); }
 }
 function renderItems(){
