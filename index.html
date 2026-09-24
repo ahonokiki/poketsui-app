@@ -95,27 +95,51 @@
   label{color:#8a5a86}
   .set{border-radius:22px}
   .set.on::after{content:"★";position:absolute;left:50%;top:-14px;transform:translateX(-50%);color:#ffd23f;font-size:16px;text-shadow:0 0 3px #fff,0 0 3px #fff}
+
+  /* ---- iPhone 1画面レイアウト ---- */
+  header{padding:8px 56px 8px;font-size:17px;border-radius:0 0 20px 20px;border-bottom-width:3px}
+  header::before,header::after{display:none}
+  .gear{width:34px;height:34px;font-size:18px}
+  main.one{padding:8px 12px calc(76px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;align-items:center}
+  main.one .preview{width:min(100%,calc(100dvh - 330px));padding:5px;border-radius:22px}
+  main.one .preview::after{display:none}
+  canvas{border-radius:16px}
+  #sets{width:100%;display:grid;grid-template-columns:repeat(10,1fr);gap:5px;margin:2px 0 0}
+  .set{border-width:3px;border-radius:12px}
+  .set i{font-size:15px}
+  .set em{display:none}
+  .set b{width:12px;height:12px;border-width:2px;right:-4px;top:-4px}
+  .set.on::after{top:-12px;font-size:12px}
+  .ctrl{width:100%;display:flex;flex-direction:column;gap:8px}
+  .pick{width:100%;padding:11px 16px}
+  .nums{display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .own{display:flex;align-items:center;gap:6px;font-size:13px;background:#fff;border-radius:99px;padding:4px 6px 4px 12px;box-shadow:0 2px 0 #f6cfe2}
+  .own input{width:58px;padding:6px}
+  .step{display:flex;align-items:center;gap:6px;background:#fff;border-radius:99px;padding:4px;box-shadow:0 2px 0 #f6cfe2}
+  .step span{min-width:54px;text-align:center;font-weight:900;font-size:20px;color:#f82da1}
+  .step button{width:40px;height:40px;border-radius:50%;border:0;font-size:22px;font-weight:900;color:#fff;background:linear-gradient(180deg,#ff9fcb,var(--pink));box-shadow:0 3px 0 #e0579a;cursor:pointer}
+  .step button:active{transform:translateY(2px);box-shadow:0 1px 0 #e0579a}
+  .bar{padding:8px 12px calc(8px + env(safe-area-inset-bottom))}
+  .save{padding:12px}
 </style>
 </head>
 <body>
-<header>ポケツイ画像加工アプリ<small>☆ アイテム宣伝画像をかんたん作成 ☆</small>
+<header>ポケツイ画像加工アプリ
   <button class="gear" id="openSet" type="button" aria-label="設定">⚙</button></header>
-<main>
+<main class="one">
 <div class="preview"><canvas id="cv" width="1254" height="1254"></canvas></div>
 
-<section class="card"><h2>背景の色を選ぶ</h2><div class="in">
-  <div id="sets"></div><input type="file" id="bg" accept="image/*" hidden>
-  <div class="note">空の枠（＋）をタップで背景を登録。</div>
-</div></section>
+<div id="sets"></div><input type="file" id="bg" accept="image/*" hidden>
 
-<section class="card"><h2>アイテム画像</h2><div class="in">
-  <label class="pill lav wide">📷 スクショを選ぶ<input type="file" id="shot" accept="image/*" hidden></label>
-  <div class="row" style="margin-top:12px">
-    <label>所持数 <input type="number" id="owned" value="4" min="1"></label>
-    <label>× <input type="number" id="count" min="0" placeholder="3"></label>
+<div class="ctrl">
+  <label class="pill lav pick">📷 アイテム画像を選ぶ<input type="file" id="shot" accept="image/*" hidden></label>
+  <div class="nums">
+    <label class="own">所持数<input type="number" id="owned" value="4" min="1" inputmode="numeric"></label>
+    <div class="step"><button type="button" id="minus" aria-label="1減らす">−</button>
+      <span>×<b id="countView">3</b></span><button type="button" id="plus" aria-label="1増やす">＋</button></div>
+    <input type="hidden" id="count">
   </div>
-  <div class="note">×の数は自動で「所持数−1」。変えたいときだけ × の欄に入力してください（空にすると自動に戻ります）。</div>
-</div></section>
+</div>
 </main>
 
 <div id="settings" class="sheet" hidden><div class="sheetIn">
@@ -124,7 +148,7 @@
   <section class="card"><h2>×数字</h2><div class="in">
     <div class="row"><label><input type="checkbox" id="showCount" checked> ×数字を表示する</label></div>
     <div class="row"><div style="width:100%"><b style="color:#8a5a86;font-size:14px">数字の書体（タップで選択）</b>
-<input type="hidden" id="font" value="12"><div id="fontGrid"></div></div></div>
+<input type="hidden" id="font" value="10"><div id="fontGrid"></div></div></div>
   </div></section>
 
   <section class="card"><h2>フチの色</h2><div class="in">
@@ -170,12 +194,14 @@ const store = {get:k=>{try{return localStorage.getItem('promo_'+k)}catch(e){retu
                set:(k,v)=>{try{localStorage.setItem('promo_'+k,v)}catch(e){}}};
 
 // 設定の記憶
-if (!FONTS[store.get('font')]) store.set('font','12');
+if (!FONTS[store.get('font')] || store.get('fontDefault')!=='10'){ store.set('font','10'); store.set('fontDefault','10'); } // 初期書体を10番に
 ['owned','ct','cs','font'].forEach(id=>{
   const v = store.get(id); if (v!==null) $(id).value = v;
   $(id).addEventListener('input',()=>{ store.set(id,$(id).value); draw(); });
 });
-$('count').addEventListener('input',draw);
+$('owned').addEventListener('input',()=>{ $('count').value=''; draw(); }); // 所持数を変えたら「所持数−1」に戻す
+$('minus').onclick=()=>{ $('count').value=Math.max(0,countValue()-1); draw(); };
+$('plus').onclick=()=>{ $('count').value=countValue()+1; draw(); };
 function renderFonts(){ const g=$('fontGrid'); g.innerHTML='';
   FONT_LIST.forEach(([f,w],i)=>{ const n=i+1, b=document.createElement('button'); b.type='button'; b.className='fontOpt'+(String(n)===$('font').value?' on':'');
     b.innerHTML=`<span class="fn">${n}</span><span class="fs" style="font-family:'${f}',sans-serif;font-weight:${w}">×1 2 3 4 5 6 7 8 9 10</span>`;
@@ -273,8 +299,9 @@ function hsl(r,g,b){ r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(
 
 function rr(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
 function countValue(){
-  const auto=Math.max(0,($('owned').value|0)-1); $('count').placeholder=auto;
-  return $('count').value!=='' ? $('count').value : auto;
+  const auto=Math.max(0,($('owned').value|0)-1);
+  const v=$('count').value!=='' ? Math.max(0,$('count').value|0) : auto;
+  $('countView').textContent=v; return v;
 }
 
 function draw(){
@@ -316,7 +343,7 @@ function draw(){
   // ×数字（ぷっくり濃ピンク＋太い白フチ＋外側のマゼンタの光）。×は数字より小さめ
   if ($('showCount').checked){
     const num=String(countValue());
-    const base=FONTS[$('font').value]||FONTS[12];
+    const base=FONTS[$('font').value]||FONTS[10];
     // 書体ごとの大きさの違いをならす：数字の高さが見本と同じ(約205px)になるよう自動調整
     const mm=document.createElement('canvas').getContext('2d'); mm.font=base.replace(/\d+px/,'100px');
     const px=Math.round(100*205/Math.max(1,mm.measureText('3').actualBoundingBoxAscent));
