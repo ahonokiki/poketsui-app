@@ -321,16 +321,16 @@ function draw(){
     const mm=document.createElement('canvas').getContext('2d'); mm.font=base.replace(/\d+px/,'100px');
     const px=Math.round(100*205/Math.max(1,mm.measureText('3').actualBoundingBoxAscent));
     const fNum=base.replace(/\d+px/, px+'px'), fX=base.replace(/\d+px/, Math.round(px*0.66)+'px');
-    const RIGHT=1194, BASE=262, GAP=18, FAT=16, OUT=36+16, XUP=26, GLOW=edge, SX=1.08;
+    const RIGHT=1194, BASE=262, GAP=18, FAT=6, OUT=30+6, XUP=26, GLOW=edge, SX=1.08;
     const m=document.createElement('canvas').getContext('2d');
     m.font=fNum; const wN=m.measureText(num).width*SX;
     m.font=fX;  const wX=m.measureText('×').width;
     const parts=[{t:num,f:fNum,x:RIGHT-wN,sx:SX},{t:'×',f:fX,x:RIGHT-wN-GAP-wX,sx:1,dy:-XUP}];
     const each=(g,fn)=>parts.forEach(q=>{ g.save(); g.font=q.f; g.textAlign='left'; g.textBaseline='alphabetic'; g.lineJoin='round';
       g.translate(q.x,BASE+(q.dy||0)); g.scale(q.sx,1); fn(g,q.t); g.restore(); });
-    // 光と白フチ
-    ctx.save(); ctx.shadowColor=GLOW; ctx.shadowBlur=34;
-    for (let n=0;n<3;n++) each(ctx,(g,t)=>{ g.shadowColor=GLOW; g.shadowBlur=34; g.strokeStyle='#fff'; g.lineWidth=OUT; g.strokeText(t,0,0); });
+    // 光と白フチ：外側に細い蛍光ライン（フチと同じ色）＋控えめな光、内側に白フチ
+    ctx.save();
+    for (let n=0;n<2;n++) each(ctx,(g,t)=>{ g.shadowColor=GLOW; g.shadowBlur=14; g.strokeStyle=GLOW; g.lineWidth=OUT+10; g.strokeText(t,0,0); });
     each(ctx,(g,t)=>{ g.strokeStyle='#fff'; g.lineWidth=OUT; g.strokeText(t,0,0); });
     ctx.restore();
     // 文字本体（ぷっくり感）
