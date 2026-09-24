@@ -162,6 +162,12 @@
     <div class="note" id="edgeNote">「おすすめ」は背景から浮き上がる同系色のネオンカラー。選んだ色は今の背景セットに保存されます。</div>
   </div></section>
 
+  <section class="card"><h2>全端末で共有（GitHub）</h2><div class="in">
+    <div class="row"><input type="password" id="ghToken" placeholder="GitHubの鍵（github_pat_…）" autocomplete="off" style="flex:1;min-width:0;border:2px solid #ffd0e6;border-radius:14px;padding:9px 12px;font-size:16px"></div>
+    <div class="row"><button type="button" class="delBtn" id="ghSave" style="--slot:#a98be0">鍵を保存</button><button type="button" class="delBtn" id="ghClear" style="--slot:#a8a3ad">鍵を消す</button><span class="note" id="ghState" style="margin:0"></span></div>
+    <div class="note">鍵を入れた端末では、背景の登録・フチ色の変更・削除が全端末に反映されます（反映まで1〜2分）。鍵はこの端末の中だけに保存されます。</div>
+  </div></section>
+
   <section class="card"><h2>背景セットの削除</h2><div class="in">
     <div class="row" id="delList"></div>
   </div></section>
@@ -250,6 +256,40 @@ async function readOwned(img){
 }
 $('shot').addEventListener('change',()=>{ const f=$('shot').files[0]; if(f) fromFile(f,setShot); });
 
+// ---- GitHub への保存（鍵がある端末だけ）：背景画像は bg/、割り当ては sets.json ----
+const GH={owner:'ahonokiki',repo:'poketsui-app',branch:'main'};
+const ghToken=()=>{ try{ return localStorage.getItem('promo_ghToken')||''; }catch(e){ return ''; } };
+async function ghApi(path,opt={}){
+  const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${path}`+(opt.method?'':`?ref=${GH.branch}&t=${Date.now()}`),
+    {...opt,headers:{Authorization:'Bearer '+ghToken(),Accept:'application/vnd.github+json',...(opt.headers||{})}});
+  if (r.status===404 && !opt.method) return null;
+  if (!r.ok) throw new Error('GitHub '+r.status);
+  return r.json();
+}
+const b64utf8=str=>btoa(unescape(encodeURIComponent(str)));
+let ghQueue=Promise.resolve();
+function ghRun(label,fn){ // 書き込みは1つずつ順番に
+  ghQueue=ghQueue.then(async()=>{ ghMsg(label+'中…'); try{ await fn(); ghMsg(label+'しました（全端末に1〜2分で反映）'); }catch(e){ ghMsg(label+'できませんでした：'+(e.message.includes('401')?'鍵が正しくありません':e.message)); } });
+  return ghQueue;
+}
+function ghMsg(t){ $('ghState').textContent=t; const n=$('edgeNote'); if(n) n.textContent=t; }
+async function ghEditSets(fn){ // sets.json を読み込んで書き換える
+  const cur=await ghApi('sets.json'); let j={sets:[]};
+  if (cur) j=JSON.parse(decodeURIComponent(escape(atob(cur.content.replace(/\n/g,'')))));
+  fn(j); j.sets.sort((a,b)=>a.slot-b.slot);
+  await ghApi('sets.json',{method:'PUT',body:JSON.stringify({message:'背景セットを更新（アプリから）',content:b64utf8(JSON.stringify(j,null,2)+'\n'),branch:GH.branch,...(cur?{sha:cur.sha}:{})})});
+}
+async function ghDeleteFile(path){ const f=await ghApi(path); if(f) await ghApi(path,{method:'DELETE',body:JSON.stringify({message:'背景画像を削除（アプリから）',sha:f.sha,branch:GH.branch})}); }
+$('ghToken').value=ghToken() ? '********' : '';
+$('ghState').textContent=ghToken() ? '鍵あり' : '鍵なし';
+$('ghSave').onclick=async()=>{ const v=$('ghToken').value.trim(); if(!v || v==='********') return;
+  try{ localStorage.setItem('promo_ghToken',v); }catch(e){}
+  ghMsg('確認中…');
+  try{ const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}`,{headers:{Authorization:'Bearer '+v}}); const j=await r.json();
+    ghMsg(r.ok && j.permissions?.push ? '鍵OK：全端末に保存できます' : '鍵は保存しましたが、書き込み権限がないようです'); $('ghToken').value='********';
+  }catch(e){ ghMsg('確認できませんでした（通信を確認してください）'); } };
+$('ghClear').onclick=()=>{ try{ localStorage.removeItem('promo_ghToken'); }catch(e){} $('ghToken').value=''; ghMsg('鍵なし'); };
+
 // ---- 背景セット：色分けされた10個の枠に「背景＋フチ色」を1セットで保存（IndexedDBに保存） ----
 const SLOTS=[['ピンク','#ff7eb6'],['レッド','#ff5a6e'],['オレンジ','#ffa24c'],['イエロー','#ffd23f'],['グリーン','#6fd67a'],
              ['ミント','#4fd8c4'],['ブルー','#5aa9ff'],['パープル','#a98be0'],['ブラウン','#b98a6a'],['グレー','#a8a3ad']];
@@ -270,9 +310,10 @@ function renderSets(){
       selectSet(n); };
     box.appendChild(b); });
   const dl=$('delList'); dl.innerHTML='';
-  SLOTS.forEach(([name,col],n)=>{ if(!sets[n] || sets[n].shared) return; const d=document.createElement('button'); d.type='button'; d.className='delBtn';
+  SLOTS.forEach(([name,col],n)=>{ if(!sets[n] || (sets[n].shared && !ghToken())) return; const d=document.createElement('button'); d.type='button'; d.className='delBtn';
     d.style.setProperty('--slot',col); d.textContent='🗑 '+name;
-    d.onclick=()=>{ if(d.dataset.sure){ sets[n]=null; saveSets(); selectSet(n); } else { d.dataset.sure=1; d.textContent='もう一度タップで削除'; setTimeout(()=>{ if(d.isConnected){ delete d.dataset.sure; d.textContent='🗑 '+name; } },3000); } }; dl.appendChild(d); });
+    d.onclick=()=>{ if(d.dataset.sure){ const t=sets[n]; sets[n]=null; saveSets(); selectSet(n);
+      if (t?.shared && ghToken()) ghRun('全端末から削除',async()=>{ let old=null; await ghEditSets(j=>{ old=j.sets.find(x=>x.slot===n)?.bg; j.sets=j.sets.filter(x=>x.slot!==n); }); if(old?.startsWith('bg/')) await ghDeleteFile(old); }); } else { d.dataset.sure=1; d.textContent='もう一度タップで削除'; setTimeout(()=>{ if(d.isConnected){ delete d.dataset.sure; d.textContent='🗑 '+name; } },3000); } }; dl.appendChild(d); });
   if(!dl.children.length) dl.innerHTML='<div class="note">この端末だけで登録した背景セットはありません（共通の背景セットはここでは削除できません）。</div>';
 }
 function selectSet(n){
@@ -284,8 +325,15 @@ $('bg').addEventListener('change',()=>{ const f=$('bg').files[0]; if(!f) return;
   fromFile(f,i=>{
     const k=Math.min(1,S/Math.min(i.width,i.height)), c=document.createElement('canvas');
     c.width=Math.round(i.width*k); c.height=Math.round(i.height*k); c.getContext('2d').drawImage(i,0,0,c.width,c.height);
-    sets[pickSlot]={bg:c.toDataURL('image/jpeg',0.92), edge:edgeCandidates(analyzeBg(i))[0].hex};
-    saveSets(); selectSet(pickSlot);
+    const n=pickSlot, data=c.toDataURL('image/jpeg',0.92), edge=edgeCandidates(analyzeBg(i))[0].hex;
+    sets[n]={bg:data, edge}; saveSets(); selectSet(n);
+    if (ghToken()){ const path=`bg/slot${n}-${Date.now()}.jpg`;
+      ghRun('背景を全端末に保存',async()=>{
+        await ghApi(path,{method:'PUT',body:JSON.stringify({message:'背景を追加（アプリから）',content:data.split(',')[1],branch:GH.branch})});
+        let old=null; await ghEditSets(j=>{ old=j.sets.find(t=>t.slot===n)?.bg; j.sets=j.sets.filter(t=>t.slot!==n); j.sets.push({slot:n,bg:path,edge}); });
+        if (old && old!==path && old.startsWith('bg/')) await ghDeleteFile(old);
+        sets[n].shared=true; sets[n].path=path; saveSets(); renderSets();
+      }); }
   });
 });
 document.addEventListener('paste',e=>{ const f=[...e.clipboardData.files].find(f=>f.type.startsWith('image/')); if(f) fromFile(f,setShot); });
@@ -326,7 +374,13 @@ function renderSwatches(list){
     b.onclick=()=>{ $('edgeColor').value=c.hex; saveEdge(); renderSwatches(list); draw(); }; box.appendChild(b); });
 }
 let currentList=[];
-function saveEdge(){ const t=curSet(); if (t){ if(t.shared) $('edgeNote').textContent='共通の背景セットです。この端末だけに反映されます（全端末に反映するときはClaudeに色を伝えてください）。'; t.edge=$('edgeColor').value; saveSets(); renderSets(); } }
+let edgeTimer=null;
+function saveEdge(){ const t=curSet(); if (!t) return; t.edge=$('edgeColor').value; saveSets(); renderSets();
+  if (t.shared){
+    if (!ghToken()){ $('edgeNote').textContent='共通の背景セットです。この端末だけに反映されます（全端末に反映するには⚙で鍵を入れてください）。'; return; }
+    const n=cur, edge=t.edge; clearTimeout(edgeTimer);
+    edgeTimer=setTimeout(()=>ghRun('フチ色を全端末に保存',()=>ghEditSets(j=>{ const e=j.sets.find(x=>x.slot===n); if(e) e.edge=edge; })),1200);
+  } }
 $('edgeColor').addEventListener('input',()=>{ saveEdge(); renderSwatches(currentList); draw(); });
 function hsl(r,g,b){ r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2;
   if(mx===mn) return [0,0,l]; const d=mx-mn, s=l>.5?d/(2-mx-mn):d/(mx+mn);
@@ -418,7 +472,11 @@ dbGet('slots').then(v=>{
   // 全端末共通の背景セット（リポジトリの sets.json）で上書き
   fetch('sets.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
     if (!j?.sets) return;
-    j.sets.forEach(t=>{ if (t.slot>=0 && t.slot<10) sets[t.slot]={bg:t.bg, edge:t.edge, shared:true}; });
+    const inJson=new Set(j.sets.map(t=>t.slot));
+    sets=sets.map((t,n)=>t?.shared && !inJson.has(n) ? null : t); // 共通から消えたものは消す
+    j.sets.forEach(t=>{ if (t.slot>=0 && t.slot<10){ const mine=sets[t.slot];
+      // 直前にこの端末で保存したもの（まだ反映待ち）は手元の画像を使う
+      sets[t.slot]= mine?.path===t.bg ? {...mine, edge:t.edge} : {bg:t.bg, edge:t.edge, shared:true}; } });
     saveSets(); selectSet(cur);
   }).catch(()=>{});
 });
