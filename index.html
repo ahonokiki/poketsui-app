@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ポケツイ画像加工アプリ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Baloo+2:wght@800&family=Nunito:wght@900&family=Fredoka:wght@700&family=Sniglet:wght@800&family=Titan+One&family=Paytone+One&family=DynaPuff:wght@700&family=Coiny&family=Cherry+Bomb+One&family=Rampart+One&family=Rubik+Bubbles&family=Modak&family=Chango&family=Lilita+One&family=Grandstander:wght@900&family=Varela+Round&family=Kosugi+Maru&family=Potta+One&family=Chewy&family=Bubblegum+Sans&family=Luckiest+Guy&family=Rubik:wght@900&family=M+PLUS+Rounded+1c:wght@900&family=Zen+Maru+Gothic:wght@900&family=Hachi+Maru+Pop&family=Yusei+Magic&family=Mochiy+Pop+P+One&family=Rounded+Mplus+1c:wght@800&family=Kiwi+Maru:wght@500&family=Dela+Gothic+One&family=Bowlby+One&family=Carter+One&family=Gluten:wght@900&family=Fuzzy+Bubbles:wght@700&text=%C3%97%200123456789&display=swap" rel="stylesheet">
+<style>
+  :root{--pink:#ff6fae;--pink2:#ff9cc8;--lav:#a98be0;--lav2:#7f63c9;--ink:#5a4a5e;--sub:#9a8a9e;--line:#f6d6e6;--green1:#8fe8b9;--green2:#4fd08f}
+  *{box-sizing:border-box}
+  body{margin:0;background-color:#fff0f6;font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif;color:var(--ink);
+    background:#fff0f6 radial-gradient(circle at 10px 10px,#ffe0ee 3px,transparent 4px) 0 0/22px 22px;min-height:100vh}
+  header{background:linear-gradient(135deg,#9d86d8,#c38fd8 55%,#f59ac8);color:#fff;
+    text-align:center;padding:14px 16px 12px;font-size:18px;font-weight:900;letter-spacing:.06em;box-shadow:0 3px 10px #b07ad044;border-radius:0 0 22px 22px}
+  header small{display:block;font-size:11px;font-weight:700;opacity:.9;letter-spacing:0}
+  main{max-width:560px;margin:0 auto;padding:14px 16px 110px}
+  .preview{background:#fff;border-radius:26px;padding:10px;box-shadow:0 6px 18px #ff8fc033;border:3px solid #fff}
+  canvas{width:100%;border-radius:18px;display:block}
+  .card{background:#fff;border-radius:22px;margin:14px 0;box-shadow:0 4px 14px #e7a3c833;overflow:hidden}
+  .card h2{margin:0;font-size:14px;font-weight:900;color:#fff;padding:9px 16px;background:linear-gradient(90deg,var(--pink),var(--pink2));display:flex;align-items:center;gap:6px}
+  .card h2::before{content:"♡";font-size:13px}
+  .card .in{padding:12px 16px 14px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:6px 0}
+  label{font-size:14px;font-weight:700}
+  input[type=number]{width:74px;border:2px solid var(--line);border-radius:14px;padding:7px 10px;font:inherit;color:var(--ink);background:#fffafd;text-align:center}
+  input[type=number]:disabled{opacity:.55}
+  select{width:100%;border:2px solid var(--line);border-radius:16px;padding:10px 12px;font:inherit;font-weight:700;color:var(--ink);background:#fffafd}
+  input[type=checkbox]{accent-color:var(--pink);width:18px;height:18px;vertical-align:-3px}
+  input[type=color]{width:44px;height:34px;border:2px solid var(--line);border-radius:12px;padding:2px;background:#fff}
+  .note{font-size:11.5px;color:var(--sub);line-height:1.6;margin-top:6px}
+  .pill{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:999px;padding:12px 20px;font:inherit;font-weight:900;font-size:15px;color:#fff;cursor:pointer;
+    background:linear-gradient(180deg,#ff9fcb,var(--pink));box-shadow:0 4px 0 #e0579a,0 6px 12px #ff6fae44}
+  .pill:active{transform:translateY(3px);box-shadow:0 1px 0 #e0579a}
+  .pill.lav{background:linear-gradient(180deg,#c3b0f0,var(--lav));box-shadow:0 4px 0 var(--lav2),0 6px 12px #a98be044}
+  .pill.wide{width:100%}
+  .sw{display:flex;flex-direction:column;align-items:center;gap:3px;background:#fff;border:3px solid #f3eef5;border-radius:16px;padding:6px 8px;font:inherit;font-size:11px;font-weight:700;color:var(--ink);cursor:pointer}
+  .sw.on{border-color:var(--pink);background:#fff3f9}
+  .sw i{width:34px;height:34px;border-radius:50%;box-shadow:0 0 10px currentColor;border:2px solid #fff}
+  #sets{display:grid;grid-template-columns:repeat(5,1fr);gap:12px 10px;margin:4px 0 8px}
+  .set{position:relative;aspect-ratio:1;border-radius:18px;border:4px solid var(--slot);background:#fff center/cover;cursor:pointer;padding:0;box-shadow:0 2px 8px #0002}
+  .set.empty{background:color-mix(in srgb,var(--slot) 14%,#fff);border-style:dashed}
+  .set.on{outline:3px solid var(--slot);outline-offset:3px}
+  .set i{font-style:normal;font-size:22px;font-weight:900;color:var(--slot)}
+  .set em{position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);font-style:normal;font-size:9px;font-weight:900;color:#fff;background:var(--slot);border-radius:99px;padding:1px 6px;white-space:nowrap}
+  .set b{position:absolute;right:-6px;top:-6px;width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 4px #0003}
+  .set .del{position:absolute;left:-7px;top:-7px;width:20px;height:20px;border-radius:50%;background:#c9b8cf;color:#fff;font-size:11px;line-height:20px;text-align:center;border:2px solid #fff}
+  .bar{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:#ffffffe8;backdrop-filter:blur(8px);border-top:2px solid #fde3ef}
+  .bar .inner{max-width:560px;margin:0 auto;display:flex;gap:10px}
+  header{position:relative}
+  .gear{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:2px solid #ffffffaa;background:#ffffff33;color:#fff;font-size:22px;cursor:pointer}
+  .sheet{position:fixed;inset:0;z-index:20;background:#5a3a6a55;display:flex;align-items:flex-end;justify-content:center}
+  .sheet[hidden]{display:none}
+  .sheetIn{width:100%;max-width:560px;max-height:88vh;overflow:auto;background:#fff0f6 radial-gradient(circle at 10px 10px,#ffe0ee 3px,transparent 4px) 0 0/22px 22px;border-radius:26px 26px 0 0;padding:0 16px 30px}
+  .sheetHead{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#fff;margin:0 -16px;padding:14px;background:linear-gradient(135deg,#9d86d8,#c38fd8 55%,#f59ac8);border-radius:26px 26px 0 0}
+  .close{position:absolute;right:12px;width:34px;height:34px;border-radius:50%;border:0;background:#ffffff44;color:#fff;font-size:16px;cursor:pointer}
+  .set .del{display:none}
+  .delBtn{border:0;border-radius:99px;padding:8px 14px;font:inherit;font-weight:900;font-size:13px;color:#fff;background:var(--slot);cursor:pointer}
+  #fontGrid{display:flex;flex-direction:column;gap:8px;margin-top:8px;max-height:340px;overflow:auto;padding:4px}
+  .fontOpt{display:flex;align-items:center;gap:10px;border:3px solid #f6e4ee;border-radius:18px;background:linear-gradient(135deg,#ff7aa0,#ffb880);padding:6px 10px;cursor:pointer;text-align:left}
+  .fontOpt.on{border-color:#fff;outline:3px solid var(--pink)}
+  .fn{flex:none;width:30px;height:30px;border-radius:50%;background:#fff;color:var(--pink);font-weight:900;font-size:14px;line-height:30px;text-align:center}
+  .fs{font-size:26px;color:#f82da1;white-space:nowrap;overflow:hidden;text-shadow:2px 0 #fff,-2px 0 #fff,0 2px #fff,0 -2px #fff,2px 2px #fff,-2px -2px #fff,2px -2px #fff,-2px 2px #fff,0 0 8px #e85fd8}
+  .save{flex:1;background:linear-gradient(180deg,var(--green1),var(--green2));box-shadow:0 4px 0 #36a872,0 6px 12px #4fd08f55}
+  .save:active{box-shadow:0 1px 0 #36a872}
+
+  /* ---- かわいさ強化（アプリ画面の配色：ラベンダー×ピンク×ミント、キラキラ柄） ---- */
+  body{background:
+    radial-gradient(circle at 20% 10%,#ffffffcc 0 2px,transparent 3px) 0 0/46px 46px,
+    conic-gradient(from 45deg at 50% 50%,#ffe3f0 0 25%,#fff4f9 0 50%,#ffe3f0 0 75%,#fff4f9 0) 0 0/28px 28px,
+    #fff0f6;background-attachment:fixed}
+  header{background:linear-gradient(135deg,#b59cf0 0%,#e3a3e6 50%,#ffb3d1 100%);padding:16px 60px 14px;border-radius:0 0 30px 30px;
+    font-size:21px;text-shadow:0 2px 0 #c46fb4,0 0 10px #ffffffaa;border-bottom:4px solid #fff}
+  header::before,header::after{content:"✦";position:absolute;color:#fff;opacity:.9;font-size:14px}
+  header::before{left:18px;top:14px} header::after{left:40px;bottom:12px;font-size:10px}
+  header small{font-weight:800;text-shadow:none;margin-top:2px}
+  .preview{border:4px solid #fff;border-radius:30px;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#ffb3d1,#c9b2f5) border-box;border:4px solid transparent;position:relative}
+  .preview::after{content:"♡";position:absolute;right:-6px;top:-12px;font-size:26px;color:#ff7eb6;text-shadow:0 0 0 #fff,0 2px 0 #fff}
+  .card{border-radius:26px;border:3px solid #fff;box-shadow:0 5px 0 #f6cfe2,0 8px 18px #e7a3c833}
+  .card h2{justify-content:center;font-size:15px;letter-spacing:.08em;background:linear-gradient(90deg,#ff8dc0,#ffb0d4,#ff8dc0);
+    text-shadow:0 1px 0 #e0579a;border-radius:0 0 18px 18px;margin:0 18px;padding:7px 12px}
+  .card h2::before{content:"♡"} .card h2::after{content:"♡";font-size:13px}
+  .card .in{padding:14px 16px 16px}
+  .pill.lav{background:linear-gradient(180deg,#d6c6ff,#a98be0);box-shadow:0 5px 0 #8a6bd0,0 8px 14px #a98be044;font-size:16px}
+  #fontGrid{display:flex;flex-direction:column;gap:8px;margin-top:8px;max-height:340px;overflow:auto;padding:4px}
+  .fontOpt{display:flex;align-items:center;gap:10px;border:3px solid #f6e4ee;border-radius:18px;background:linear-gradient(135deg,#ff7aa0,#ffb880);padding:6px 10px;cursor:pointer;text-align:left}
+  .fontOpt.on{border-color:#fff;outline:3px solid var(--pink)}
+  .fn{flex:none;width:30px;height:30px;border-radius:50%;background:#fff;color:var(--pink);font-weight:900;font-size:14px;line-height:30px;text-align:center}
+  .fs{font-size:26px;color:#f82da1;white-space:nowrap;overflow:hidden;text-shadow:2px 0 #fff,-2px 0 #fff,0 2px #fff,0 -2px #fff,2px 2px #fff,-2px -2px #fff,2px -2px #fff,-2px 2px #fff,0 0 8px #e85fd8}
+  .save{font-size:17px;letter-spacing:.06em;box-shadow:0 5px 0 #36a872,0 8px 14px #4fd08f55}
+  .bar{border-top:3px solid #ffd6e8;border-radius:24px 24px 0 0}
+  .gear{background:#fff;color:#c38fd8;border:3px solid #ffd6ec;box-shadow:0 3px 0 #c9a3dd}
+  input[type=number]{border-color:#ffd0e6;border-radius:99px;background:#fff}
+  label{color:#8a5a86}
+  .set{border-radius:22px}
+  .set.on::after{content:"★";position:absolute;left:50%;top:-14px;transform:translateX(-50%);color:#ffd23f;font-size:16px;text-shadow:0 0 3px #fff,0 0 3px #fff}
+</style>
+</head>
+<body>
+<header>ポケツイ画像加工アプリ<small>☆ アイテム宣伝画像をかんたん作成 ☆</small>
+  <button class="gear" id="openSet" type="button" aria-label="設定">⚙</button></header>
+<main>
+<div class="preview"><canvas id="cv" width="1254" height="1254"></canvas></div>
+
+<section class="card"><h2>背景の色を選ぶ</h2><div class="in">
+  <div id="sets"></div><input type="file" id="bg" accept="image/*" hidden>
+  <div class="note">空の枠（＋）をタップで背景を登録。</div>
+</div></section>
+
+<section class="card"><h2>アイテム画像</h2><div class="in">
+  <label class="pill lav wide">📷 スクショを選ぶ<input type="file" id="shot" accept="image/*" hidden></label>
+  <div class="row" style="margin-top:12px">
+    <label>所持数 <input type="number" id="owned" value="4" min="1"></label>
+    <label>× <input type="number" id="count" min="0" placeholder="3"></label>
+  </div>
+  <div class="note">×の数は自動で「所持数−1」。変えたいときだけ × の欄に入力してください（空にすると自動に戻ります）。</div>
+</div></section>
+</main>
+
+<div id="settings" class="sheet" hidden><div class="sheetIn">
+  <div class="sheetHead">⚙ 設定<button class="close" id="closeSet" type="button">✕</button></div>
+
+  <section class="card"><h2>×数字</h2><div class="in">
+    <div class="row"><label><input type="checkbox" id="showCount" checked> ×数字を表示する</label></div>
+    <div class="row"><div style="width:100%"><b style="color:#8a5a86;font-size:14px">数字の書体（タップで選択）</b>
+<input type="hidden" id="font" value="12"><div id="fontGrid"></div></div></div>
+  </div></section>
+
+  <section class="card"><h2>フチの色</h2><div class="in">
+    <div class="row" id="swatches"></div>
+    <div class="row"><label>自由に指定 <input type="color" id="edgeColor" value="#ec5fd0"></label></div>
+    <div class="note">「おすすめ」は背景から浮き上がる同系色のネオンカラー。選んだ色は今の背景セットに保存されます。</div>
+  </div></section>
+
+  <section class="card"><h2>背景セットの削除</h2><div class="in">
+    <div class="row" id="delList"></div>
+  </div></section>
+
+  <section class="card"><h2>切り抜き位置</h2><div class="in">
+    <div class="row">
+      <label>上端 <input type="number" id="ct" value="54" step="0.5"></label>
+      <label>一辺 <input type="number" id="cs" value="100" step="0.5" max="100"></label>
+    </div>
+    <div class="note">スクショの幅を100とした値（正方形）。元画像のピクセルを切り抜いて同じ比率で拡大するだけで、描き直し・補正はしません。</div>
+  </div></section>
+</div></div>
+
+
+<div id="out" class="sheet" hidden><div class="sheetIn" style="text-align:center">
+  <div class="sheetHead">🎁 完成！<button class="close" id="outClose" type="button">✕</button></div>
+  <p style="font-weight:900;color:#8a5a86;margin:14px 0 10px">画像を長押しして「"写真"に保存」を選んでね</p>
+  <img id="outImg" alt="完成画像" style="width:100%;border-radius:20px;box-shadow:0 4px 14px #0002;-webkit-touch-callout:default">
+</div></div>
+<div class="bar"><div class="inner"><button class="pill save" id="dl">🎁 画像を保存</button></div></div>
+
+<script>
+const S = 1254;
+// アイテム画像の位置・サイズは常に固定（正方形）
+const BOX = {x:127, y:128, size:1000};
+const R = 44;        // 四隅の丸み（アイテム画像とフチで共通）
+const EDGE_IN = 6, EDGE_CORE = 8; // フチ：内側ピンク6px＋白い芯8px＋外側の光（常に同じ太さ）
+const FONT_LIST = [["Mochiy Pop One", "400"], ["Baloo 2", "800"], ["Nunito", "900"], ["Fredoka", "700"], ["Sniglet", "800"], ["Titan One", "400"], ["Paytone One", "400"], ["DynaPuff", "700"], ["Coiny", "400"], ["Cherry Bomb One", "400"], ["Rampart One", "400"], ["Rubik Bubbles", "400"], ["Modak", "400"], ["Chango", "400"], ["Lilita One", "400"], ["Grandstander", "900"], ["Varela Round", "400"], ["Kosugi Maru", "400"], ["Potta One", "400"], ["Chewy", "400"], ["Bubblegum Sans", "400"], ["Luckiest Guy", "400"], ["Rubik", "900"], ["M PLUS Rounded 1c", "900"], ["Zen Maru Gothic", "900"], ["Hachi Maru Pop", "400"], ["Yusei Magic", "400"], ["Mochiy Pop P One", "400"], ["Rounded Mplus 1c", "800"], ["Kiwi Maru", "500"], ["Dela Gothic One", "400"], ["Bowlby One", "400"], ["Carter One", "400"], ["Gluten", "900"], ["Fuzzy Bubbles", "700"]];
+const FONTS = {}; FONT_LIST.forEach(([f,w],i)=>FONTS[i+1]=`${w} 300px "${f}"`);
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+let bgImg = null, shotImg = null;
+
+const store = {get:k=>{try{return localStorage.getItem('promo_'+k)}catch(e){return null}},
+               set:(k,v)=>{try{localStorage.setItem('promo_'+k,v)}catch(e){}}};
+
+// 設定の記憶
+if (!FONTS[store.get('font')]) store.set('font','12');
+['owned','ct','cs','font'].forEach(id=>{
+  const v = store.get(id); if (v!==null) $(id).value = v;
+  $(id).addEventListener('input',()=>{ store.set(id,$(id).value); draw(); });
+});
+$('count').addEventListener('input',draw);
+function renderFonts(){ const g=$('fontGrid'); g.innerHTML='';
+  FONT_LIST.forEach(([f,w],i)=>{ const n=i+1, b=document.createElement('button'); b.type='button'; b.className='fontOpt'+(String(n)===$('font').value?' on':'');
+    b.innerHTML=`<span class="fn">${n}</span><span class="fs" style="font-family:'${f}',sans-serif;font-weight:${w}">×1 2 3 4 5 6 7 8 9 10</span>`;
+    b.onclick=()=>{ $('font').value=n; store.set('font',n); renderFonts(); draw(); }; g.appendChild(b); }); }
+renderFonts();
+$('openSet').onclick=()=>{ $('settings').hidden=false; document.querySelector('.fontOpt.on')?.scrollIntoView({block:'nearest'});  };
+const closeSet=()=>{ $('settings').hidden=true;  };
+$('closeSet').onclick=closeSet; $('settings').addEventListener('click',e=>{ if(e.target.id==='settings') closeSet(); });
+$('showCount').addEventListener('change',draw);
+
+function fromFile(f, cb){ const i=new Image(); i.onload=()=>{cb(i);draw();}; i.src=URL.createObjectURL(f); }
+$('shot').addEventListener('change',()=>{ const f=$('shot').files[0]; if(f) fromFile(f,i=>{ shotImg=i; $("count").value=""; }); });
+
+// ---- 背景セット：色分けされた10個の枠に「背景＋フチ色」を1セットで保存（IndexedDBに保存） ----
+const SLOTS=[['ピンク','#ff7eb6'],['レッド','#ff5a6e'],['オレンジ','#ffa24c'],['イエロー','#ffd23f'],['グリーン','#6fd67a'],
+             ['ミント','#4fd8c4'],['ブルー','#5aa9ff'],['パープル','#a98be0'],['ブラウン','#b98a6a'],['グレー','#a8a3ad']];
+let sets = Array(10).fill(null), cur = +(store.get('curSlot')||0), pickSlot = 0;
+const idb = new Promise((ok,ng)=>{ const r=indexedDB.open('poketsui',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>ok(r.result); r.onerror=()=>ng(r.error); });
+const dbGet = k => idb.then(d=>new Promise(ok=>{ const q=d.transaction('kv').objectStore('kv').get(k); q.onsuccess=()=>ok(q.result); q.onerror=()=>ok(undefined); }));
+const saveSets = () => idb.then(d=>{ const t=d.transaction('kv','readwrite'); t.objectStore('kv').put(sets,'slots'); t.onerror=()=>console.warn('保存できませんでした'); });
+try{ navigator.storage?.persist?.(); }catch(e){} // 端末に「消さないで」と依頼
+const curSet = () => sets[cur];
+function renderSets(){
+  const box=$('sets'); box.innerHTML='';
+  SLOTS.forEach(([name,col],n)=>{ const t=sets[n], b=document.createElement('button'); b.type='button';
+    b.className='set'+(n===cur?' on':'')+(t?'':' empty'); b.style.setProperty('--slot',col);
+    if (t) b.style.backgroundImage=`url(${t.bg})`;
+    b.innerHTML=`<em>${name}</em>`+(t?`<b style="background:${t.edge}"></b><span class="del">×</span>`:'<i>＋</i>');
+    b.onclick=e=>{
+      if (!t){ pickSlot=n; $('bg').click(); return; }
+      selectSet(n); };
+    box.appendChild(b); });
+  const dl=$('delList'); dl.innerHTML='';
+  SLOTS.forEach(([name,col],n)=>{ if(!sets[n]) return; const d=document.createElement('button'); d.type='button'; d.className='delBtn';
+    d.style.setProperty('--slot',col); d.textContent='🗑 '+name;
+    d.onclick=()=>{ if(d.dataset.sure){ sets[n]=null; saveSets(); selectSet(n); } else { d.dataset.sure=1; d.textContent='もう一度タップで削除'; setTimeout(()=>{ if(d.isConnected){ delete d.dataset.sure; d.textContent='🗑 '+name; } },3000); } }; dl.appendChild(d); });
+  if(!dl.children.length) dl.innerHTML='<div class="note">登録済みの背景セットはありません。</div>';
+}
+function selectSet(n){
+  cur=n; store.set('curSlot',n); const t=curSet(); renderSets();
+  if (!t){ bgImg=null; currentList=[]; renderSwatches([]); draw(); return; }
+  const i=new Image(); i.onload=()=>{ bgImg=i; currentList=edgeCandidates(analyzeBg(i)); $('edgeColor').value=t.edge; renderSwatches(currentList); draw(); }; i.src=t.bg;
+}
+$('bg').addEventListener('change',()=>{ const f=$('bg').files[0]; if(!f) return; $('bg').value='';
+  fromFile(f,i=>{
+    const k=Math.min(1,S/Math.min(i.width,i.height)), c=document.createElement('canvas');
+    c.width=Math.round(i.width*k); c.height=Math.round(i.height*k); c.getContext('2d').drawImage(i,0,0,c.width,c.height);
+    sets[pickSlot]={bg:c.toDataURL('image/jpeg',0.92), edge:edgeCandidates(analyzeBg(i))[0].hex};
+    saveSets(); selectSet(pickSlot);
+  });
+});
+document.addEventListener('paste',e=>{ const f=[...e.clipboardData.files].find(f=>f.type.startsWith('image/')); if(f) fromFile(f,i=>{ shotImg=i; $("count").value=""; }); });
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{ e.preventDefault(); const f=[...e.dataTransfer.files].find(f=>f.type.startsWith('image/')); if(f) fromFile(f,i=>{ shotImg=i; $("count").value=""; }); });
+
+// ---- フチ色のおすすめ ----
+// 背景の主な色相・明るさを調べ、配色理論（類似色／補色／三角配色）でネオン色の候補を作る。
+// 「おすすめ」は類似色を寒色側へ約35°ずらした色：同系色でなじみつつ、色相差と高彩度で背景から浮き上がる。
+// 背景が暗いときは明るく、明るいときは少し濃くして明度差もつける。
+function analyzeBg(img){
+  const c=document.createElement('canvas'); c.width=c.height=48;
+  const g=c.getContext('2d'); g.drawImage(img,0,0,48,48);
+  const d=g.getImageData(0,0,48,48).data; let x=0,y=0,L=0,n=0;
+  for (let i=0;i<d.length;i+=4){
+    const [h,s,l]=hsl(d[i],d[i+1],d[i+2]); const w=s*(1-Math.abs(2*l-1));
+    x+=Math.cos(h*2*Math.PI)*w; y+=Math.sin(h*2*Math.PI)*w; L+=l; n++;
+  }
+  return { hue:((Math.atan2(y,x)*180/Math.PI)+360)%360, light:L/n };
+}
+function hsl2hex(h,s,l){ h=((h%360)+360)%360; s/=100; l/=100;
+  const f=n=>{ const k=(n+h/30)%12, a=s*Math.min(l,1-l); return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1)))).toString(16).padStart(2,'0'); };
+  return '#'+f(0)+f(8)+f(4); }
+function edgeCandidates(bg){
+  const l = bg.light<0.35 ? 72 : bg.light>0.85 ? 56 : 64;
+  return [
+    {name:'おすすめ',  hex:hsl2hex(bg.hue-38,80,l)},
+    {name:'類似色',    hex:hsl2hex(bg.hue+35,95,l)},
+    {name:'補色',      hex:hsl2hex(bg.hue+180,95,l)},
+    {name:'三角配色',  hex:hsl2hex(bg.hue+120,95,l)},
+    {name:'ホワイト',  hex:'#fff4fc'},
+  ];
+}
+function renderSwatches(list){
+  const box=$('swatches'); box.innerHTML='';
+  list.forEach(c=>{ const b=document.createElement('button'); b.className='sw'+(c.hex===$('edgeColor').value?' on':''); b.type='button';
+    b.innerHTML=`<i style="background:${c.hex};color:${c.hex}"></i>${c.name}`;
+    b.onclick=()=>{ $('edgeColor').value=c.hex; saveEdge(); renderSwatches(list); draw(); }; box.appendChild(b); });
+}
+let currentList=[];
+function saveEdge(){ const t=curSet(); if (t){ t.edge=$('edgeColor').value; saveSets(); renderSets(); } }
+$('edgeColor').addEventListener('input',()=>{ saveEdge(); renderSwatches(currentList); draw(); });
+function hsl(r,g,b){ r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2;
+  if(mx===mn) return [0,0,l]; const d=mx-mn, s=l>.5?d/(2-mx-mn):d/(mx+mn);
+  const h = mx===r?((g-b)/d+(g<b?6:0)):mx===g?((b-r)/d+2):((r-g)/d+4); return [h/6,s,l]; }
+
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
+function countValue(){
+  const auto=Math.max(0,($('owned').value|0)-1); $('count').placeholder=auto;
+  return $('count').value!=='' ? $('count').value : auto;
+}
+
+function draw(){
+  ctx.clearRect(0,0,S,S);
+  if (bgImg){ const k=Math.max(S/bgImg.width,S/bgImg.height), w=bgImg.width*k, h=bgImg.height*k;
+    ctx.drawImage(bgImg,(S-w)/2,(S-h)/2,w,h); }
+  else { ctx.fillStyle='#ff7aa8'; ctx.fillRect(0,0,S,S); }
+
+  const edge = $('edgeColor').value;
+  const {x,y,size} = BOX;
+
+  // アイテム画像（正方形切り抜き・縦横同倍率・ピクセルはそのまま）
+  ctx.save(); rr(x,y,size,size,R); ctx.clip();
+  ctx.fillStyle='#fff'; ctx.fillRect(x,y,size,size);
+  if (shotImg){
+    const W=shotImg.width, side=Math.min(W*$('cs').value/100, W), top=W*$('ct').value/100;
+    ctx.imageSmoothingQuality='high';
+    ctx.drawImage(shotImg,(W-side)/2,top,side,side,x,y,size,size);
+  }
+  ctx.restore();
+
+  // 蛍光フチ（ネオン管風：外側の光 → 白い芯 → 内側の色線。太さ・丸みは常に同じ。光は画像の上にはかけない）
+  const o1 = EDGE_IN/2, o2 = EDGE_IN + EDGE_CORE/2, OUTER = EDGE_IN + EDGE_CORE;
+  { // 外側の光（別キャンバスで描いて、画像の上にかかる部分は消す）
+    const c=document.createElement('canvas'); c.width=c.height=S; const g=c.getContext('2d');
+    g.strokeStyle=edge; g.shadowColor=edge; g.lineWidth=EDGE_CORE; g.shadowBlur=24;
+    for (let n=0;n<3;n++){ g.beginPath(); g.roundRect(x-o2,y-o2,size+o2*2,size+o2*2,R+o2); g.stroke(); }
+    g.shadowBlur=0; g.globalCompositeOperation='destination-out';
+    g.beginPath(); g.roundRect(x-OUTER,y-OUTER,size+OUTER*2,size+OUTER*2,R+OUTER); g.fill();
+    ctx.drawImage(c,0,0);
+  }
+  ctx.save();
+  ctx.filter='blur(1px)';
+  ctx.lineWidth=EDGE_IN+1; ctx.strokeStyle=edge; rr(x-o1,y-o1,size+o1*2,size+o1*2,R+o1); ctx.stroke();
+  ctx.lineWidth=EDGE_CORE; ctx.strokeStyle='#fffaff'; ctx.shadowColor='#fff'; ctx.shadowBlur=6;
+  rr(x-o2,y-o2,size+o2*2,size+o2*2,R+o2); ctx.stroke();
+  ctx.restore();
+
+  // ×数字（ぷっくり濃ピンク＋太い白フチ＋外側のマゼンタの光）。×は数字より小さめ
+  if ($('showCount').checked){
+    const num=String(countValue());
+    const base=FONTS[$('font').value]||FONTS[12];
+    // 書体ごとの大きさの違いをならす：数字の高さが見本と同じ(約205px)になるよう自動調整
+    const mm=document.createElement('canvas').getContext('2d'); mm.font=base.replace(/\d+px/,'100px');
+    const px=Math.round(100*205/Math.max(1,mm.measureText('3').actualBoundingBoxAscent));
+    const fNum=base.replace(/\d+px/, px+'px'), fX=base.replace(/\d+px/, Math.round(px*0.66)+'px');
+    const RIGHT=1194, BASE=262, GAP=18, FAT=16, OUT=36+16, XUP=26, GLOW=edge, SX=1.08;
+    const m=document.createElement('canvas').getContext('2d');
+    m.font=fNum; const wN=m.measureText(num).width*SX;
+    m.font=fX;  const wX=m.measureText('×').width;
+    const parts=[{t:num,f:fNum,x:RIGHT-wN,sx:SX},{t:'×',f:fX,x:RIGHT-wN-GAP-wX,sx:1,dy:-XUP}];
+    const each=(g,fn)=>parts.forEach(q=>{ g.save(); g.font=q.f; g.textAlign='left'; g.textBaseline='alphabetic'; g.lineJoin='round';
+      g.translate(q.x,BASE+(q.dy||0)); g.scale(q.sx,1); fn(g,q.t); g.restore(); });
+    // 光と白フチ
+    ctx.save(); ctx.shadowColor=GLOW; ctx.shadowBlur=34;
+    for (let n=0;n<3;n++) each(ctx,(g,t)=>{ g.shadowColor=GLOW; g.shadowBlur=34; g.strokeStyle='#fff'; g.lineWidth=OUT; g.strokeText(t,0,0); });
+    each(ctx,(g,t)=>{ g.strokeStyle='#fff'; g.lineWidth=OUT; g.strokeText(t,0,0); });
+    ctx.restore();
+    // 文字本体（ぷっくり感）
+    const c=document.createElement('canvas'); c.width=c.height=S; const g=c.getContext('2d');
+    each(g,(g,t)=>{ g.fillStyle=g.strokeStyle='#f82da1'; g.lineWidth=FAT; g.fillText(t,0,0); g.strokeText(t,0,0); }); // 太らせる
+    g.globalCompositeOperation='source-atop';
+    each(g,(g,t)=>{ g.strokeStyle='#d0409a'; g.lineWidth=FAT+10; g.filter='blur(4px)'; g.strokeText(t,0,0); });       // ふち側を少し濃く
+    each(g,(g,t)=>{ g.fillStyle='#f82da1'; g.filter='blur(6px)'; g.fillText(t,0,-2); });                           // 中はベタ
+    each(g,(g,t)=>{ g.fillStyle='rgba(255,150,215,.3)'; g.filter='blur(14px)'; g.fillText(t,-10,-18); g.filter='none'; }); // 左上のハイライト
+    const mk=document.createElement('canvas'); mk.width=mk.height=S;
+    each(mk.getContext('2d'),(g,t)=>{ g.fillStyle=g.strokeStyle='#000'; g.lineWidth=FAT; g.fillText(t,0,0); g.strokeText(t,0,0); });
+    g.globalCompositeOperation='destination-in'; g.filter='none'; g.drawImage(mk,0,0);
+    ctx.drawImage(c,0,0);
+  } else countValue();
+}
+dbGet('slots').then(v=>{
+  if (Array.isArray(v)) sets=v;
+  else { try{ JSON.parse(store.get('sets')||'[]').slice(0,10).forEach((t,n)=>sets[n]={bg:t.bg,edge:t.edge}); saveSets(); }catch(e){} } // 旧形式から移行
+  selectSet(Math.min(9,Math.max(0,cur||0)));
+});
+$('dl').onclick=()=>{ const name='poketsui-'+Date.now()+'.png';
+  cv.toBlob(async blob=>{
+    const file=new File([blob],name,{type:'image/png'});
+    // 共有メニューが使えるのは単体で開いたときだけ（Claude上のページ内では使えないので、必ず画像表示へ）
+    const framed=(()=>{ try{ return window.self!==window.top; }catch(e){ return true; } })();
+    if (!framed && navigator.canShare?.({files:[file]})){ try{ await navigator.share({files:[file]}); return; }catch(e){} }
+    // 共有できない環境：画像を大きく表示 → 長押しで「写真に保存」
+    $('outImg').src=URL.createObjectURL(blob); $('out').hidden=false;
+  },'image/png'); };
+$('outClose').onclick=()=>{ $('out').hidden=true; };
+draw();
+Promise.all(Object.values(FONTS).map(f=>document.fonts.load(f,"×0123456789").catch(()=>{}))).then(draw);
+</script>
+</body>
+</html>
