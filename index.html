@@ -114,6 +114,7 @@
   .pick{width:100%;padding:11px 16px}
   .nums{display:flex;gap:8px;align-items:center;justify-content:space-between}
   .own{display:flex;align-items:center;gap:6px;font-size:13px;background:#fff;border-radius:99px;padding:4px 6px 4px 12px;box-shadow:0 2px 0 #f6cfe2}
+  .own small{font-size:9px;color:var(--sub);min-width:0}
   .own input{width:58px;padding:6px}
   .step{display:flex;align-items:center;gap:6px;background:#fff;border-radius:99px;padding:4px;box-shadow:0 2px 0 #f6cfe2}
   .step span{min-width:54px;text-align:center;font-weight:900;font-size:20px;color:#f82da1}
@@ -134,7 +135,7 @@
 <div class="ctrl">
   <label class="pill lav pick">📷 アイテム画像を選ぶ<input type="file" id="shot" accept="image/*" hidden></label>
   <div class="nums">
-    <label class="own">所持数<input type="number" id="owned" value="4" min="1" inputmode="numeric"></label>
+    <label class="own">所持数<small id="ownState"></small><input type="number" id="owned" value="4" min="1" inputmode="numeric"></label>
     <div class="step"><button type="button" id="minus" aria-label="1減らす">−</button>
       <span>×<b id="countView">3</b></span><button type="button" id="plus" aria-label="1増やす">＋</button></div>
     <input type="hidden" id="count">
@@ -178,6 +179,7 @@
 </div></div>
 <div class="bar"><div class="inner"><button class="pill save" id="dl">🎁 画像を保存</button></div></div>
 
+<script src="ocr/tesseract.min.js"></script>
 <script>
 const S = 1254;
 // アイテム画像の位置・サイズは常に固定（正方形）
@@ -213,7 +215,28 @@ $('closeSet').onclick=closeSet; $('settings').addEventListener('click',e=>{ if(e
 $('showCount').addEventListener('change',draw);
 
 function fromFile(f, cb){ const i=new Image(); i.onload=()=>{cb(i);draw();}; i.src=URL.createObjectURL(f); }
-$('shot').addEventListener('change',()=>{ const f=$('shot').files[0]; if(f) fromFile(f,i=>{ shotImg=i; $("count").value=""; }); });
+// ---- アイテム画像：読み込み時に「所持数：○個」を文字認識して所持数に入れる（画像自体は一切変更しない） ----
+function setShot(i){ shotImg=i; $('count').value=''; readOwned(i); }
+let ocrWorker=null, ocrSeq=0;
+async function readOwned(img){
+  const seq=++ocrSeq; $('ownState').textContent='読取中…';
+  try{
+    if (!window.Tesseract) throw 0;
+    // 所持数の行あたり（スクショ幅基準で上から約140〜162%、左右20〜80%）を読み取り用にコピー
+    const W=img.width, sx=W*.2, sy=W*1.40, sw=W*.6, sh=Math.min(W*.22, img.height-sy);
+    if (sh<=0) throw 0;
+    const c=document.createElement('canvas'), k=Math.max(1,900/sw); c.width=sw*k; c.height=sh*k;
+    const g=c.getContext('2d'); g.drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);
+    const base=new URL('ocr/',location.href).href;
+    ocrWorker ??= await Tesseract.createWorker('jpn',1,{workerPath:base+'worker.min.js',corePath:base,langPath:base,workerBlobURL:false});
+    const {data:{text}}=await ocrWorker.recognize(c);
+    if (seq!==ocrSeq) return;
+    const t=text.replace(/\s/g,''), m=t.match(/持数[^0-9]*(\d+)/) || t.match(/(\d+)個/);
+    if (m){ $('owned').value=m[1]; store.set('owned',m[1]); $('count').value=''; $('ownState').textContent='自動'; draw(); }
+    else $('ownState').textContent='読取×';
+  }catch(e){ if(seq===ocrSeq) $('ownState').textContent='読取×'; }
+}
+$('shot').addEventListener('change',()=>{ const f=$('shot').files[0]; if(f) fromFile(f,setShot); });
 
 // ---- 背景セット：色分けされた10個の枠に「背景＋フチ色」を1セットで保存（IndexedDBに保存） ----
 const SLOTS=[['ピンク','#ff7eb6'],['レッド','#ff5a6e'],['オレンジ','#ffa24c'],['イエロー','#ffd23f'],['グリーン','#6fd67a'],
@@ -253,9 +276,9 @@ $('bg').addEventListener('change',()=>{ const f=$('bg').files[0]; if(!f) return;
     saveSets(); selectSet(pickSlot);
   });
 });
-document.addEventListener('paste',e=>{ const f=[...e.clipboardData.files].find(f=>f.type.startsWith('image/')); if(f) fromFile(f,i=>{ shotImg=i; $("count").value=""; }); });
+document.addEventListener('paste',e=>{ const f=[...e.clipboardData.files].find(f=>f.type.startsWith('image/')); if(f) fromFile(f,setShot); });
 document.addEventListener('dragover',e=>e.preventDefault());
-document.addEventListener('drop',e=>{ e.preventDefault(); const f=[...e.dataTransfer.files].find(f=>f.type.startsWith('image/')); if(f) fromFile(f,i=>{ shotImg=i; $("count").value=""; }); });
+document.addEventListener('drop',e=>{ e.preventDefault(); const f=[...e.dataTransfer.files].find(f=>f.type.startsWith('image/')); if(f) fromFile(f,setShot); });
 
 // ---- フチ色のおすすめ ----
 // 背景の主な色相・明るさを調べ、配色理論（類似色／補色／三角配色）でネオン色の候補を作る。
