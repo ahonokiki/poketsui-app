@@ -357,7 +357,7 @@ function draw(){
       g.translate(q.x,BASE+(q.dy||0)); g.scale(q.sx,1); fn(g,q.t); g.restore(); });
     // 光と白フチ：外側に細い蛍光ライン（フチと同じ色）＋控えめな光、内側に白フチ
     ctx.save();
-    for (let n=0;n<2;n++) each(ctx,(g,t)=>{ g.shadowColor=GLOW; g.shadowBlur=14; g.strokeStyle=GLOW; g.lineWidth=OUT+10; g.strokeText(t,0,0); });
+    for (let n=0;n<1;n++) each(ctx,(g,t)=>{ g.shadowColor=GLOW; g.shadowBlur=3; g.strokeStyle=GLOW; g.lineWidth=OUT+10; g.strokeText(t,0,0); });
     each(ctx,(g,t)=>{ g.strokeStyle='#fff'; g.lineWidth=OUT; g.strokeText(t,0,0); });
     ctx.restore();
     // 文字本体（ぷっくり感）
