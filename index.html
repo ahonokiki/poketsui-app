@@ -126,6 +126,11 @@
   /* iPhoneの連打ズーム・入力時ズームを防ぐ */
   html,body,button,label,input{touch-action:manipulation}
   input[type=number]{font-size:16px}
+
+  #toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,20px);z-index:30;max-width:90%;
+    background:#5a3a6aee;color:#fff;font-weight:800;font-size:13px;padding:10px 16px;border-radius:99px;opacity:0;transition:.25s;pointer-events:none;text-align:center}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  .set.shared::before{content:"☁";position:absolute;left:-5px;bottom:-6px;font-size:12px;background:#fff;border-radius:50%;width:18px;height:18px;line-height:18px;text-align:center;box-shadow:0 0 3px #0003}
 </style>
 </head>
 <body>
@@ -256,6 +261,9 @@ async function readOwned(img){
 }
 $('shot').addEventListener('change',()=>{ const f=$('shot').files[0]; if(f) fromFile(f,setShot); });
 
+// 画面下にお知らせを表示
+function toast(t){ let el=$('toast'); if(!el){ el=document.createElement('div'); el.id='toast'; document.body.appendChild(el); }
+  el.textContent=t; el.classList.add('show'); clearTimeout(el._t); if(!/中…$/.test(t)) el._t=setTimeout(()=>el.classList.remove('show'),3500); }
 // ---- GitHub への保存（鍵がある端末だけ）：背景画像は bg/、割り当ては sets.json ----
 const GH={owner:'ahonokiki',repo:'poketsui-app',branch:'main'};
 const ghToken=()=>{ try{ return localStorage.getItem('promo_ghToken')||''; }catch(e){ return ''; } };
@@ -272,7 +280,7 @@ function ghRun(label,fn){ // 書き込みは1つずつ順番に
   ghQueue=ghQueue.then(async()=>{ ghMsg(label+'中…'); try{ await fn(); ghMsg(label+'しました（全端末に1〜2分で反映）'); }catch(e){ ghMsg(label+'できませんでした：'+(e.message.includes('401')?'鍵が正しくありません':e.message)); } });
   return ghQueue;
 }
-function ghMsg(t){ $('ghState').textContent=t; const n=$('edgeNote'); if(n) n.textContent=t; }
+function ghMsg(t){ toast(t); $('ghState').textContent=t; const n=$('edgeNote'); if(n) n.textContent=t; }
 async function ghEditSets(fn){ // sets.json を読み込んで書き換える
   const cur=await ghApi('sets.json'); let j={sets:[]};
   if (cur) j=JSON.parse(decodeURIComponent(escape(atob(cur.content.replace(/\n/g,'')))));
@@ -302,7 +310,7 @@ const curSet = () => sets[cur];
 function renderSets(){
   const box=$('sets'); box.innerHTML='';
   SLOTS.forEach(([name,col],n)=>{ const t=sets[n], b=document.createElement('button'); b.type='button';
-    b.className='set'+(n===cur?' on':'')+(t?'':' empty'); b.style.setProperty('--slot',col);
+    b.className='set'+(n===cur?' on':'')+(t?'':' empty')+(t?.shared?' shared':''); b.style.setProperty('--slot',col);
     if (t) b.style.backgroundImage=`url(${t.bg})`;
     b.innerHTML=`<em>${name}</em>`+(t?`<b style="background:${t.edge}"></b><span class="del">×</span>`:'<i>＋</i>');
     b.onclick=e=>{
