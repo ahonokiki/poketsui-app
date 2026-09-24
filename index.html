@@ -139,7 +139,7 @@
 <div class="ctrl">
   <label class="pill lav pick">📷 アイテム画像を選ぶ<input type="file" id="shot" accept="image/*" hidden></label>
   <div class="nums">
-    <label class="own">所持数<small id="ownState"></small><input type="number" id="owned" value="4" min="1" inputmode="numeric"></label>
+    <label class="own">所持数<small id="ownState"></small><input type="number" id="owned" min="1" inputmode="numeric" placeholder="−"></label>
     <div class="step"><button type="button" id="minus" aria-label="1減らす">−</button>
       <span>×<b id="countView">3</b></span><button type="button" id="plus" aria-label="1増やす">＋</button></div>
     <input type="hidden" id="count">
@@ -201,13 +201,13 @@ const store = {get:k=>{try{return localStorage.getItem('promo_'+k)}catch(e){retu
 
 // 設定の記憶
 if (!FONTS[store.get('font')] || store.get('fontDefault')!=='10'){ store.set('font','10'); store.set('fontDefault','10'); } // 初期書体を10番に
-['owned','ct','cs','font'].forEach(id=>{
+['ct','cs','font'].forEach(id=>{
   const v = store.get(id); if (v!==null) $(id).value = v;
   $(id).addEventListener('input',()=>{ store.set(id,$(id).value); draw(); });
 });
 $('owned').addEventListener('input',()=>{ $('count').value=''; draw(); }); // 所持数を変えたら「所持数−1」に戻す
-$('minus').onclick=()=>{ $('count').value=Math.max(0,countValue()-1); draw(); };
-$('plus').onclick=()=>{ $('count').value=countValue()+1; draw(); };
+$('minus').onclick=()=>{ $('count').value=Math.max(0,(countValue()??1)-1); draw(); };
+$('plus').onclick=()=>{ $('count').value=(countValue()??0)+1; draw(); };
 function renderFonts(){ const g=$('fontGrid'); g.innerHTML='';
   FONT_LIST.forEach(([f,w],i)=>{ const n=i+1, b=document.createElement('button'); b.type='button'; b.className='fontOpt'+(String(n)===$('font').value?' on':'');
     b.innerHTML=`<span class="fn">${n}</span><span class="fs" style="font-family:'${f}',sans-serif;font-weight:${w}">×1 2 3 4 5 6 7 8 9 10</span>`;
@@ -243,7 +243,7 @@ async function readOwned(img){
       $('ct').value=Math.max(0,+(((bottom-W)/W)*100).toFixed(1));
     }
     const t=(line?line.text:data.text).replace(/\s/g,''), m=t.match(/持数[^0-9]*(\d+)/) || t.match(/(\d+)個/);
-    if (m){ $('owned').value=m[1]; store.set('owned',m[1]); $('count').value=''; $('ownState').textContent='自動'; }
+    if (m){ $('owned').value=m[1]; $('count').value=''; $('ownState').textContent='自動'; }
     else $('ownState').textContent='読取×';
     draw();
   }catch(e){ if(seq===ocrSeq) $('ownState').textContent='読取×'; }
@@ -334,6 +334,8 @@ function hsl(r,g,b){ r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(
 
 function rr(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
 function countValue(){
+  // 所持数も×数も未入力なら、×数字は出さない
+  if ($('owned').value==='' && $('count').value===''){ $('countView').textContent='−'; return null; }
   const auto=Math.max(0,($('owned').value|0)-1);
   const v=$('count').value!=='' ? Math.max(0,$('count').value|0) : auto;
   $('countView').textContent=v; return v;
@@ -376,8 +378,9 @@ function draw(){
   ctx.restore();
 
   // ×数字（ぷっくり濃ピンク＋太い白フチ＋外側のマゼンタの光）。×は数字より小さめ
-  if ($('showCount').checked){
-    const num=String(countValue());
+  const cnt=countValue();
+  if ($('showCount').checked && cnt!==null){
+    const num=String(cnt);
     const base=FONTS[$('font').value]||FONTS[10];
     // 書体ごとの大きさの違いをならす：数字の高さが見本と同じ(約205px)になるよう自動調整
     const mm=document.createElement('canvas').getContext('2d'); mm.font=base.replace(/\d+px/,'100px');
@@ -406,7 +409,7 @@ function draw(){
     each(mk.getContext('2d'),(g,t)=>{ g.fillStyle=g.strokeStyle='#000'; g.lineWidth=FAT; g.fillText(t,0,0); g.strokeText(t,0,0); });
     g.globalCompositeOperation='destination-in'; g.filter='none'; g.drawImage(mk,0,0);
     ctx.drawImage(c,0,0);
-  } else countValue();
+  }
 }
 dbGet('slots').then(v=>{
   if (Array.isArray(v)) sets=v;
