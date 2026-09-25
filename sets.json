@@ -7,6 +7,11 @@
       "edge": "#ed5ac0"
     },
     {
+      "slot": 3,
+      "bg": "bg/slot3-1790301406887.jpg",
+      "edge": "#ed5a69"
+    },
+    {
       "slot": 6,
       "bg": "bg/slot6-1790261299413.jpg",
       "edge": "#5aed97"
