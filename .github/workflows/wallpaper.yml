@@ -1,8 +1,8 @@
 name: 公式壁紙とアイテム名一覧を更新（毎月）
 on:
   schedule:
-    - cron: '17 3 1 * *'   # 毎月1日 12:17（日本時間）
-    - cron: '17 3 8 * *'   # 公開が遅れた月のための再確認
+    - cron: '17 9 1 * *'   # 毎月1日 18:17（日本時間）。公式の壁紙は1日の15時ごろ公開
+    - cron: '17 9 8 * *'   # 公開が遅れた月のための再確認
   workflow_dispatch:
 permissions:
   contents: write
