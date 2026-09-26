@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>アイテム名一覧</title>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--pink:#ff6fae;--ink:#5a4a5e;--sub:#9a8a9e;--line:#f6d6e6}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff0f6 radial-gradient(circle at 10px 10px,#ffe0ee 3px,transparent 4px) 0 0/22px 22px;min-height:100vh;
+    font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif;color:var(--ink)}
+  header{position:sticky;top:0;z-index:2;background:linear-gradient(135deg,#9d86d8,#c38fd8 55%,#f59ac8);color:#fff;text-align:center;
+    padding:14px 56px 12px;font-size:18px;font-weight:900;letter-spacing:.06em;border-radius:0 0 22px 22px;box-shadow:0 3px 10px #b07ad044}
+  header a{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;background:#fff;color:#c38fd8;
+    display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:20px;font-weight:900;box-shadow:0 3px 0 #c9a3dd}
+  main{max-width:560px;margin:0 auto;padding:12px 16px 40px}
+  .tools{position:sticky;top:66px;z-index:1;background:#fff0f6ee;padding:6px 0 8px;backdrop-filter:blur(6px)}
+  input[type=search]{width:100%;border:3px solid #ffd0e6;border-radius:99px;padding:10px 16px;font:inherit;font-size:16px;background:#fff;outline:none}
+  input[type=search]:focus{border-color:#ff9cc8}
+  .tabs{display:flex;gap:6px;margin-top:8px;overflow-x:auto}
+  .tabs button{flex:none;border:0;border-radius:99px;padding:7px 12px;font:inherit;font-size:13px;font-weight:800;background:#fff;color:var(--sub);box-shadow:0 2px 0 #f6cfe2;cursor:pointer}
+  .tabs button.on{background:linear-gradient(135deg,#ff7aa0,#ffb880);color:#fff}
+  .meta{font-size:12px;color:var(--sub);margin:6px 2px 0}
+  .group{background:#fff;border-radius:20px;margin:12px 0;box-shadow:0 4px 14px #e7a3c833;overflow:hidden}
+  .group h2{margin:0;font-size:14px;font-weight:900;color:#fff;padding:8px 14px;background:linear-gradient(90deg,#ff6fae,#ff9cc8)}
+  .group h2 small{font-weight:700;opacity:.9;margin-left:6px}
+  ul{list-style:none;margin:0;padding:4px 0}
+  li{display:flex;align-items:center;gap:8px;padding:8px 14px;border-top:1px dashed var(--line);font-size:14px}
+  li:first-child{border-top:0}
+  li span{flex:1;min-width:0;overflow-wrap:anywhere}
+  .r{flex:none;font-size:11px;font-weight:800;border-radius:99px;padding:2px 8px;background:#f3eef5;color:var(--sub)}
+  .r.sr{background:#fff1c9;color:#b8860b}.r.rr{background:#ffe3f0;color:#d0508a}
+  .k{flex:none;font-size:14px}
+  mark{background:#fff1a8;color:inherit;border-radius:3px}
+  .empty{text-align:center;color:var(--sub);padding:30px 0}
+  .note{font-size:12px;color:var(--sub);line-height:1.6;margin:14px 4px}
+  .note a{color:#d0508a}
+  .more{display:block;width:100%;border:0;border-radius:99px;padding:12px;margin:12px 0;font:inherit;font-weight:900;color:#fff;background:linear-gradient(135deg,#a98be0,#c38fd8);cursor:pointer}
+</style>
+</head>
+<body>
+<header><a href="./" aria-label="アプリに戻る">‹</a>アイテム名一覧</header>
+<main>
+  <div class="tools">
+    <input type="search" id="q" placeholder="名前やガチャ名で検索" autocomplete="off">
+    <div class="tabs" id="tabs">
+      <button type="button" data-k="" class="on">すべて</button>
+      <button type="button" data-k="ココリウム">🏠 ココリウム</button>
+      <button type="button" data-k="ファッション">👗 ファッション</button>
+      <button type="button" data-k="learned">✏️ 覚えた名前</button>
+    </div>
+    <div class="meta" id="meta">読み込み中…</div>
+  </div>
+  <div id="list"></div>
+  <button type="button" class="more" id="more" hidden>もっと見る</button>
+  <p class="note">
+    読み取った名前は、この一覧と「覚えた名前」の中からいちばん近い名前に自動で直されます。<br>
+    一覧は <a href="https://bon-cafe.jp/category/pokecolotwin/" target="_blank" rel="noopener">リヴリー・ポケコロゲームクラブ</a> のガチャ別アイテム一覧から毎日作っています。
+    このサイトに載っていないアイテムは入っていないので、読み間違いは文字起こしで直して「もう一度コピー」すると覚えます。
+  </p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const norm=t=>t.normalize('NFKC').toLowerCase().replace(/\s/g,'').replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+96));
+let all=[], kind='', shown=0;
+const PAGE=300;
+function learnedItems(){ try{ const m=JSON.parse(localStorage.getItem('promo_learned')||'{}');
+  return Object.entries(m).map(([k,v])=>({n:v?.to??v, from:v?.from??k, g:'覚えた名前'})); }catch(e){ return []; } }
+function esc(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function hl(s,q){ if(!q) return esc(s); const n=norm(s), i=n.indexOf(q);
+  // 正規化で長さが変わらないときだけ印を付ける
+  return i<0 || n.length!==s.replace(/\s/g,'').length || /\s/.test(s) ? esc(s) : esc(s.slice(0,i))+'<mark>'+esc(s.slice(i,i+q.length))+'</mark>'+esc(s.slice(i+q.length)); }
+function filtered(){
+  const q=norm($('q').value);
+  const src = kind==='learned' ? learnedItems() : all.filter(x=>!kind || x.k===kind);
+  return {q, rows: q ? src.filter(x=>norm(x.n).includes(q) || (x.g && norm(x.g).includes(q)) || (x.from && norm(x.from).includes(q))) : src};
+}
+function render(reset){
+  const {q,rows}=filtered(); if (reset) shown=0; shown+=PAGE;
+  $('meta').textContent = kind==='learned' ? `覚えた名前 ${rows.length}件（この端末だけ）` : `${rows.length.toLocaleString()}件${q?'見つかりました':''}`;
+  const box=$('list'); box.innerHTML='';
+  if (!rows.length){ box.innerHTML=`<div class="empty">${kind==='learned'?'まだありません':'見つかりませんでした'}</div>`; $('more').hidden=true; return; }
+  // ガチャごとにまとめる（新しい順ではなく名前順）
+  const groups=new Map();
+  for (const x of rows.slice(0,shown)){ const g=x.g||'その他'; if(!groups.has(g)) groups.set(g,[]); groups.get(g).push(x); }
+  const keys=[...groups.keys()].sort((a,b)=>a==='その他'?1:b==='その他'?-1:a.localeCompare(b,'ja'));
+  for (const g of keys){ const d=document.createElement('section'); d.className='group';
+    d.innerHTML=`<h2>${hl(g,q)}<small>${groups.get(g).length}</small></h2><ul>`+groups.get(g).map(x=>
+      `<li><span class="k">${x.k==='ココリウム'?'🏠':x.k==='ファッション'?'👗':x.from?'✏️':''}</span><span>${x.from?`<s style="color:#b39ab3">${esc(x.from)}</s> → `:''}${hl(x.n,q)}</span>${x.r?`<b class="r ${x.r==='スーパーレア'?'sr':x.r==='レア'?'rr':''}">${x.r==='スーパーレア'?'SR':x.r==='レア'?'R':'N'}</b>`:''}</li>`).join('')+'</ul>';
+    box.appendChild(d); }
+  $('more').hidden = shown>=rows.length;
+}
+let tmr; $('q').addEventListener('input',()=>{ clearTimeout(tmr); tmr=setTimeout(()=>render(true),150); });
+$('more').onclick=()=>render(false);
+$('tabs').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; kind=b.dataset.k;
+  [...$('tabs').children].forEach(x=>x.classList.toggle('on',x===b)); render(true); };
+fetch('items.json',{cache:'no-cache'}).then(r=>r.json()).then(j=>{
+  all = j.items || (j.names||[]).map(n=>({n}));
+  render(true);
+  if (j.updated) $('meta').textContent+=`（${j.updated} 更新）`;
+}).catch(()=>{ $('meta').textContent='一覧を読み込めませんでした'; });
+</script>
+</body>
+</html>
