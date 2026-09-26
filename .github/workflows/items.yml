@@ -1,0 +1,20 @@
+name: アイテム名一覧を更新（毎日）
+on:
+  schedule:
+    - cron: '23 11 * * *'   # 毎日 20:23（日本時間）
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node tools/build-items.mjs
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add items.json
+          git diff --cached --quiet || (git commit -m "アイテム名一覧を更新" && git pull --rebase && git push)
