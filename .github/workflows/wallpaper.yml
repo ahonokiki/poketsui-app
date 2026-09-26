@@ -1,0 +1,21 @@
+name: 公式壁紙を背景に（毎月）
+on:
+  schedule:
+    - cron: '17 3 1 * *'   # 毎月1日 12:17（日本時間）
+    - cron: '17 3 8 * *'   # 公開が遅れた月のための再確認
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node tools/update-wallpaper.mjs
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A wallpaper wallpaper.json
+          git diff --cached --quiet || (git commit -m "公式壁紙を更新" && git push)
