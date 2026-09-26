@@ -127,7 +127,7 @@
   html,body,button,label,input{touch-action:manipulation}
   input[type=number]{font-size:16px}
 
-  #toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,20px);z-index:30;max-width:90%;
+  #toast{white-space:pre-line;position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,20px);z-index:30;max-width:90%;
     background:#5a3a6aee;color:#fff;font-weight:800;font-size:13px;padding:10px 16px;border-radius:99px;opacity:0;transition:.25s;pointer-events:none;text-align:center}
   #toast.show{opacity:1;transform:translate(-50%,0)}
   .set.shared::before{content:"☁";position:absolute;left:-5px;bottom:-6px;font-size:12px;background:#fff;border-radius:50%;width:18px;height:18px;line-height:18px;text-align:center;box-shadow:0 0 3px #0003}
@@ -144,6 +144,7 @@
   body.isMulti #ownSnap{display:none}
   .chip img.snap{width:auto;height:20px;max-width:70px;object-fit:contain;border-radius:6px;background:#fff}
   .nosnap{font-size:10px;color:var(--sub);font-weight:800}
+  .copy{flex:none;padding:12px 14px;background:linear-gradient(180deg,#c3b0f0,var(--lav));box-shadow:0 4px 0 var(--lav2)}
 </style>
 </head>
 <body>
@@ -213,7 +214,13 @@
   <p style="font-weight:900;color:#8a5a86;margin:14px 0 10px">画像を長押しして「"写真"に保存」を選んでね</p>
   <img id="outImg" alt="完成画像" style="-webkit-user-select:none;user-select:none;width:100%;border-radius:20px;box-shadow:0 4px 14px #0002;-webkit-touch-callout:default">
 </div></div>
-<div class="bar"><div class="inner"><button class="pill save" id="dl">🎁 画像を保存</button></div></div>
+<div id="txtSheet" class="sheet" hidden><div class="sheetIn">
+  <div class="sheetHead">📋 文字起こし<button class="close" id="txtClose" type="button">✕</button></div>
+  <p class="note" id="txtMsg" style="font-weight:800;margin:12px 0 8px"></p>
+  <textarea id="txtBox" rows="10" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:10px;font:inherit;font-size:16px;background:#fff"></textarea>
+  <button class="pill wide" id="txtCopy" type="button" style="margin-top:10px">もう一度コピー</button>
+</div></div>
+<div class="bar"><div class="inner"><button class="pill copy" id="copyTxt" type="button">📋 文字</button><button class="pill save" id="dl">🎁 画像を保存</button></div></div>
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
@@ -289,8 +296,14 @@ async function analyzeShot(img){
   ocrWorker ??= await Tesseract.createWorker('jpn',1,{workerPath:base+'worker.min.js',corePath:base,langPath:base,workerBlobURL:false});
   const {data}=await ocrWorker.recognize(c,{},{text:true,blocks:true});
   const lines=(data.blocks||[]).flatMap(b=>b.paragraphs.flatMap(p=>p.lines));
-  const line=lines.find(l=>/持数|所持/.test(l.text.replace(/\s/g,'')));
+  const li=lines.findIndex(l=>/持数|所持/.test(l.text.replace(/\s/g,''))), line=lines[li];
+  // アイテム名：所持数の行のすぐ上の行（所持数の行がない画面は名前欄の位置の行）
+  const clean=t=>t.replace(/\s/g,'').replace(/[□口回ロ⑮Ⅱ|｜!！」』にに\[\]0-9]+$/,'');
+  let nameLine = li>0 ? lines[li-1] : null;
+  if (!nameLine && lay){ const target=(lay.cardBottom-sy)*k;
+    nameLine=lines.filter(l=>!/リリース|欲しい|ショップ|タイプ/.test(l.text)).sort((a,b)=>Math.abs(a.bbox.y1-target)-Math.abs(b.bbox.y1-target))[0]; }
   const r={...r0};
+  if (nameLine) r.name=clean(nameLine.text);
   if (line){
     r.squareBottom=sy+line.bbox.y1/k+W*.015;        // 1個のとき：所持数の行の少し下まで（正方形）
     { // 確認用：元画像の「所持数」の行をそのまま切り出す（完成画像には入れない）
@@ -302,7 +315,8 @@ async function analyzeShot(img){
   if (m) r.owned=+m[1];
   return r;
 }
-function setShot(i){ $('ownSnap').hidden=true; items=[]; renderItems(); shotImg=i; $('count').value=''; readOwned(i); }
+let shotName='';
+function setShot(i){ shotName=''; $('ownSnap').hidden=true; items=[]; renderItems(); shotImg=i; $('count').value=''; readOwned(i); }
 async function readOwned(img){
   const seq=++ocrSeq; $('ownState').textContent='読取中…';
   try{
@@ -311,7 +325,7 @@ async function readOwned(img){
     const sb=showOwned()? r.squareBottom : (r.nameBottom??r.squareBottom);
     if (sb) $('ct').value=Math.max(0,+(((sb-img.width)/img.width)*100).toFixed(1));
     if (false) $('ct').value=Math.max(0,+(((r.squareBottom-img.width)/img.width)*100).toFixed(1));
-    $('ownSnap').src=r.snap||''; $('ownSnap').hidden=!r.snap;
+    shotName=r.name||''; $('ownSnap').src=r.snap||''; $('ownSnap').hidden=!r.snap;
     if (r.owned){ $('owned').value=r.owned; $('count').value=''; $('ownState').textContent='自動'; }
     else $('ownState').textContent='読取×';
     draw();
@@ -329,7 +343,7 @@ async function setItems(files){
   renderItems(); draw();
   for (const it of items){ try{ const r=await analyzeShot(it.img); if (seq!==ocrSeq) return;
       if (r?.owned) it.owned=r.owned;
-      it.snap=r?.snap; if (r?.cardBottom){ it.ownedBottom=r.ownedBottom; it.nameBottom=r.nameBottom; it.cardBottom=r.cardBottom; it.top=r.top ?? Math.max(0,r.squareBottom-it.img.width); }
+      it.snap=r?.snap; it.name=r?.name; if (r?.cardBottom){ it.ownedBottom=r.ownedBottom; it.nameBottom=r.nameBottom; it.cardBottom=r.cardBottom; it.top=r.top ?? Math.max(0,r.squareBottom-it.img.width); }
     }catch(e){} it.reading=false; renderItems(); draw(); }
 }
 function renderItems(){
@@ -350,7 +364,7 @@ try{ $('showOwnedChk').checked=localStorage.getItem('promo_showOwned')==='1'; }c
 $('showOwnedChk').addEventListener('change',()=>{ try{ localStorage.setItem('promo_showOwned',showOwned()?'1':'0'); }catch(e){} if(shotImg) readOwned(shotImg); draw(); });
 // 画面下にお知らせを表示
 function toast(t){ let el=$('toast'); if(!el){ el=document.createElement('div'); el.id='toast'; document.body.appendChild(el); }
-  el.textContent=t; el.classList.add('show'); clearTimeout(el._t); if(!/中…$/.test(t)) el._t=setTimeout(()=>el.classList.remove('show'),3500); }
+  el.textContent=t; el.classList.add('show'); clearTimeout(el._t); if(!/中…$/.test(t)) el._t=setTimeout(()=>el.classList.remove('show'),t.includes('\n')?6000:3500); }
 // ---- GitHub への保存（鍵がある端末だけ）：背景画像は bg/、割り当ては sets.json ----
 const GH={owner:'ahonokiki',repo:'poketsui-app',branch:'main'};
 const ghToken=()=>{ try{ return localStorage.getItem('promo_ghToken')||''; }catch(e){ return ''; } };
@@ -626,6 +640,22 @@ $('dl').onclick=()=>{ const name='poketsui-'+Date.now()+'.png';
     // 共有できない環境：画像を大きく表示 → 長押しで「写真に保存」
     $('outImg').src=URL.createObjectURL(blob); $('out').hidden=false;
   },'image/png'); };
+function listText(){
+  const list = items.length>1 ? items.map(it=>({name:it.name||'（名前を読み取れませんでした）', n:itemCount(it)}))
+    : (shotImg ? [{name:shotName||'（名前を読み取れませんでした）', n:countValue()??0}] : []);
+  const rows=list.filter(x=>x.n>0);
+  if (!rows.length) return '';
+  const total=rows.reduce((a,x)=>a+x.n,0);
+  return rows.map((x,i)=>`${i+1}. ${x.name}${x.n>1?'×'+x.n:''}`).join('\n')+`\n\n計${total}点`;
+}
+async function copyText(t){
+  try{ await navigator.clipboard.writeText(t); return true; }
+  catch(e){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(_){} ta.remove(); return ok; } }
+$('copyTxt').onclick=async()=>{ const t=listText(); if(!t){ toast('アイテム画像を選んでください'); return; }
+  const ok=await copyText(t); $('txtBox').value=t; $('txtSheet').hidden=false;
+  $('txtMsg').textContent= ok ? 'コピーしました。読み間違いがあれば直して「もう一度コピー」' : 'コピーできませんでした。下の文字を長押ししてコピーしてください'; };
+$('txtCopy').onclick=async()=>{ toast(await copyText($('txtBox').value)?'コピーしました':'コピーできませんでした'); };
+$('txtClose').onclick=()=>{ $('txtSheet').hidden=true; };
 $('outClose').onclick=()=>{ $('out').hidden=true; };
 draw();
 Promise.all(Object.values(FONTS).map(f=>document.fonts.load(f,"×0123456789").catch(()=>{}))).then(draw);
