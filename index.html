@@ -311,6 +311,8 @@ function detectLayout(img){
 }
 // 画像から「所持数」の行を探し、所持数・切り抜き位置を返す（画像そのものは変更しない）
 let ocrWorker=null, ocrSeq=0;
+// 読み間違えやすいカタカナの補正
+function fixKana(t){ return t.replace(/ン(?=[ャュョ])/g,'シ').replace(/ソ(?=[ャュョ])/g,'シ').replace(/ー{2,}/g,'ー'); }
 async function analyzeShot(img){
   const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.012, cardBottom:lay.cardBottom, nameBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
   if (!window.Tesseract) return r0;
@@ -330,7 +332,21 @@ async function analyzeShot(img){
   if (!nameLine && lay){ const target=(lay.cardBottom-sy)*k;
     nameLine=lines.filter(l=>!/リリース|欲しい|ショップ|タイプ/.test(l.text)).sort((a,b)=>Math.abs(a.bbox.y1-target)-Math.abs(b.bbox.y1-target))[0]; }
   const r={...r0};
-  if (nameLine) r.name=clean(nameLine.text);
+  if (nameLine){
+    // 名前の行を切り出して読み直す：濃い文字だけを残す（薄い灰色のコピーマークは消える）→拡大→1行として読む
+    const b=nameLine.bbox, x0=sx+b.x0/k, y0=sy+b.y0/k, w=(b.x1-b.x0)/k, h=(b.y1-b.y0)/k, pad=h*.3, z=Math.max(1,96/h);
+    const nc=document.createElement('canvas'); nc.width=Math.round((w+pad*2)*z); nc.height=Math.round((h+pad*2)*z);
+    const ng=nc.getContext('2d',{willReadFrequently:true}); ng.imageSmoothingQuality='high';
+    ng.drawImage(img,x0-pad,y0-pad,w+pad*2,h+pad*2,0,0,nc.width,nc.height);
+    const id=ng.getImageData(0,0,nc.width,nc.height), d=id.data;
+    for (let i=0;i<d.length;i+=4){ const L=.3*d[i]+.59*d[i+1]+.11*d[i+2], v=L<150?0:255; d[i]=d[i+1]=d[i+2]=v; }
+    ng.putImageData(id,0,0);
+    try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'7', preserve_interword_spaces:'0'});
+      const {data:d2}=await ocrWorker.recognize(nc); r.name=clean(d2.text); }catch(e){}
+    try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'3'}); }catch(e){}
+    if (!r.name) r.name=clean(nameLine.text);
+    r.name=fixKana(r.name);
+  }
   if (line){
     r.squareBottom=sy+line.bbox.y1/k+W*.015;        // 1個のとき：所持数の行の少し下まで（正方形）
     { // 確認用：元画像の「所持数」の行をそのまま切り出す（完成画像には入れない）
