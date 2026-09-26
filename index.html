@@ -72,6 +72,7 @@
     radial-gradient(circle at 20% 10%,#ffffffcc 0 2px,transparent 3px) 0 0/46px 46px,
     conic-gradient(from 45deg at 50% 50%,#ffe3f0 0 25%,#fff4f9 0 50%,#ffe3f0 0 75%,#fff4f9 0) 0 0/28px 28px,
     #fff0f6;background-attachment:fixed}
+  body.wall{background:linear-gradient(#fff0f6aa,#fff0f6aa),var(--wall) center/cover no-repeat fixed,#fff0f6}
   header{background:linear-gradient(135deg,#b59cf0 0%,#e3a3e6 50%,#ffb3d1 100%);padding:16px 60px 14px;border-radius:0 0 30px 30px;
     font-size:21px;text-shadow:0 2px 0 #c46fb4,0 0 10px #ffffffaa;border-bottom:4px solid #fff}
   header::before,header::after{content:"✦";position:absolute;color:#fff;opacity:.9;font-size:14px}
@@ -391,6 +392,10 @@ async function readOwned(img){
     draw();
   }catch(e){ if(seq===ocrSeq) $('ownState').textContent='読取×'; }
 }
+
+// ---- アプリの背景：公式サイトの今月の壁紙（wallpaper.json は GitHub Actions が毎月更新） ----
+fetch('wallpaper.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{ if(!j?.image) return;
+  const i=new Image(); i.onload=()=>{ document.body.style.setProperty('--wall',`url("${j.image}")`); document.body.classList.add('wall'); }; i.src=j.image; }).catch(()=>{});
 
 // ---- 複数アイテム（2〜12個）：選んだ順に並べる ----
 let items=[];
