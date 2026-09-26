@@ -6,6 +6,7 @@
 <title>ポケツイ画像加工アプリ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=M+PLUS+Rounded+1c:wght@900&family=Zen+Maru+Gothic:wght@900&family=Kiwi+Maru:wght@500&family=Hachi+Maru+Pop&family=Dela+Gothic+One&family=Potta+One&family=Rampart+One&family=Yusei+Magic&family=Kosugi+Maru&family=Cherry+Bomb+One&family=Mochiy+Pop+P+One&family=RocknRoll+One&family=Reggae+One&family=Stick&family=DotGothic16&text=%E8%A8%88%E7%82%B9%E5%90%88%E5%80%8B%E5%93%81%E3%82%BB%E3%83%83%E3%83%88%200123456789%C3%97&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Baloo+2:wght@800&family=Nunito:wght@900&family=Fredoka:wght@700&family=Sniglet:wght@800&family=Titan+One&family=Paytone+One&family=DynaPuff:wght@700&family=Coiny&family=Cherry+Bomb+One&family=Rampart+One&family=Rubik+Bubbles&family=Modak&family=Chango&family=Lilita+One&family=Grandstander:wght@900&family=Varela+Round&family=Kosugi+Maru&family=Potta+One&family=Chewy&family=Bubblegum+Sans&family=Luckiest+Guy&family=Rubik:wght@900&family=M+PLUS+Rounded+1c:wght@900&family=Zen+Maru+Gothic:wght@900&family=Hachi+Maru+Pop&family=Yusei+Magic&family=Mochiy+Pop+P+One&family=Rounded+Mplus+1c:wght@800&family=Kiwi+Maru:wght@500&family=Dela+Gothic+One&family=Bowlby+One&family=Carter+One&family=Gluten:wght@900&family=Fuzzy+Bubbles:wght@700&text=%C3%97%200123456789&display=swap" rel="stylesheet">
 <style>
   :root{--pink:#ff6fae;--pink2:#ff9cc8;--lav:#a98be0;--lav2:#7f63c9;--ink:#5a4a5e;--sub:#9a8a9e;--line:#f6d6e6;--green1:#8fe8b9;--green2:#4fd08f}
@@ -57,6 +58,7 @@
   .close{position:absolute;right:12px;width:34px;height:34px;border-radius:50%;border:0;background:#ffffff44;color:#fff;font-size:16px;cursor:pointer}
   .set .del{display:none}
   .delBtn{border:0;border-radius:99px;padding:8px 14px;font:inherit;font-weight:900;font-size:13px;color:#fff;background:var(--slot);cursor:pointer}
+  #jfontGrid{display:flex;flex-direction:column;gap:8px;margin-top:8px;max-height:300px;overflow:auto;padding:4px}
   #fontGrid{display:flex;flex-direction:column;gap:8px;margin-top:8px;max-height:340px;overflow:auto;padding:4px}
   .fontOpt{display:flex;align-items:center;gap:10px;border:3px solid #f6e4ee;border-radius:18px;background:linear-gradient(135deg,#ff7aa0,#ffb880);padding:6px 10px;cursor:pointer;text-align:left}
   .fontOpt.on{border-color:#fff;outline:3px solid var(--pink)}
@@ -176,6 +178,8 @@
     <div class="row"><label><input type="checkbox" id="showOwnedChk"> 画像に「所持数」の行を入れる</label></div>
     <div class="row"><div style="width:100%"><b style="color:#8a5a86;font-size:14px">数字の書体（タップで選択）</b>
 <input type="hidden" id="font" value="10"><div id="fontGrid"></div></div></div>
+    <div class="row"><div style="width:100%"><b style="color:#8a5a86;font-size:14px">文字の書体（「計」「点」など）</b>
+<input type="hidden" id="jfont" value="1"><div id="jfontGrid" class="fgrid"></div></div></div>
   </div></section>
 
   <section class="card"><h2>文字起こしの書式</h2><div class="in">
@@ -261,6 +265,15 @@ if (!FONTS[store.get('font')] || store.get('fontDefault')!=='10'){ store.set('fo
 $('owned').addEventListener('input',()=>{ $('count').value=''; draw(); }); // 所持数を変えたら「所持数−1」に戻す
 $('minus').onclick=()=>{ $('count').value=Math.max(0,(countValue()??1)-1); draw(); };
 $('plus').onclick=()=>{ $('count').value=(countValue()??0)+1; draw(); };
+const JFONTS=[["Mochiy Pop One", "400"], ["M PLUS Rounded 1c", "900"], ["Zen Maru Gothic", "900"], ["Kiwi Maru", "500"], ["Hachi Maru Pop", "400"], ["Dela Gothic One", "400"], ["Potta One", "400"], ["Rampart One", "400"], ["Yusei Magic", "400"], ["Kosugi Maru", "400"], ["Cherry Bomb One", "400"], ["Mochiy Pop P One", "400"], ["RocknRoll One", "400"], ["Reggae One", "400"], ["Stick", "400"], ["DotGothic16", "400"]];
+try{ const v=localStorage.getItem('promo_jfont'); if(v) $('jfont').value=v; }catch(e){}
+const jfontCss=()=>{ const [f,w]=JFONTS[($('jfont').value|0)-1]||JFONTS[0]; return {f,w}; };
+function renderJFonts(){ const g=$('jfontGrid'); g.innerHTML='';
+  JFONTS.forEach(([f,w],i)=>{ const n=i+1, b=document.createElement('button'); b.type='button'; b.className='fontOpt'+(String(n)===$('jfont').value?' on':'');
+    b.innerHTML=`<span class="fn">${n}</span><span class="fs" style="font-family:'${f}',sans-serif;font-weight:${w}">計 7 点　合計 12 個</span>`;
+    b.onclick=()=>{ $('jfont').value=n; try{localStorage.setItem('promo_jfont',n);}catch(e){} renderJFonts(); document.fonts.load(`${w} 100px "${f}"`,'計点').then(draw,draw); }; g.appendChild(b); }); }
+renderJFonts();
+setTimeout(()=>{ const {f,w}=jfontCss(); document.fonts.load(`${w} 100px "${f}"`,'計点').then(()=>draw(),()=>{}); },0);
 function renderFonts(){ const g=$('fontGrid'); g.innerHTML='';
   FONT_LIST.forEach(([f,w],i)=>{ const n=i+1, b=document.createElement('button'); b.type='button'; b.className='fontOpt'+(String(n)===$('font').value?' on':'');
     b.innerHTML=`<span class="fn">${n}</span><span class="fs" style="font-family:'${f}',sans-serif;font-weight:${w}">×1 2 3 4 5 6 7 8 9 10</span>`;
@@ -624,7 +637,7 @@ function drawMulti(edge){
   cards.forEach(({x,y,it})=>drawCount(String(itemCount(it)),x+cw+ht*.18,y+ht*.62,ht,edge));
   // 合計○個（数字を大きく）
   const total=items.slice(0,n).reduce((a,it)=>a+itemCount(it),0);
-  const {base:fb,px}=fontPx(150), fBig=setF(fb,px), fSm=setF(fb,px*.52);
+  const {base:fb,px}=fontPx(150), fBig=setF(fb,px), fSm=(()=>{ const {f,w}=jfontCss(); return `${w} ${Math.round(px*.52)}px "${f}"`; })();
   const m=document.createElement('canvas').getContext('2d');
   m.font=fSm; const w1=m.measureText('計').width, w3=m.measureText('点').width; m.font=fBig; const w2=m.measureText(String(total)).width;
   const gap=18, tw=w1+w2+w3+gap*2, bx=(S-tw)/2, by=S-62;
