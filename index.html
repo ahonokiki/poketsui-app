@@ -317,19 +317,32 @@ function detectLayout(img){
 let ocrWorker=null, ocrSeq=0;
 // 読み間違えやすいカタカナの補正
 function fixKana(t){ return t.replace(/ン(?=[ャュョ])/g,'シ').replace(/ソ(?=[ャュョ])/g,'シ').replace(/ー{2,}/g,'ー'); }
-// アイテム名一覧（items.json：公式お知らせから作成）で、読み取った名前をいちばん近い名前に置き換える
+// アイテム名一覧（items.json）と、この端末で直した名前（学習）で、読み取った名前をいちばん近い名前に置き換える
 let itemNames=null;
 const loadItemNames=()=>itemNames ??= fetch('items.json',{cache:'no-cache'}).then(r=>r.json()).then(j=>j.names||[]).catch(()=>[]);
 const normName=t=>t.normalize('NFKC').replace(/[\s・･「」『』【】（）()]/g,'').replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+96));
-function editDist(a,b){ let p=Array.from({length:b.length+1},(_,j)=>j);
-  for (let i=1;i<=a.length;i++){ const q=[i]; for (let j=1;j<=b.length;j++) q[j]=Math.min(p[j]+1,q[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1)); p=q; }
+// 学習：{読み取った名前: 直した名前}
+const learned={ get(){ try{ return JSON.parse(localStorage.getItem('promo_learned')||'{}'); }catch(e){ return {}; } },
+  add(raw,fixed){ const m=this.get(); m[normName(raw)]=fixed; try{ localStorage.setItem('promo_learned',JSON.stringify(m)); }catch(e){} } };
+// 文字認識で取り違えやすい文字どうし（小さい字・濁点・ー/一 など）は「小さな違い」として数える
+const SOFT=['アァ','イィ','ウゥ','エェ','オォ','ツッ','ヤャ','ユュ','ヨョ','カヵ','ケヶ','ワヮ','ー一','ー-','ロ口','ニ二','カ力','エ工','タ夕','ト卜','ハ八','ヘへ','ソン','シツ','ノ丿','メ×'];
+const bare=c=>c.normalize('NFD').replace(/[゙゚]/g,'');
+const soft=(x,y)=>bare(x)===bare(y) || SOFT.some(p=>p.includes(x)&&p.includes(y));
+const lightIns=c=>/[ァィゥェォッャュョヮー]/.test(c);
+function editCost(a,b){ let p=[0]; for (let j=1;j<=b.length;j++) p[j]=p[j-1]+(lightIns(b[j-1])?.25:1);
+  for (let i=1;i<=a.length;i++){ const q=[p[0]+(lightIns(a[i-1])?.25:1)];
+    for (let j=1;j<=b.length;j++) q[j]=Math.min(p[j]+(lightIns(a[i-1])?.25:1), q[j-1]+(lightIns(b[j-1])?.25:1), p[j-1]+(a[i-1]===b[j-1]?0:soft(a[i-1],b[j-1])?.25:1));
+    p=q; }
   return p[b.length]; }
 async function nearestItemName(name){
-  const names=await loadItemNames(); if (!name||!names.length) return name;
-  const a=normName(name); let best=null, bd=Infinity;
-  for (const n of names){ const b=normName(n); if (Math.abs(a.length-b.length)>=bd) continue; const d=editDist(a,b); if (d<bd){ bd=d; best=n; } }
-  // 違いが名前の長さの4割以下のときだけ置き換える（まったく違う名前にはしない）
-  return best && bd<=Math.max(1,Math.ceil(Math.max(a.length,normName(best).length)*.4)) ? best : name;
+  if (!name) return name;
+  const L=learned.get(), a=normName(name); if (L[a]) return L[a];
+  const names=[...new Set([...(await loadItemNames()), ...Object.values(L)])];
+  let best=null, bd=Infinity;
+  for (const n of names){ const b=normName(n); if (Math.abs(a.length-b.length)>=bd+4) continue; const d=editCost(a,b); if (d<bd){ bd=d; best=n; } }
+  // はっきり違う文字は1文字まで・全体の3割まで（短い名前は取り違えやすい文字の違いだけ）
+  const lim=a.length<6 ? .75 : Math.min(1.5, a.length*.3);
+  return best && bd<=lim ? best : name;
 }
 async function analyzeShot(img){
   const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.012, cardBottom:lay.cardBottom, nameBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
@@ -364,7 +377,7 @@ async function analyzeShot(img){
     try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'3'}); }catch(e){}
     if (!r.name) r.name=clean(nameLine.text);
     r.name=fixKana(r.name);
-    r.name=await nearestItemName(r.name);
+    r.raw=r.name; r.name=await nearestItemName(r.name);
   }
   if (line){
     r.squareBottom=sy+line.bbox.y1/k+W*.015;        // 1個のとき：所持数の行の少し下まで（正方形）
@@ -377,7 +390,7 @@ async function analyzeShot(img){
   if (m) r.owned=+m[1];
   return r;
 }
-let shotName='';
+let shotName='', shotRaw='';
 function setShot(i){ shotName=''; $('ownSnap').hidden=true; items=[]; renderItems(); shotImg=i; $('count').value=''; readOwned(i); }
 async function readOwned(img){
   const seq=++ocrSeq; $('ownState').textContent='読取中…';
@@ -387,7 +400,7 @@ async function readOwned(img){
     const sb=showOwned()? r.squareBottom : (r.nameBottom??r.squareBottom);
     if (sb) $('ct').value=Math.max(0,+(((sb-img.width)/img.width)*100).toFixed(1));
     if (false) $('ct').value=Math.max(0,+(((r.squareBottom-img.width)/img.width)*100).toFixed(1));
-    shotName=r.name||''; $('ownSnap').src=r.snap||''; $('ownSnap').hidden=!r.snap;
+    shotName=r.name||''; shotRaw=r.raw||''; $('ownSnap').src=r.snap||''; $('ownSnap').hidden=!r.snap;
     if (r.owned){ $('owned').value=r.owned; $('count').value=''; $('ownState').textContent='自動'; }
     else $('ownState').textContent='読取×';
     draw();
@@ -409,7 +422,7 @@ async function setItems(files){
   renderItems(); draw();
   for (const it of items){ try{ const r=await analyzeShot(it.img); if (seq!==ocrSeq) return;
       if (r?.owned) it.owned=r.owned;
-      it.snap=r?.snap; it.name=r?.name; if (r?.cardBottom){ it.ownedBottom=r.ownedBottom; it.nameBottom=r.nameBottom; it.cardBottom=r.cardBottom; it.top=r.top ?? Math.max(0,r.squareBottom-it.img.width); }
+      it.snap=r?.snap; it.name=r?.name; it.raw=r?.raw; if (r?.cardBottom){ it.ownedBottom=r.ownedBottom; it.nameBottom=r.nameBottom; it.cardBottom=r.cardBottom; it.top=r.top ?? Math.max(0,r.squareBottom-it.img.width); }
     }catch(e){} it.reading=false; renderItems(); draw(); }
 }
 function renderItems(){
@@ -735,11 +748,26 @@ async function copyText(t){
   try{ await navigator.clipboard.writeText(t); return true; }
   catch(e){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(_){} ta.remove(); return ok; } }
 $('copyTxt').onclick=async()=>{ const t=listText(); if(!t){ toast('アイテム画像を選んでください'); return; }
-  const ok=await copyText(t); $('txtBox').value=t; $('txtSheet').hidden=false;
+  const ok=await copyText(t); $('txtBox').value=t; txtShown=t; $('txtSheet').hidden=false;
   $('txtMsg').textContent= ok ? 'コピーしました。読み間違いがあれば直して「もう一度コピー」' : 'コピーできませんでした。下の文字を長押ししてコピーしてください'; };
-$('txtCopy').onclick=async()=>{ toast(await copyText($('txtBox').value)?'コピーしました':'コピーできませんでした'); };
+// 直した文字から、各アイテムの正しい名前を取り出して覚える（次からは同じ読み間違いを自動で直す）
+let txtShown='';
+function learnFromEdit(before,after){
+  const targets = items.length>1 ? items : (shotImg ? [{get name(){return shotName}, set name(v){shotName=v}, get raw(){return shotRaw}}] : []);
+  const named=targets.filter(t=>t.name && before.includes(t.name)); if (!named.length || before===after) return 0;
+  // 元の文字の名前の部分を「何でも」に置き換えた型を作り、直した文字に当てはめる
+  let re='', pos=0; const order=[];
+  const hits=named.map(t=>({t,i:before.indexOf(t.name)})).sort((x,y)=>x.i-y.i);
+  for (const h of hits){ if (h.i<pos) return 0; re+=before.slice(pos,h.i).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(.+?)'; pos=h.i+h.t.name.length; order.push(h.t); }
+  re+=before.slice(pos).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const m=after.match(new RegExp('^'+re+'$','s')); if (!m) return 0;
+  let n=0; order.forEach((t,k)=>{ const v=m[k+1].trim(); if (v && v!==t.name){ learned.add(t.raw||t.name, v); if (t.raw && t.raw!==t.name) learned.add(t.name, v); t.name=v; n++; } });
+  return n;
+}
+$('txtCopy').onclick=async()=>{ const v=$('txtBox').value, n=learnFromEdit(txtShown,v); txtShown=v;
+  toast((await copyText(v)?'コピーしました':'コピーできませんでした')+(n?`（${n}個の名前を覚えました）`:'')); };
 $('copyTitle').onclick=async()=>{ const t=titleText(); if(!t){ toast('アイテム画像を選んでください'); return; }
-  const ok=await copyText(t); $('txtBox').value=t; $('txtSheet').hidden=false;
+  const ok=await copyText(t); $('txtBox').value=t; txtShown=t; $('txtSheet').hidden=false;
   $('txtMsg').textContent= ok ? 'タイトル用にコピーしました。読み間違いがあれば直して「もう一度コピー」' : 'コピーできませんでした。下の文字を長押ししてコピーしてください'; };
 $('txtClose').onclick=()=>{ $('txtSheet').hidden=true; };
 $('outClose').onclick=()=>{ $('out').hidden=true; };
