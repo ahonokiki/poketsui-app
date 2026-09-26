@@ -315,6 +315,20 @@ function detectLayout(img){
 let ocrWorker=null, ocrSeq=0;
 // 読み間違えやすいカタカナの補正
 function fixKana(t){ return t.replace(/ン(?=[ャュョ])/g,'シ').replace(/ソ(?=[ャュョ])/g,'シ').replace(/ー{2,}/g,'ー'); }
+// アイテム名一覧（items.json：公式お知らせから作成）で、読み取った名前をいちばん近い名前に置き換える
+let itemNames=null;
+const loadItemNames=()=>itemNames ??= fetch('items.json',{cache:'no-cache'}).then(r=>r.json()).then(j=>j.names||[]).catch(()=>[]);
+const normName=t=>t.normalize('NFKC').replace(/[\s・･「」『』【】（）()]/g,'').replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+96));
+function editDist(a,b){ let p=Array.from({length:b.length+1},(_,j)=>j);
+  for (let i=1;i<=a.length;i++){ const q=[i]; for (let j=1;j<=b.length;j++) q[j]=Math.min(p[j]+1,q[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1)); p=q; }
+  return p[b.length]; }
+async function nearestItemName(name){
+  const names=await loadItemNames(); if (!name||!names.length) return name;
+  const a=normName(name); let best=null, bd=Infinity;
+  for (const n of names){ const b=normName(n); if (Math.abs(a.length-b.length)>=bd) continue; const d=editDist(a,b); if (d<bd){ bd=d; best=n; } }
+  // 違いが名前の長さの4割以下のときだけ置き換える（まったく違う名前にはしない）
+  return best && bd<=Math.max(1,Math.ceil(Math.max(a.length,normName(best).length)*.4)) ? best : name;
+}
 async function analyzeShot(img){
   const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.012, cardBottom:lay.cardBottom, nameBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
   if (!window.Tesseract) return r0;
@@ -348,6 +362,7 @@ async function analyzeShot(img){
     try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'3'}); }catch(e){}
     if (!r.name) r.name=clean(nameLine.text);
     r.name=fixKana(r.name);
+    r.name=await nearestItemName(r.name);
   }
   if (line){
     r.squareBottom=sy+line.bbox.y1/k+W*.015;        // 1個のとき：所持数の行の少し下まで（正方形）
