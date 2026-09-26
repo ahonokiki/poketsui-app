@@ -1,4 +1,4 @@
-name: 公式壁紙を背景に（毎月）
+name: 公式壁紙とアイテム名一覧を更新（毎月）
 on:
   schedule:
     - cron: '17 3 1 * *'   # 毎月1日 12:17（日本時間）
@@ -14,8 +14,10 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: node tools/update-wallpaper.mjs
+      - run: node tools/build-items.mjs
+        continue-on-error: true
       - run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add -A wallpaper wallpaper.json
-          git diff --cached --quiet || (git commit -m "公式壁紙を更新" && git push)
+          git add -A wallpaper wallpaper.json items.json
+          git diff --cached --quiet || (git commit -m "公式壁紙とアイテム名一覧を更新" && git push)

@@ -1,27 +1,29 @@
-// 公式サイトのお知らせ（https://www.pokecolotwin.jp/info-list/）からアイテム名一覧 items.json を作る
+// ポケツイのアイテム名一覧 items.json を作る
+// 取得元：リヴリー・ポケコロゲームクラブ（https://bon-cafe.jp/category/pokecolotwin/）のガチャごとのアイテム一覧記事
+// 公式お知らせは本文が画像だけでアイテム名が文字になっていないため使えない
 // 使い方: node tools/build-items.mjs
-// お知らせ本文は公式サイトと同じ API（official-site-news）から取る
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
-const API = 'https://pokecolotwin.wpcomstaging.com/wp-json/wp/v2/official-site-news';
-const posts = [];
-for (let page = 1; ; page++) {
-  const res = await fetch(`${API}?per_page=100&page=${page}&order=desc`);
-  if (!res.ok) break;
-  const batch = await res.json(); if (!batch.length) break;
-  posts.push(...batch);
-  if (page >= +res.headers.get('x-wp-totalpages')) break;
+const BASE = 'https://bon-cafe.jp';
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const get = async url => { const r = await fetch(url, { redirect: 'follow' }); return r.ok ? r.text() : null; };
+// 1) カテゴリの一覧ページから記事のURLを集める
+const posts = new Set();
+for (let page = 1; page < 100; page++) {
+  const h = await get(page === 1 ? `${BASE}/category/pokecolotwin/` : `${BASE}/category/pokecolotwin/page/${page}/`);
+  if (!h) break;
+  const found = [...h.matchAll(/https:\/\/bon-cafe\.jp\/pokecolotwin\/\d+\//g)].map(m => m[0]);
+  if (!found.length) break;
+  found.forEach(u => posts.add(u)); await sleep(500);
 }
-const text = s => s.replace(/<[^>]+>/g, '\n').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
-  .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
-const strings = v => typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(strings) : [];
+// 2) 各記事の【アイテム名】レア度 を拾う
+const decode = s => s.replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(n)).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+  .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ');
 const names = new Set(existsSync('items.json') ? JSON.parse(readFileSync('items.json', 'utf8')).names : []);
-for (const p of posts) {
-  // アイテム名はお知らせ本文で「」や『』に囲まれて書かれている
-  for (const m of text(strings(p).join('\n')).matchAll(/[「『]([^「」『』\n]{2,30})[」』]/g)) {
-    const n = m[1].trim();
-    if (!/ガチャ|イベント|キャンペーン|セット|パック|お知らせ|メンテナンス|ショップ/.test(n)) names.add(n);
-  }
+for (const u of posts) {
+  const h = await get(u); await sleep(500); if (!h) continue;
+  const t = decode(h.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, ''));
+  for (const m of t.matchAll(/【([^【】\n]{2,40})】\s*レア度/g)) names.add(m[1].trim());
 }
 const list = [...names].sort((a, b) => a.localeCompare(b, 'ja'));
-writeFileSync('items.json', JSON.stringify({ _説明: '公式お知らせから作ったアイテム名一覧（tools/build-items.mjs で更新）', names: list }, null, 2) + '\n');
-console.log(`${posts.length}件のお知らせから ${list.length}個のアイテム名`);
+writeFileSync('items.json', JSON.stringify({ _説明: 'ポケツイのアイテム名一覧（tools/build-items.mjs で更新）', names: list }, null, 2) + '\n');
+console.log(`${posts.size}件の記事から ${list.length}個のアイテム名`);
