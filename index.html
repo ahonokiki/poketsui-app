@@ -51,6 +51,9 @@
   .bar .inner{max-width:560px;margin:0 auto;display:flex;gap:10px}
   header{position:relative}
   .gear{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:2px solid #ffffffaa;background:#ffffff33;color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:0}
+  .lrn{display:flex;align-items:center;gap:6px;background:#fff;border:2px solid #f6e4ee;border-radius:14px;padding:6px 6px 6px 10px;margin:6px 0;font-size:13px}
+  .lrn span{flex:1;min-width:0;overflow-wrap:anywhere}.lrn s{color:#b39ab3}.lrn b{color:var(--ink)}
+  .lrn button{flex:none;border:0;border-radius:99px;background:#ffe3f0;color:#d0508a;font:inherit;font-weight:900;font-size:12px;padding:6px 10px;cursor:pointer}
   .gear svg{width:62%;height:62%;display:block;transform:translateY(1.5px)} /* 下の影のぶん少し下げて見た目の中心に */
   .sheet{position:fixed;inset:0;z-index:20;background:#5a3a6a55;display:flex;align-items:flex-end;justify-content:center}
   .sheet[hidden]{display:none}
@@ -184,6 +187,11 @@
 <input type="hidden" id="jfont" value="1"><div id="jfontGrid" class="fgrid"></div></div></div>
   </div></section>
 
+  <section class="card"><h2>覚えた名前</h2><div class="in">
+    <div class="note">文字起こしで直して「もう一度コピー」した名前です。同じ読み取りになったら右の名前に自動で直します（この端末だけ）。</div>
+    <div id="learnedList"></div>
+  </div></section>
+
   <section class="card"><h2>文字起こしの書式</h2><div class="in">
     <div class="row"><select id="txtStyle">
       <option value="num">1. 名前×2（×1は省略）</option>
@@ -283,7 +291,7 @@ function renderFonts(){ const g=$('fontGrid'); g.innerHTML='';
     b.innerHTML=`<span class="fn">${n}</span><span class="fs" style="font-family:'${f}',sans-serif;font-weight:${w}">×1 2 3 4 5 6 7 8 9 10</span>`;
     b.onclick=()=>{ $('font').value=n; store.set('font',n); renderFonts(); draw(); }; g.appendChild(b); }); }
 renderFonts();
-$('openSet').onclick=()=>{ $('settings').hidden=false; document.querySelector('.fontOpt.on')?.scrollIntoView({block:'nearest'});  };
+$('openSet').onclick=()=>{ $('settings').hidden=false; renderLearned(); document.querySelector('.fontOpt.on')?.scrollIntoView({block:'nearest'});  };
 const closeSet=()=>{ $('settings').hidden=true;  };
 $('closeSet').onclick=closeSet; $('settings').addEventListener('click',e=>{ if(e.target.id==='settings') closeSet(); });
 $('showCount').addEventListener('change',draw);
@@ -322,8 +330,12 @@ let itemNames=null;
 const loadItemNames=()=>itemNames ??= fetch('items.json',{cache:'no-cache'}).then(r=>r.json()).then(j=>j.names||[]).catch(()=>[]);
 const normName=t=>t.normalize('NFKC').replace(/[\s・･「」『』【】（）()]/g,'').replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+96));
 // 学習：{読み取った名前: 直した名前}
-const learned={ get(){ try{ return JSON.parse(localStorage.getItem('promo_learned')||'{}'); }catch(e){ return {}; } },
-  add(raw,fixed){ const m=this.get(); m[normName(raw)]=fixed; try{ localStorage.setItem('promo_learned',JSON.stringify(m)); }catch(e){} } };
+// 保存形式：{正規化した読み取り: {from:読み取った文字, to:直した名前}}
+const learned={ all(){ try{ return JSON.parse(localStorage.getItem('promo_learned')||'{}'); }catch(e){ return {}; } },
+  save(m){ try{ localStorage.setItem('promo_learned',JSON.stringify(m)); }catch(e){} },
+  get(){ const m=this.all(), r={}; for (const k in m) r[k]=m[k]?.to ?? m[k]; return r; },
+  add(raw,fixed){ const m=this.all(); m[normName(raw)]={from:raw,to:fixed}; this.save(m); },
+  remove(k){ const m=this.all(); delete m[k]; this.save(m); } };
 // 文字認識で取り違えやすい文字どうし（小さい字・濁点・ー/一 など）は「小さな違い」として数える
 const SOFT=['アァ','イィ','ウゥ','エェ','オォ','ツッ','ヤャ','ユュ','ヨョ','カヵ','ケヶ','ワヮ','ー一','ー-','ロ口','ニ二','カ力','エ工','タ夕','ト卜','ハ八','ヘへ','ソン','シツ','ノ丿','メ×'];
 const bare=c=>c.normalize('NFD').replace(/[゙゚]/g,'');
@@ -334,6 +346,15 @@ function editCost(a,b){ let p=[0]; for (let j=1;j<=b.length;j++) p[j]=p[j-1]+(li
     for (let j=1;j<=b.length;j++) q[j]=Math.min(p[j]+(lightIns(a[i-1])?.25:1), q[j-1]+(lightIns(b[j-1])?.25:1), p[j-1]+(a[i-1]===b[j-1]?0:soft(a[i-1],b[j-1])?.25:1));
     p=q; }
   return p[b.length]; }
+function renderLearned(){
+  const box=$('learnedList'), m=learned.all(), keys=Object.keys(m); box.innerHTML='';
+  if (!keys.length){ box.innerHTML='<div class="note">まだありません</div>'; return; }
+  keys.forEach(k=>{ const v=m[k], d=document.createElement('div'); d.className='lrn';
+    const t=document.createElement('span'); t.innerHTML='<s></s> → <b></b>'; t.querySelector('s').textContent=v?.from ?? k; t.querySelector('b').textContent=v?.to ?? v;
+    const b=document.createElement('button'); b.type='button'; b.textContent='削除';
+    b.onclick=()=>{ if (b.dataset.sure){ learned.remove(k); renderLearned(); } else { b.dataset.sure=1; b.textContent='もう一度'; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.textContent='削除'; } },3000); } };
+    d.append(t,b); box.appendChild(d); });
+}
 async function nearestItemName(name){
   if (!name) return name;
   const L=learned.get(), a=normName(name); if (L[a]) return L[a];
@@ -761,7 +782,7 @@ function learnFromEdit(before,after){
   for (const h of hits){ if (h.i<pos) return 0; re+=before.slice(pos,h.i).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(.+?)'; pos=h.i+h.t.name.length; order.push(h.t); }
   re+=before.slice(pos).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const m=after.match(new RegExp('^'+re+'$','s')); if (!m) return 0;
-  let n=0; order.forEach((t,k)=>{ const v=m[k+1].trim(); if (v && v!==t.name){ learned.add(t.raw||t.name, v); if (t.raw && t.raw!==t.name) learned.add(t.name, v); t.name=v; n++; } });
+  let n=0; order.forEach((t,k)=>{ const v=m[k+1].trim(); if (v && v!==t.name){ learned.add(t.raw||t.name, v); t.name=v; n++; } });
   return n;
 }
 $('txtCopy').onclick=async()=>{ const v=$('txtBox').value, n=learnFromEdit(txtShown,v); txtShown=v;
