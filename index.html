@@ -190,6 +190,8 @@
       <option value="heart">♡ 名前 ×2（×1は省略）</option>
       <option value="plain">名前×2（記号なし）</option>
     </select></div>
+    <div class="row"><label>題名の×1 <select id="titleOne"><option value="show">×1も付ける</option><option value="hide">×1は省く</option></select></label></div>
+    <div class="row"><label><input type="checkbox" id="titleTotal" checked> 題名に「計○点」を付ける（2個以上のとき）</label></div>
     <div class="row"><label style="width:100%">最初の行（空欄なら入れない）<input type="text" id="txtHead" placeholder="例：【即購入OK】" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font-size:16px"></label></div>
     <div class="row"><label style="width:100%">合計の書き方<input type="text" id="txtTotal" value="計{n}点" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font-size:16px"></label></div>
     <div class="row"><label style="width:100%">最後の行（空欄なら入れない）<textarea id="txtFoot" rows="3" placeholder="例：購入後にマイコードとお名前をお知らせください" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font:inherit;font-size:16px"></textarea></label></div>
@@ -683,7 +685,9 @@ $('dl').onclick=()=>{ const name='poketsui-'+Date.now()+'.png';
     // 共有できない環境：画像を大きく表示 → 長押しで「写真に保存」
     $('outImg').src=URL.createObjectURL(blob); $('out').hidden=false;
   },'image/png'); };
-['txtStyle','txtHead','txtTotal','txtFoot'].forEach(id=>{ try{ const v=localStorage.getItem('promo_'+id); if(v!==null) $(id).value=v; }catch(e){}
+try{ const v=localStorage.getItem('promo_titleTotal'); if(v!==null) $('titleTotal').checked=v==='1'; }catch(e){}
+$('titleTotal').addEventListener('change',()=>{ try{ localStorage.setItem('promo_titleTotal',$('titleTotal').checked?'1':'0'); }catch(e){} });
+['txtStyle','titleOne','txtHead','txtTotal','txtFoot'].forEach(id=>{ try{ const v=localStorage.getItem('promo_'+id); if(v!==null) $(id).value=v; }catch(e){}
   $(id).addEventListener('input',()=>{ try{ localStorage.setItem('promo_'+id,$(id).value); }catch(e){} }); });
 function listText(){
   const list = items.length>1 ? items.map(it=>({name:it.name||'（名前を読み取れませんでした）', n:itemCount(it)}))
@@ -703,8 +707,8 @@ function listText(){
 function titleText(){ // タイトル用：アイテム名×数だけ
   const list = items.length>1 ? items.map(it=>({name:it.name||'', n:itemCount(it)})) : (shotImg ? [{name:shotName||'', n:countValue()??0}] : []);
   const rows=list.filter(x=>x.n>0); if(!rows.length) return '';
-  const t=rows.map(x=>`${x.name}×${x.n}`).join(' ');
-  return rows.length>1 ? `${t} 計${rows.reduce((a,x)=>a+x.n,0)}点` : t;
+  const t=rows.map(x=>x.n===1&&$('titleOne').value==='hide' ? x.name : `${x.name}×${x.n}`).join(' ');
+  return rows.length>1 && $('titleTotal').checked ? `${t} 計${rows.reduce((a,x)=>a+x.n,0)}点` : t;
 }
 async function copyText(t){
   try{ await navigator.clipboard.writeText(t); return true; }
