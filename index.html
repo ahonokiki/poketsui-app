@@ -146,7 +146,7 @@
   body.isMulti #ownSnap{display:none}
   .chip img.snap{width:auto;height:20px;max-width:70px;object-fit:contain;border-radius:6px;background:#fff}
   .nosnap{font-size:10px;color:var(--sub);font-weight:800}
-  .copy{flex:none;padding:12px 14px;background:linear-gradient(180deg,#c3b0f0,var(--lav));box-shadow:0 4px 0 var(--lav2)}
+  .copy{flex:none;padding:12px 10px;font-size:14px;background:linear-gradient(180deg,#c3b0f0,var(--lav));box-shadow:0 4px 0 var(--lav2)}
 </style>
 </head>
 <body>
@@ -238,7 +238,7 @@
   <textarea id="txtBox" rows="10" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:10px;font:inherit;font-size:16px;background:#fff"></textarea>
   <button class="pill wide" id="txtCopy" type="button" style="margin-top:10px">もう一度コピー</button>
 </div></div>
-<div class="bar"><div class="inner"><button class="pill copy" id="copyTxt" type="button">📋 文字</button><button class="pill save" id="dl">🎁 画像を保存</button></div></div>
+<div class="bar"><div class="inner"><button class="pill copy" id="copyTitle" type="button">🏷 題名</button><button class="pill copy" id="copyTxt" type="button">📋 文字</button><button class="pill save" id="dl">🎁 画像を保存</button></div></div>
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
@@ -700,6 +700,12 @@ function listText(){
   if ($('txtFoot').value.trim()) parts.push($('txtFoot').value.trim());
   return parts.join('\n\n');
 }
+function titleText(){ // タイトル用：アイテム名×数だけ
+  const list = items.length>1 ? items.map(it=>({name:it.name||'', n:itemCount(it)})) : (shotImg ? [{name:shotName||'', n:countValue()??0}] : []);
+  const rows=list.filter(x=>x.n>0); if(!rows.length) return '';
+  const t=rows.map(x=>`${x.name}×${x.n}`).join(' ');
+  return rows.length>1 ? `${t} 計${rows.reduce((a,x)=>a+x.n,0)}点` : t;
+}
 async function copyText(t){
   try{ await navigator.clipboard.writeText(t); return true; }
   catch(e){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(_){} ta.remove(); return ok; } }
@@ -707,6 +713,9 @@ $('copyTxt').onclick=async()=>{ const t=listText(); if(!t){ toast('アイテム�
   const ok=await copyText(t); $('txtBox').value=t; $('txtSheet').hidden=false;
   $('txtMsg').textContent= ok ? 'コピーしました。読み間違いがあれば直して「もう一度コピー」' : 'コピーできませんでした。下の文字を長押ししてコピーしてください'; };
 $('txtCopy').onclick=async()=>{ toast(await copyText($('txtBox').value)?'コピーしました':'コピーできませんでした'); };
+$('copyTitle').onclick=async()=>{ const t=titleText(); if(!t){ toast('アイテム画像を選んでください'); return; }
+  const ok=await copyText(t); $('txtBox').value=t; $('txtSheet').hidden=false;
+  $('txtMsg').textContent= ok ? 'タイトル用にコピーしました。読み間違いがあれば直して「もう一度コピー」' : 'コピーできませんでした。下の文字を長押ししてコピーしてください'; };
 $('txtClose').onclick=()=>{ $('txtSheet').hidden=true; };
 $('outClose').onclick=()=>{ $('out').hidden=true; };
 draw();
