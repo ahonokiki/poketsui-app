@@ -27,7 +27,7 @@
   label{font-size:14px;font-weight:700}
   input[type=number]{width:74px;border:2px solid var(--line);border-radius:14px;padding:7px 10px;font:inherit;color:var(--ink);background:#fffafd;text-align:center}
   input[type=number]:disabled{opacity:.55}
-  select{width:100%;border:2px solid var(--line);border-radius:16px;padding:10px 12px;font:inherit;font-weight:700;color:var(--ink);background:#fffafd}
+  select{width:100%;border:2px solid var(--line);border-radius:16px;padding:10px 12px;font:inherit;font-size:16px;font-weight:700;color:var(--ink);background:#fffafd}
   input[type=checkbox]{accent-color:var(--pink);width:18px;height:18px;vertical-align:-3px}
   input[type=color]{width:44px;height:34px;border:2px solid var(--line);border-radius:12px;padding:2px;background:#fff}
   .note{font-size:11.5px;color:var(--sub);line-height:1.6;margin-top:6px}
@@ -76,7 +76,8 @@
     radial-gradient(circle at 20% 10%,#ffffffcc 0 2px,transparent 3px) 0 0/46px 46px,
     conic-gradient(from 45deg at 50% 50%,#ffe3f0 0 25%,#fff4f9 0 50%,#ffe3f0 0 75%,#fff4f9 0) 0 0/28px 28px,
     #fff0f6;background-attachment:fixed}
-  body.wall{background:linear-gradient(#fff0f6aa,#fff0f6aa),var(--wall) center/cover no-repeat fixed,#fff0f6}
+  body.wall::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(#fff0f6aa,#fff0f6aa),var(--wall) center/cover no-repeat,#fff0f6}
+  body.wall{background:#fff0f6}
   header{background:linear-gradient(135deg,#b59cf0 0%,#e3a3e6 50%,#ffb3d1 100%);padding:16px 60px 14px;border-radius:0 0 30px 30px;
     font-size:21px;text-shadow:0 2px 0 #c46fb4,0 0 10px #ffffffaa;border-bottom:4px solid #fff}
   header::before,header::after{content:"✦";position:absolute;color:#fff;opacity:.9;font-size:14px}
@@ -148,7 +149,7 @@
   .chip b{min-width:30px;text-align:center;color:#f82da1;font-weight:900}
   .chip button{width:28px;height:28px;border-radius:50%;border:0;color:#fff;font-weight:900;font-size:16px;background:linear-gradient(180deg,#ff9fcb,var(--pink));box-shadow:0 2px 0 #e0579a}
   #ownSnap{display:block;margin:0 auto;height:30px;border-radius:8px;border:2px solid #ffd0e6;background:#fff}
-  body.isMulti #ownSnap{display:none}
+  #ownSnap[hidden],body.isMulti #ownSnap{display:none}
   .chip img.snap{width:auto;height:20px;max-width:70px;object-fit:contain;border-radius:6px;background:#fff}
   .nosnap{font-size:10px;color:var(--sub);font-weight:800}
   .copy{flex:none;padding:12px 10px;font-size:14px;background:linear-gradient(180deg,#c3b0f0,var(--lav));box-shadow:0 4px 0 var(--lav2)}
@@ -323,14 +324,15 @@ function detectLayout(img){
   return {top:sheetTop, pinkBottom, cardBottom:pinkBottom+W*.2};
 }
 // 画像から「所持数」の行を探し、所持数・切り抜き位置を返す（画像そのものは変更しない）
-let ocrWorker=null, ocrSeq=0;
+let ocrWorker=null, ocrReady=null, ocrSeq=0;
+const timeLimit=(p,ms)=>Promise.race([p,new Promise((_,ng)=>setTimeout(()=>ng(new Error('timeout')),ms))]);
 // 読み間違えやすいカタカナの補正
 function fixKana(t){ return t.replace(/ン(?=[ャュョ])/g,'シ').replace(/ソ(?=[ャュョ])/g,'シ').replace(/ー{2,}/g,'ー'); }
 // アイテム名一覧（items.json）と、この端末で直した名前（学習）で、読み取った名前をいちばん近い名前に置き換える
 let itemNames=null;
-const loadItemNames=()=>itemNames ??= fetch('items.json',{cache:'no-cache'}).then(r=>r.json()).then(j=>j.names||[]).catch(()=>[]);
+const loadItemNames=()=>itemNames ??= fetch('items.json',{cache:'no-cache'}).then(r=>{ if(!r.ok) throw 0; return r.json(); }).then(j=>j.names||[])
+  .catch(()=>{ itemNames=null; return []; }); // 読み込めなかったら次の読み取りでもう一度試す
 const normName=t=>t.normalize('NFKC').replace(/[\s・･「」『』【】（）()]/g,'').replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+96));
-// 学習：{読み取った名前: 直した名前}
 // 保存形式：{正規化した読み取り: {from:読み取った文字, to:直した名前}}
 const learned={ all(){ try{ return JSON.parse(localStorage.getItem('promo_learned')||'{}'); }catch(e){ return {}; } },
   save(m){ try{ localStorage.setItem('promo_learned',JSON.stringify(m)); }catch(e){} },
@@ -342,9 +344,12 @@ const SOFT=['アァ','イィ','ウゥ','エェ','オォ','ツッ','ヤャ','ユ�
 const bare=c=>c.normalize('NFD').replace(/[゙゚]/g,'');
 const soft=(x,y)=>bare(x)===bare(y) || SOFT.some(p=>p.includes(x)&&p.includes(y));
 const lightIns=c=>/[ァィゥェォッャュョヮー]/.test(c);
+// 漢字どうしの取り違えは「別の字」として重く数える（床と壁のような、同じシリーズの別アイテムに置き換えないため）
+const kanji=c=>/\p{Script=Han}/u.test(c);
+const subCost=(x,y)=>x===y?0:soft(x,y)?.25:(kanji(x)||kanji(y))?2:1;
 function editCost(a,b){ let p=[0]; for (let j=1;j<=b.length;j++) p[j]=p[j-1]+(lightIns(b[j-1])?.25:1);
   for (let i=1;i<=a.length;i++){ const q=[p[0]+(lightIns(a[i-1])?.25:1)];
-    for (let j=1;j<=b.length;j++) q[j]=Math.min(p[j]+(lightIns(a[i-1])?.25:1), q[j-1]+(lightIns(b[j-1])?.25:1), p[j-1]+(a[i-1]===b[j-1]?0:soft(a[i-1],b[j-1])?.25:1));
+    for (let j=1;j<=b.length;j++) q[j]=Math.min(p[j]+(lightIns(a[i-1])?.25:1), q[j-1]+(lightIns(b[j-1])?.25:1), p[j-1]+subCost(a[i-1],b[j-1]));
     p=q; }
   return p[b.length]; }
 function renderLearned(){
@@ -358,13 +363,18 @@ function renderLearned(){
 }
 async function nearestItemName(name){
   if (!name) return name;
-  const L=learned.get(), a=normName(name); if (L[a]) return L[a];
-  const names=[...new Set([...(await loadItemNames()), ...Object.values(L)])];
-  let best=null, bd=Infinity;
-  for (const n of names){ const b=normName(n); if (Math.abs(a.length-b.length)>=bd+4) continue; const d=editCost(a,b); if (d<bd){ bd=d; best=n; } }
+  const a=normName(name), M=learned.all(); if (M[a]) return M[a]?.to ?? M[a];
+  // 比べる相手：[比べる文字, 置き換える名前]。一覧の名前・覚えた名前・覚えた「読み取り」（少し違う読み間違いも直す）
+  const cands=(await loadItemNames()).map(n=>[n,n]);
+  for (const k in M){ const to=M[k]?.to ?? M[k]; cands.push([to,to], [M[k]?.from ?? k, to]); }
+  let best=null, bd=Infinity, second=Infinity;
+  for (const [cmp,to] of cands){ const b=normName(cmp); if (Math.abs(a.length-b.length)>=second+4) continue;
+    const d=editCost(a,b);
+    if (d<bd){ if (to!==best) second=bd; bd=d; best=to; } else if (d<second && to!==best) second=d; }
   // はっきり違う文字は1文字まで・全体の3割まで（短い名前は取り違えやすい文字の違いだけ）
   const lim=a.length<6 ? .75 : Math.min(1.5, a.length*.3);
-  return best && bd<=lim ? best : name;
+  // 同じくらい近い別の名前があるときは、どちらか決められないので読み取ったままにする
+  return best && bd<=lim && second-bd>=.5 ? best : name;
 }
 async function analyzeShot(img){
   const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.012, cardBottom:lay.cardBottom, nameBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
@@ -375,8 +385,10 @@ async function analyzeShot(img){
   const c=document.createElement('canvas'), k=Math.max(1,900/sw); c.width=sw*k; c.height=sh*k;
   c.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);
   const base=new URL('ocr/',location.href).href;
-  ocrWorker ??= await Tesseract.createWorker('jpn',1,{workerPath:base+'worker.min.js',corePath:base,langPath:base,workerBlobURL:false});
-  const {data}=await ocrWorker.recognize(c,{},{text:true,blocks:true});
+  // 通信が止まって「読取中…」のままにならないよう、時間を区切る（初回は文字認識のデータを読み込むので長め）
+  ocrReady ??= Tesseract.createWorker('jpn',1,{workerPath:base+'worker.min.js',corePath:base,langPath:base,workerBlobURL:false}).catch(e=>{ ocrReady=null; throw e; });
+  ocrWorker ??= await timeLimit(ocrReady, 90000);
+  const {data}=await timeLimit(ocrWorker.recognize(c,{},{text:true,blocks:true}), 30000);
   const lines=(data.blocks||[]).flatMap(b=>b.paragraphs.flatMap(p=>p.lines));
   const li=lines.findIndex(l=>/持数|所持/.test(l.text.replace(/\s/g,''))), line=lines[li];
   // アイテム名：所持数の行のすぐ上の行（所持数の行がない画面は名前欄の位置の行）
@@ -395,7 +407,7 @@ async function analyzeShot(img){
     for (let i=0;i<d.length;i+=4){ const L=.3*d[i]+.59*d[i+1]+.11*d[i+2], v=L<150?0:255; d[i]=d[i+1]=d[i+2]=v; }
     ng.putImageData(id,0,0);
     try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'7', preserve_interword_spaces:'0'});
-      const {data:d2}=await ocrWorker.recognize(nc); r.name=clean(d2.text); }catch(e){}
+      const {data:d2}=await timeLimit(ocrWorker.recognize(nc),20000); r.name=clean(d2.text); }catch(e){}
     try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'3'}); }catch(e){}
     if (!r.name) r.name=clean(nameLine.text);
     r.name=fixKana(r.name);
@@ -438,8 +450,14 @@ let items=[];
 const itemCount=it=>it.count!=null ? it.count : Math.max(0,(it.owned||1)-1);
 async function setItems(files){
   const seq=++ocrSeq; shotImg=null;
-  items=[]; for (const f of files.slice(0,12)){ const img=new Image(); img.src=URL.createObjectURL(f); await img.decode();
-    const lay=detectLayout(img); items.push({img, src:img.src, owned:null, count:null, top:lay?lay.top+img.width*.012:img.width*.5, cardBottom:lay?lay.cardBottom:img.width*1.45, reading:true}); }
+  // 読み込み中にまた選び直されたら、古いほうは途中でやめる（混ざらないように自分用の入れ物に入れる）
+  const list=[]; let bad=0;
+  for (const f of files.slice(0,12)){ const img=new Image(); img.src=URL.createObjectURL(f);
+    try{ await img.decode(); }catch(e){ bad++; URL.revokeObjectURL(img.src); continue; } // 読めない画像は飛ばす
+    if (seq!==ocrSeq) return;
+    const lay=detectLayout(img); list.push({img, src:img.src, owned:null, count:null, top:lay?lay.top+img.width*.012:img.width*.5, cardBottom:lay?lay.cardBottom:img.width*1.45, reading:true}); }
+  items=list;
+  if (bad) toast(`読み込めない画像が${bad}枚あったので飛ばしました`);
   if (files.length>12) toast('13個以上は選べないので、最初の12個を使います');
   renderItems(); draw();
   for (const it of items){ try{ const r=await analyzeShot(it.img); if (seq!==ocrSeq) return;
@@ -717,7 +735,7 @@ function drawMulti(edge){
   const gap=18, tw=w1+w2+w3+gap*2, bx=(S-tw)/2, by=S-62;
   puffy([{t:'計',f:fSm,x:bx,y:by},{t:String(total),f:fBig,x:bx+w1+gap,y:by+6},{t:'点',f:fSm,x:bx+w1+w2+gap*2,y:by}],150/205,edge);
 }
-dbGet('slots').then(v=>{
+dbGet('slots').catch(()=>undefined).then(v=>{ // 端末に保存できない環境でも共通の背景セットは読む
   if (Array.isArray(v)) sets=v;
   else { try{ JSON.parse(store.get('sets')||'[]').slice(0,10).forEach((t,n)=>sets[n]={bg:t.bg,edge:t.edge}); saveSets(); }catch(e){} } // 旧形式から移行
   selectSet(Math.min(9,Math.max(0,cur||0)));
@@ -737,7 +755,7 @@ $('dl').onclick=()=>{ const name='poketsui-'+Date.now()+'.png';
     const file=new File([blob],name,{type:'image/png'});
     // 共有メニューが使えるのは単体で開いたときだけ（Claude上のページ内では使えないので、必ず画像表示へ）
     const framed=(()=>{ try{ return window.self!==window.top; }catch(e){ return true; } })();
-    if (!framed && navigator.canShare?.({files:[file]})){ try{ await navigator.share({files:[file]}); return; }catch(e){} }
+    if (!framed && navigator.canShare?.({files:[file]})){ try{ await navigator.share({files:[file]}); return; }catch(e){ if (e.name==='AbortError') return; } } // 自分で閉じたときはそのまま
     // 共有できない環境：画像を大きく表示 → 長押しで「写真に保存」
     $('outImg').src=URL.createObjectURL(blob); $('out').hidden=false;
   },'image/png'); };
@@ -775,16 +793,29 @@ $('copyTxt').onclick=async()=>{ const t=listText(); if(!t){ toast('アイテム�
 // 直した文字から、各アイテムの正しい名前を取り出して覚える（次からは同じ読み間違いを自動で直す）
 let txtShown='';
 function learnFromEdit(before,after){
+  if (before===after) return 0;
   const targets = items.length>1 ? items : (shotImg ? [{get name(){return shotName}, set name(v){shotName=v}, get raw(){return shotRaw}}] : []);
-  const named=targets.filter(t=>t.name && before.includes(t.name)); if (!named.length || before===after) return 0;
-  // 元の文字の名前の部分を「何でも」に置き換えた型を作り、直した文字に当てはめる
-  let re='', pos=0; const order=[];
-  const hits=named.map(t=>({t,i:before.indexOf(t.name)})).sort((x,y)=>x.i-y.i);
-  for (const h of hits){ if (h.i<pos) return 0; re+=before.slice(pos,h.i).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(.+?)'; pos=h.i+h.t.name.length; order.push(h.t); }
-  re+=before.slice(pos).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const m=after.match(new RegExp('^'+re+'$','s')); if (!m) return 0;
-  let n=0; order.forEach((t,k)=>{ const v=m[k+1].trim(); if (v && v!==t.name){ learned.add(t.raw||t.name, v); t.name=v; n++; } });
-  return n;
+  // 直す前と後の文字を1文字ずつ対応させる（個数や他の行を直していても、名前の部分だけ取り出せるように）
+  const A=[...before], B=[...after], n=A.length, m=B.length;
+  if (n*m>4e6) return 0;
+  const L=Array.from({length:n+1},()=>new Uint16Array(m+1));
+  for (let i=n-1;i>=0;i--) for (let j=m-1;j>=0;j--) L[i][j]= A[i]===B[j] ? L[i+1][j+1]+1 : Math.max(L[i+1][j],L[i][j+1]);
+  const at=new Int32Array(n).fill(-1); // 直す前の i 文字目 → 直した後の位置（変わらなかった文字だけ）
+  for (let i=0,j=0;i<n&&j<m;) { if (A[i]===B[j]){ at[i]=j; i++; j++; } else if (L[i+1][j]>=L[i][j+1]) i++; else j++; }
+  const startOf=s=>{ for (let i=s-1;i>=0;i--) if (at[i]>=0) return at[i]+1; return 0; };   // 名前の前の変わらない文字のすぐ後ろ
+  const endOf=e=>{ for (let i=e;i<n;i++) if (at[i]>=0) return at[i]; return m; };           // 名前の後の変わらない文字の手前
+  const toIdx=str=>[...str].length, chars=before; let pos=0, learnedN=0;
+  for (const t of targets){
+    if (!t.name) continue;
+    const k=chars.indexOf(t.name,pos); if (k<0) continue;            // 同じ名前が2回あっても順番に探す
+    const s0=toIdx(chars.slice(0,k)), e0=s0+toIdx(t.name); pos=k+t.name.length;
+    const v=B.slice(startOf(s0),endOf(e0)).join('').trim().replace(/\s*[×xX]\s*\d+\s*$/,''); // 名前のすぐ後ろに足した「×3」は外す
+    if (!v || v===t.name || /\n|[×xX]\s*\d/.test(v) || v.length>40) continue; // 名前以外まで含んでしまったら覚えない
+    learned.add(t.raw||t.name, v);
+    for (const u of targets) if (u!==t && u.name===t.name) u.name=v;   // 同じ名前のアイテムはまとめて直す
+    t.name=v; learnedN++;
+  }
+  return learnedN;
 }
 $('txtCopy').onclick=async()=>{ const v=$('txtBox').value, n=learnFromEdit(txtShown,v); txtShown=v;
   toast((await copyText(v)?'コピーしました':'コピーできませんでした')+(n?`（${n}個の名前を覚えました）`:'')); };

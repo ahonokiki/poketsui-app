@@ -14,11 +14,17 @@ walk(w);
 const pick = urls.find(u => !/thumb|second/i.test(u.k)) || urls.find(u => u.k === 'thumbnail') || urls[0];
 if (!pick) throw new Error('画像のURLが見つかりません: ' + JSON.stringify(w).slice(0, 500));
 const old = existsSync('wallpaper.json') ? JSON.parse(readFileSync('wallpaper.json', 'utf8')) : {};
-if (old.source === pick.v) { console.log('変更なし'); process.exit(0); }
-const ext = pick.v.match(/\.(jpe?g|png|webp)/i)[1].toLowerCase();
-const file = `wallpaper/${w.year_month || new Date().toISOString().slice(0, 7)}.${ext}`;
-const img = Buffer.from(await (await fetch(pick.v)).arrayBuffer());
-for (const f of readdirSync('wallpaper')) rmSync('wallpaper/' + f); // 古い壁紙は消す
+if (old.source === pick.v && old.image?.endsWith('.webp') && existsSync(old.image)) { console.log('変更なし'); process.exit(0); }
+// 取得に失敗したときに古い壁紙を消してしまわないよう、先に中身を確かめる
+const res2 = await fetch(pick.v);
+if (!res2.ok || !/^image\//.test(res2.headers.get('content-type') || '')) throw new Error(`画像を取得できません: ${res2.status} ${res2.headers.get('content-type')}`);
+const raw = Buffer.from(await res2.arrayBuffer());
+if (raw.length < 50_000) throw new Error(`画像が小さすぎます（${raw.length}バイト）`);
+// スマホで重くならないよう、幅1080pxの WebP に小さくする（元は2MB以上のPNG）
+const { default: sharp } = await import('sharp');
+const img = await sharp(raw).resize({ width: 1080, withoutEnlargement: true }).webp({ quality: 80 }).toBuffer();
+const file = `wallpaper/${w.year_month || new Date().toISOString().slice(0, 7)}.webp`;
+for (const f of readdirSync('wallpaper')) rmSync('wallpaper/' + f); // 新しい壁紙が用意できてから古い壁紙を消す
 writeFileSync(file, img);
 writeFileSync('wallpaper.json', JSON.stringify({ _説明: 'アプリの背景に使う公式壁紙（毎月自動更新）', image: file,
   title: typeof w.title === 'object' ? w.title.rendered : w.title, year_month: w.year_month, source: pick.v }, null, 2) + '\n');
