@@ -38,6 +38,7 @@
   .pill.wide{width:100%}
   .sw{display:flex;flex-direction:column;align-items:center;gap:3px;background:#fff;border:3px solid #f3eef5;border-radius:16px;padding:6px 8px;font:inherit;font-size:11px;font-weight:700;color:var(--ink);cursor:pointer}
   .sw.on{border-color:var(--pink);background:#fff3f9}
+  .tcRow{gap:6px}.tcRow .sw{padding:5px 6px}.tcRow .sw i{width:26px;height:26px}
   .sw i{width:34px;height:34px;border-radius:50%;box-shadow:0 0 10px currentColor;border:2px solid #fff}
   #sets{display:grid;grid-template-columns:repeat(5,1fr);gap:12px 10px;margin:4px 0 8px}
   .set{position:relative;aspect-ratio:1;border-radius:18px;border:4px solid var(--slot);background:#fff center/cover;cursor:pointer;padding:0;box-shadow:0 2px 8px #0002}
@@ -186,6 +187,10 @@
 <input type="hidden" id="font" value="10"><div id="fontGrid"></div></div></div>
     <div class="row"><div style="width:100%"><b style="color:#8a5a86;font-size:14px">文字の書体（「計」「点」など）</b>
 <input type="hidden" id="jfont" value="1"><div id="jfontGrid" class="fgrid"></div></div></div>
+    <div class="row"><div style="width:100%"><b style="color:#8a5a86;font-size:14px">×数字の色</b>
+<div class="row tcRow" id="numColorRow"></div><label>自由に指定 <input type="color" id="numColor" value="#f82da1"></label></div></div>
+    <div class="row"><div style="width:100%"><b style="color:#8a5a86;font-size:14px">「計○点」の色</b>
+<div class="row tcRow" id="totalColorRow"></div><label>自由に指定 <input type="color" id="totalColor" value="#f82da1"></label></div></div>
   </div></section>
 
   <section class="card"><h2>覚えた名前</h2><div class="in">
@@ -297,6 +302,18 @@ $('openSet').onclick=()=>{ $('settings').hidden=false; renderLearned(); document
 const closeSet=()=>{ $('settings').hidden=true;  };
 $('closeSet').onclick=closeSet; $('settings').addEventListener('click',e=>{ if(e.target.id==='settings') closeSet(); });
 $('showCount').addEventListener('change',draw);
+// ×数字・「計○点」の色（この端末に保存）
+const TEXT_COLORS=[['ピンク','#f82da1'],['レッド','#f0304f'],['オレンジ','#ff7a1a'],['イエロー','#f2b300'],['グリーン','#22b35e'],
+  ['ミント','#12b8a6'],['ブルー','#2f86ff'],['パープル','#8a5cf0'],['ブラウン','#9a5b3c'],['ブラック','#3a2f3f']];
+function colorPicker(id){
+  const inp=$(id), row=$(id+'Row'); try{ const v=localStorage.getItem('promo_'+id); if(v) inp.value=v; }catch(e){}
+  const render=()=>{ row.innerHTML=''; TEXT_COLORS.forEach(([name,hex])=>{ const b=document.createElement('button'); b.type='button';
+    b.className='sw'+(hex===inp.value?' on':''); b.innerHTML=`<i style="background:${hex};color:${hex}"></i>${name}`;
+    b.onclick=()=>{ inp.value=hex; save(); }; row.appendChild(b); }); };
+  const save=()=>{ try{ localStorage.setItem('promo_'+id,inp.value); }catch(e){} render(); draw(); };
+  inp.addEventListener('input',save); render();
+}
+colorPicker('numColor'); colorPicker('totalColor');
 
 function fromFile(f, cb){ const i=new Image(); i.onload=()=>{cb(i);draw();}; i.src=URL.createObjectURL(f); }
 // ---- アイテム画像：読み込み時に「所持数：○個」を文字認識して所持数に入れる（画像自体は一切変更しない） ----
@@ -639,7 +656,11 @@ function fontPx(h){ const base=FONTS[$('font').value]||FONTS[10];
   return {base, px:Math.round(100*h/Math.max(1,mm.measureText('3').actualBoundingBoxAscent))}; }
 const setF=(base,px)=>base.replace(/\d+px/, Math.round(px)+'px');
 // ぷっくり文字（濃ピンク＋白フチ＋細い蛍光ライン）。parts: [{t,f,x,y,sx}]、k: 太さの倍率
-function puffy(parts,k,edge){
+// 色を明るく(+)・暗く(-)する
+function shade(hex,t){ const n=parseInt(hex.slice(1),16), c=[n>>16,n>>8&255,n&255].map(v=>Math.round(t<0?v*(1+t):v+(255-v)*t));
+  return '#'+c.map(v=>v.toString(16).padStart(2,'0')).join(''); }
+function puffy(parts,k,edge,col='#f82da1'){
+  const dark=shade(col,-.2), glow=shade(col,.55)+'4d';
   const FAT=6*k, OUT=36*k;
   const each=(g,fn)=>parts.forEach(q=>{ g.save(); g.font=q.f; g.textAlign='left'; g.textBaseline='alphabetic'; g.lineJoin='round';
     g.translate(q.x,q.y); g.scale(q.sx||1,1); fn(g,q.t); g.restore(); });
@@ -648,11 +669,11 @@ function puffy(parts,k,edge){
   each(ctx,(g,t)=>{ g.strokeStyle='#fff'; g.lineWidth=OUT; g.strokeText(t,0,0); });
   ctx.restore();
   const c=document.createElement('canvas'); c.width=c.height=S; const g=c.getContext('2d');
-  each(g,(g,t)=>{ g.fillStyle=g.strokeStyle='#f82da1'; g.lineWidth=FAT; g.fillText(t,0,0); g.strokeText(t,0,0); });
+  each(g,(g,t)=>{ g.fillStyle=g.strokeStyle=col; g.lineWidth=FAT; g.fillText(t,0,0); g.strokeText(t,0,0); });
   g.globalCompositeOperation='source-atop';
-  each(g,(g,t)=>{ g.strokeStyle='#d0409a'; g.lineWidth=FAT+10*k; g.filter=`blur(${4*k}px)`; g.strokeText(t,0,0); });
-  each(g,(g,t)=>{ g.fillStyle='#f82da1'; g.filter=`blur(${6*k}px)`; g.fillText(t,0,-2*k); });
-  each(g,(g,t)=>{ g.fillStyle='rgba(255,150,215,.3)'; g.filter=`blur(${14*k}px)`; g.fillText(t,-10*k,-18*k); g.filter='none'; });
+  each(g,(g,t)=>{ g.strokeStyle=dark; g.lineWidth=FAT+10*k; g.filter=`blur(${4*k}px)`; g.strokeText(t,0,0); });
+  each(g,(g,t)=>{ g.fillStyle=col; g.filter=`blur(${6*k}px)`; g.fillText(t,0,-2*k); });
+  each(g,(g,t)=>{ g.fillStyle=glow; g.filter=`blur(${14*k}px)`; g.fillText(t,-10*k,-18*k); g.filter='none'; });
   const mk=document.createElement('canvas'); mk.width=mk.height=S;
   each(mk.getContext('2d'),(g,t)=>{ g.fillStyle=g.strokeStyle='#000'; g.lineWidth=FAT; g.fillText(t,0,0); g.strokeText(t,0,0); });
   g.globalCompositeOperation='destination-in'; g.filter='none'; g.drawImage(mk,0,0);
@@ -663,7 +684,7 @@ function drawCount(num,right,base,h,edge){
   const {base:fb,px}=fontPx(h), k=h/205, SX=1.08, fN=setF(fb,px), fX=setF(fb,px*.66);
   const m=document.createElement('canvas').getContext('2d');
   m.font=fN; const wN=m.measureText(num).width*SX; m.font=fX; const wX=m.measureText('×').width;
-  puffy([{t:num,f:fN,x:right-wN,y:base,sx:SX},{t:'×',f:fX,x:right-wN-18*k-wX,y:base-26*k}],k,edge);
+  puffy([{t:num,f:fN,x:right-wN,y:base,sx:SX},{t:'×',f:fX,x:right-wN-18*k-wX,y:base-26*k}],k,edge,$('numColor').value);
 }
 // ネオン風のフチ（k: 太さの倍率）
 function neon(x,y,w,h,r,edge,k){
@@ -733,7 +754,7 @@ function drawMulti(edge){
   const m=document.createElement('canvas').getContext('2d');
   m.font=fSm; const w1=m.measureText('計').width, w3=m.measureText('点').width; m.font=fBig; const w2=m.measureText(String(total)).width;
   const gap=18, tw=w1+w2+w3+gap*2, bx=(S-tw)/2, by=S-62;
-  puffy([{t:'計',f:fSm,x:bx,y:by},{t:String(total),f:fBig,x:bx+w1+gap,y:by+6},{t:'点',f:fSm,x:bx+w1+w2+gap*2,y:by}],150/205,edge);
+  puffy([{t:'計',f:fSm,x:bx,y:by},{t:String(total),f:fBig,x:bx+w1+gap,y:by+6},{t:'点',f:fSm,x:bx+w1+w2+gap*2,y:by}],150/205,edge,$('totalColor').value);
 }
 dbGet('slots').catch(()=>undefined).then(v=>{ // 端末に保存できない環境でも共通の背景セットは読む
   if (Array.isArray(v)) sets=v;
