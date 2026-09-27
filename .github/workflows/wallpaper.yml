@@ -13,9 +13,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
+      - run: npm i --no-save --no-package-lock sharp@0.33
       - run: node tools/update-wallpaper.mjs
       - run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A wallpaper wallpaper.json
-          git diff --cached --quiet || (git commit -m "公式壁紙を更新" && git push)
+          git diff --cached --quiet || (git commit -m "公式壁紙を更新" && git pull --rebase && git push)

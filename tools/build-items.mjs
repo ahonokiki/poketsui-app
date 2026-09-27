@@ -5,7 +5,7 @@
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 const BASE = 'https://bon-cafe.jp';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const get = async url => { const r = await fetch(url, { redirect: 'follow' }); return r.ok ? r.text() : null; };
+const get = async url => { const r = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': 'poketsui-app item list (https://github.com/ahonokiki/poketsui-app)' } }); return r.ok ? r.text() : null; };
 // 1) カテゴリの一覧ページから記事のURLを集める
 const posts = new Set();
 for (let page = 1; page < 100; page++) {
@@ -21,6 +21,7 @@ const decode = s => s.replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(n)).re
 const old = existsSync('items.json') ? JSON.parse(readFileSync('items.json', 'utf8')) : {};
 // 名前ごとの詳細 {n:名前, g:ガチャ名, r:レア度, k:ココリウム/ファッション}。前回の分も残す（記事が消えても一覧は減らない）
 const info = new Map((old.items || (old.names || []).map(n => ({ n }))).map(x => [x.n, x]));
+let found = 0;
 for (const u of posts) {
   const h = await get(u); await sleep(500); if (!h) continue;
   const gacha = decode((h.match(/<title>([^<]*)/) || [])[1] || '').match(/【(.+)】アイテム一覧/)?.[1] || '';
@@ -28,9 +29,12 @@ for (const u of posts) {
   for (const m of t.matchAll(/【([^【】\n]{2,40})】\s*レア度\s*[：:]\s*(スーパーレア|レア|ノーマル)?/g)) {
     const n = m[1].trim(), before = t.slice(0, m.index);
     const k = before.lastIndexOf('ファッション') > before.lastIndexOf('ココリウム') ? 'ファッション' : before.includes('ココリウム') ? 'ココリウム' : '';
+    found++;
     info.set(n, { n, ...(gacha && { g: gacha }), ...(m[2] && { r: m[2] }), ...(k && { k }) });
   }
 }
+// 記事が見つからない・名前が1つも取れないときは、サイトの作りが変わった可能性があるので失敗として知らせる（一覧は前のまま）
+if (!posts.size || !found) { console.error(`取得元の記事 ${posts.size}件・名前 ${found}個。サイトの作りが変わったかもしれません`); process.exit(1); }
 const items = [...info.values()].sort((a, b) => a.n.localeCompare(b.n, 'ja'));
 const list = items.map(x => x.n);
 writeFileSync('items.json', JSON.stringify({ _説明: 'ポケツイのアイテム名一覧（tools/build-items.mjs で毎日更新）。取得元：https://bon-cafe.jp/category/pokecolotwin/',
