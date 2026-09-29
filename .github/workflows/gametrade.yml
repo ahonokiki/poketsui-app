@@ -1,0 +1,25 @@
+name: 売れ筋ランキングを更新（毎日）
+on:
+  schedule:
+    - cron: '47 18 * * *'   # 毎日 3:47（日本時間）
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: gametrade
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      # 集めた内容は合言葉（RANKING_KEY）で暗号化して保存する（ゲームトレードの内容をそのまま公開しないため）
+      - run: node tools/gametrade-track.mjs
+        env:
+          RANKING_KEY: ${{ secrets.RANKING_KEY }}
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add data/gametrade-state.enc data/gametrade-ranking.enc
+          git diff --cached --quiet || (git commit -m "売れ筋ランキングを更新" && git pull --rebase && git push)
