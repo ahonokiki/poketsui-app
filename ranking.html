@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>売れ筋ランキング</title>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#5a4a5e;--sub:#9a8a9e;--line:#f6d6e6;--pink:#ff6fae;--gold:#d99a00}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff0f6 radial-gradient(circle at 10px 10px,#ffe0ee 3px,transparent 4px) 0 0/22px 22px;min-height:100vh;
+    font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif;color:var(--ink)}
+  header{position:sticky;top:0;z-index:2;background:linear-gradient(135deg,#9d86d8,#c38fd8 55%,#f59ac8);color:#fff;text-align:center;
+    padding:14px 56px 12px;font-size:18px;font-weight:900;letter-spacing:.06em;border-radius:0 0 22px 22px;box-shadow:0 3px 10px #b07ad044}
+  header a{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;background:#fff;color:#c38fd8;
+    display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:20px;font-weight:900;box-shadow:0 3px 0 #c9a3dd}
+  main{max-width:560px;margin:0 auto;padding:12px 16px 40px}
+  .card{background:#fff;border-radius:20px;padding:16px;box-shadow:0 4px 14px #e7a3c833;margin:12px 0}
+  .card h2{margin:0 0 8px;font-size:16px}
+  input[type=password],input[type=search]{width:100%;border:3px solid #ffd0e6;border-radius:14px;padding:10px 14px;font:inherit;font-size:16px;background:#fff;outline:none}
+  input:focus{border-color:#ff9cc8}
+  .btn{display:block;width:100%;border:0;border-radius:99px;padding:12px;margin-top:10px;font:inherit;font-weight:900;font-size:15px;color:#fff;
+    background:linear-gradient(135deg,#ff7aa0,#ff9cc8);box-shadow:0 4px 0 #e0579a;cursor:pointer}
+  .err{color:#d0305a;font-size:13px;margin-top:8px}
+  .row{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+  .seg button{flex:1;border:0;border-radius:99px;padding:8px 6px;font:inherit;font-size:13px;font-weight:800;background:#fff;color:var(--sub);box-shadow:0 2px 0 #f6cfe2;cursor:pointer}
+  .seg button.on{background:linear-gradient(135deg,#ff7aa0,#ffb880);color:#fff}
+  .seg.kind button.on{background:linear-gradient(135deg,#a98be0,#c38fd8)}
+  .meta{font-size:12px;color:var(--sub);margin:4px 2px}
+  ol{list-style:none;margin:10px 0 0;padding:0;background:#fff;border-radius:20px;box-shadow:0 4px 14px #e7a3c833;overflow:hidden}
+  li{display:grid;grid-template-columns:30px 1fr auto;gap:2px 10px;padding:10px 14px;border-top:1px dashed var(--line);align-items:center}
+  li:first-child{border-top:0}
+  .rk{font-weight:900;font-size:17px;color:var(--sub);text-align:center;font-variant-numeric:tabular-nums}
+  li:nth-child(-n+3) .rk{color:var(--gold)}
+  .nm{font-weight:800;font-size:14px;overflow-wrap:anywhere}
+  .sold{text-align:right;font-weight:900;color:#e0468f;font-size:16px;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .sold small{font-size:11px;font-weight:800}
+  .sub{grid-column:2/4;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+  .sub b{color:var(--ink)}
+  .empty{padding:26px;text-align:center;color:var(--sub);font-size:14px;line-height:1.7}
+  .note{font-size:12px;color:var(--sub);line-height:1.7;margin:14px 4px}
+  label.chk{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:8px}
+  .link{background:none;border:0;color:#d0508a;font:inherit;font-size:12px;text-decoration:underline;cursor:pointer;padding:0}
+</style>
+</head>
+<body>
+<header><a href="./" aria-label="アプリに戻る">‹</a>売れ筋ランキング</header>
+<main>
+  <section class="card" id="lock">
+    <h2>🔒 合言葉を入れてください</h2>
+    <form id="unlock">
+      <input type="password" id="pass" autocomplete="current-password" placeholder="合言葉">
+      <label class="chk"><input type="checkbox" id="remember" checked> この端末で覚えておく</label>
+      <button class="btn" type="submit" id="go">開く</button>
+      <div class="err" id="err" hidden></div>
+    </form>
+  </section>
+
+  <section id="view" hidden>
+    <div class="row seg" id="period">
+      <button type="button" data-p="d3">3日</button><button type="button" data-p="d7" class="on">1週間</button>
+      <button type="button" data-p="d14">2週間</button><button type="button" data-p="d30">1か月</button>
+    </div>
+    <div class="row seg kind" id="kind">
+      <button type="button" data-k="item" class="on">単品アイテム</button><button type="button" data-k="gacha">ガチャ・セット</button>
+    </div>
+    <input type="search" id="q" placeholder="名前で絞り込み" autocomplete="off">
+    <div class="meta" id="meta"></div>
+    <ol id="list"></ol>
+    <p class="note">
+      ゲームトレードの新着出品を毎日記録し、一覧から消えて「取引が終了しました」になったものを売れた数として数えています（記録を始めた日より前の分はありません）。
+      単価は「双子分」「3点セット」などを1個あたりに直した値段の真ん中の値です。売れるまでの日数は、記録を始めてから売れるまでの平均です。
+      問い合わせ用の仮の値段や、たくさんのアイテムをまとめた出品は除いています。<br>
+      <button type="button" class="link" id="forget">この端末の合言葉を消す</button>
+    </p>
+  </section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+// tools/gametrade-track.mjs と同じ手順：PBKDF2(SHA-256) → AES-256-GCM → gzip
+async function openData(pass){
+  const r=await fetch('data/gametrade-ranking.enc',{cache:'no-cache'});
+  if(!r.ok) throw new Error('nodata');
+  const j=await r.json();
+  const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:b64(j.salt),iterations:j.iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+  let plain; try{ plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(j.iv)},key,b64(j.data)); }catch(e){ throw new Error('wrong'); }
+  const text=await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  return JSON.parse(text);
+}
+let DATA=null, period='d7', kind='item';
+try{ period=localStorage.getItem('rk_period')||period; kind=localStorage.getItem('rk_kind')||kind; }catch(e){}
+const yen=n=>n==null?'—':'¥'+n.toLocaleString('ja-JP');
+const LABEL={d3:'3日',d7:'1週間',d14:'2週間',d30:'1か月'};
+function render(){
+  document.querySelectorAll('#period button').forEach(b=>b.classList.toggle('on',b.dataset.p===period));
+  document.querySelectorAll('#kind button').forEach(b=>b.classList.toggle('on',b.dataset.k===kind));
+  const q=$('q').value.trim().normalize('NFKC').toLowerCase();
+  const rows=(DATA[period]||[]).filter(r=>r.kind===kind && (!q||r.name.normalize('NFKC').toLowerCase().includes(q)));
+  const total=rows.reduce((a,r)=>a+r.sold,0);
+  $('meta').textContent=`${DATA.updated} 更新・直近${LABEL[period]}に売れた ${total}個（記録開始 ${DATA.since}）`;
+  const ol=$('list'); ol.textContent='';
+  if(!rows.length){ const d=document.createElement('div'); d.className='empty';
+    d.textContent = q ? '見つかりませんでした' : '売れたデータがまだありません。毎日記録しているので、数日たつと出てきます'; ol.append(d); return; }
+  rows.slice(0,300).forEach((r,i)=>{
+    const li=document.createElement('li');
+    li.innerHTML='<span class="rk"></span><span class="nm"></span><span class="sold"></span><span class="sub"></span>';
+    li.querySelector('.rk').textContent=i+1;
+    li.querySelector('.nm').textContent=r.name;
+    li.querySelector('.sold').innerHTML=`${r.sold}<small>${kind==='gacha'?'セット':'個'}</small>`;
+    const sub=li.querySelector('.sub');
+    const add=(k,v)=>{ const s=document.createElement('span'); s.append(k+' '); const b=document.createElement('b'); b.textContent=v; s.append(b); sub.append(s); };
+    add(kind==='gacha'?'1セット':'単価',yen(r.price)+(r.deals>1&&r.low!==r.high?`（${yen(r.low)}〜${yen(r.high)}）`:''));
+    add('売れるまで',`${r.days}日`);
+    add('出品中',`${r.active}個`+(r.listPrice?` ${yen(r.listPrice)}`:''));
+    ol.append(li);
+  });
+}
+async function unlock(pass,quiet){
+  $('err').hidden=true; $('go').disabled=true; $('go').textContent='開いています…';
+  try{
+    DATA=await openData(pass);
+    try{ if($('remember').checked) localStorage.setItem('rk_pass',pass); }catch(e){}
+    $('lock').hidden=true; $('view').hidden=false; render();
+  }catch(e){
+    if(!quiet){ $('err').hidden=false;
+      $('err').textContent = e.message==='wrong' ? '合言葉が違います' : e.message==='nodata' ? 'まだ集計データがありません。毎日の自動集計が1回動くと見られるようになります' : '開けませんでした（'+e.message+'）'; }
+  }finally{ $('go').disabled=false; $('go').textContent='開く'; }
+}
+$('unlock').addEventListener('submit',e=>{ e.preventDefault(); const p=$('pass').value; if(p) unlock(p); });
+$('period').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; period=b.dataset.p; try{ localStorage.setItem('rk_period',period); }catch(_){} render(); };
+$('kind').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; kind=b.dataset.k; try{ localStorage.setItem('rk_kind',kind); }catch(_){} render(); };
+$('q').addEventListener('input',()=>DATA&&render());
+$('forget').onclick=()=>{ try{ localStorage.removeItem('rk_pass'); }catch(e){} location.reload(); };
+try{ const p=localStorage.getItem('rk_pass'); if(p) unlock(p,true); }catch(e){}
+</script>
+</body>
+</html>
