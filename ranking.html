@@ -112,7 +112,7 @@ function render(){
     li.querySelector('.sold').innerHTML=`${r.sold}<small>${kind==='gacha'?'セット':'個'}</small>`;
     const sub=li.querySelector('.sub');
     const add=(k,v)=>{ const s=document.createElement('span'); s.append(k+' '); const b=document.createElement('b'); b.textContent=v; s.append(b); sub.append(s); };
-    add(kind==='gacha'?'1セット':'単価',yen(r.price)+(r.deals>1&&r.low!==r.high?`（${yen(r.low)}〜${yen(r.high)}）`:''));
+    add(kind==='gacha'?'1セット':'単価',r.price==null?'不明':yen(r.price)+(r.deals>1&&r.low!==r.high?`（${yen(r.low)}〜${yen(r.high)}）`:''));
     add('売れるまで',`${r.days}日`);
     add('出品中',`${r.active}個`+(r.listPrice?` ${yen(r.listPrice)}`:''));
     ol.append(li);
