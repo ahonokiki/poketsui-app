@@ -54,6 +54,7 @@ async function detail(id) {
 }
 
 const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); // 日本の日付
+const RUN = new Date().toISOString(); // この集計の時刻（1日に2回動かしても、前回と区別できるように）
 let state = { listings: {} };
 if (existsSync(STATE)) {
   try { state = open(readFileSync(STATE, 'utf8')); }
@@ -68,8 +69,8 @@ for (let n = 1; n <= MAX_PAGES; n++) {
   const got = await listPage(n); if (!got || !got.length) break; pages++;
   for (const x of got) {
     const o = L[x.id];
-    if (o) { o.l = today; o.p = x.price; o.t = x.title; if (o.s !== 'active') { o.s = 'active'; delete o.d; } }
-    else L[x.id] = { t: x.title, p: x.price, f: today, l: today, s: 'active' };
+    if (o) { o.l = RUN; o.p = x.price; o.t = x.title; if (o.s !== 'active') { o.s = 'active'; delete o.d; } }
+    else L[x.id] = { t: x.title, p: x.price, f: today, l: RUN, s: 'active' };
     seen++;
   }
   await sleep(2000);
@@ -77,7 +78,7 @@ for (let n = 1; n <= MAX_PAGES; n++) {
 if (!seen) { console.error('一覧から出品を1件も読めませんでした。ゲームトレードのページの作りが変わったかもしれません'); process.exit(1); }
 
 // 2) 今日一覧に出てこなかった出品を確認（1日最大500件・1件ごとに1秒）
-const gone = Object.entries(L).filter(([, o]) => o.s === 'active' && o.l !== today);
+const gone = Object.entries(L).filter(([, o]) => o.s === 'active' && o.l !== RUN);
 let checked = 0, sold = 0;
 for (const [id, o] of gone.slice(0, process.env.MAX_CHECKS ? +process.env.MAX_CHECKS : 500)) {
   const s = await detail(id); checked++;
@@ -126,7 +127,7 @@ function itemOf(title) {
 }
 // 問い合わせ用の仮の値段や、たくさんのアイテムをまとめた出品はアイテムの人気が分からないので除く
 const skip = o => o.p >= 30000 || /^(\d)\1{3,}$/.test(String(o.p)) ||
-  /ダブリ|まとめ|引退|一覧|リスト|福袋|詰め合わせ|バラ売|在庫|各種|何点でも|過去ガチャ|\d{4}年|月ガチャ|アカウント|垢|均一|相談|ハピ|all\s|\d+円|販売|ドリフェス|ココリウムセット|^ココリウム$/i.test(o.t);
+  /ダブリ|まとめ|引退|一覧|リスト|福袋|詰め合わせ|バラ売|在庫|各種|何点でも|過去ガチャ|\d{4}年|月ガチャ|アカウント|垢|均一|相談|ハピ|all\s|\d+円|販売|ドリフェス|ココリウムセット|^ココリウム$|様\s*(専用)?\s*$|様専用|^専用/i.test(o.t); // 「○○様」だけの専用出品は何のアイテムか分からない
 // 1つの出品に何個入っているか（双子分=2、3点セット=3 など）。単価 = 値段 ÷ 個数
 function qty(t) { t = t.normalize('NFKC');
   const m = t.match(/(\d+)\s*(点|個|セット|種)/); if (m && +m[1] > 0 && +m[1] <= 50) return +m[1] * (/双子分|2人分|二人分/.test(t) ? 2 : 1);
