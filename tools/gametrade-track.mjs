@@ -54,7 +54,11 @@ async function detail(id) {
 }
 
 const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); // 日本の日付
-const state = existsSync(STATE) ? open(readFileSync(STATE, 'utf8')) : { listings: {} };
+let state = { listings: {} };
+if (existsSync(STATE)) {
+  try { state = open(readFileSync(STATE, 'utf8')); }
+  catch (e) { console.warn('前回の記録を開けませんでした（合言葉を変えた？）。記録を最初からやり直します'); }
+}
 const L = state.listings; // id → {t:題名, p:値段, f:初めて見た日, l:最後に一覧で見た日, s:'active'|'sold'|'removed'|'old', d:終わった日}
 
 // 1) 新着順の一覧を記録（最大99ページ・1ページごとに2秒あける）
