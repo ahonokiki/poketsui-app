@@ -54,6 +54,7 @@ async function detail(id) {
 }
 
 const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); // 日本の日付
+const RUN = new Date().toISOString(); // この集計の時刻（1日に2回動かしても、前回と区別できるように）
 let state = { listings: {} };
 if (existsSync(STATE)) {
   try { state = open(readFileSync(STATE, 'utf8')); }
@@ -68,8 +69,8 @@ for (let n = 1; n <= MAX_PAGES; n++) {
   const got = await listPage(n); if (!got || !got.length) break; pages++;
   for (const x of got) {
     const o = L[x.id];
-    if (o) { o.l = today; o.p = x.price; o.t = x.title; if (o.s !== 'active') { o.s = 'active'; delete o.d; } }
-    else L[x.id] = { t: x.title, p: x.price, f: today, l: today, s: 'active' };
+    if (o) { o.l = RUN; o.p = x.price; o.t = x.title; if (o.s !== 'active') { o.s = 'active'; delete o.d; } }
+    else L[x.id] = { t: x.title, p: x.price, f: today, l: RUN, s: 'active' };
     seen++;
   }
   await sleep(2000);
@@ -77,7 +78,7 @@ for (let n = 1; n <= MAX_PAGES; n++) {
 if (!seen) { console.error('一覧から出品を1件も読めませんでした。ゲームトレードのページの作りが変わったかもしれません'); process.exit(1); }
 
 // 2) 今日一覧に出てこなかった出品を確認（1日最大500件・1件ごとに1秒）
-const gone = Object.entries(L).filter(([, o]) => o.s === 'active' && o.l !== today);
+const gone = Object.entries(L).filter(([, o]) => o.s === 'active' && o.l !== RUN);
 let checked = 0, sold = 0;
 for (const [id, o] of gone.slice(0, process.env.MAX_CHECKS ? +process.env.MAX_CHECKS : 500)) {
   const s = await detail(id); checked++;
