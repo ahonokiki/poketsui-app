@@ -153,15 +153,17 @@ function entriesOf(o) {
   const priceIn = n => { if (!reserved || !o.x) return null;
     const m = o.x.normalize('NFKC').replace(/\s/g, '').match(new RegExp(norm(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[:：¥￥]*(\\d{2,6})円?'));
     return m ? +m[1] : null; };
-  if (reserved && names.length && names.every(priceIn)) return names.map(n => ({ name: n, known: true, kind: 'item', q: 1, unit: priceIn(n) }));
+  if (reserved && names.length && names.every(priceIn)) return names.map(n => ({ name: n, known: true, kind: 'item', q: 1, unit: priceIn(n), priced: true }));
   if (names.length >= 2) { // 複数のアイテムをまとめた出品：値段を個数で割って、それぞれ1個ずつ数える（双子分なら2個ずつ）
     const each = /双子分|2人分|二人分/.test(o.t.normalize('NFKC')) ? 2 : 1, unit = Math.round(o.p / (names.length * each));
-    return names.map(n => ({ name: n, known: true, kind: 'item', q: each, unit }));
+    return names.map(n => ({ name: n, known: true, kind: 'item', q: each, unit, priced: false })); // 1個ずつの値段は分からないので単価には使わない
   }
-  if (names.length === 1) { const q = qty(reserved ? o.t + ' ' + (o.x || '') : o.t); return [{ name: names[0], known: true, kind: 'item', q, unit: Math.round(o.p / q) }]; }
+  if (names.length === 1) { const q = qty(reserved ? o.t + ' ' + (o.x || '') : o.t); return [{ name: names[0], known: true, kind: 'item', q, unit: Math.round(o.p / q), priced: !reserved }]; } // 専用出品は他のアイテムの分も入っていることがあるので単価に使わない
   if (reserved) return []; // 説明文にもアイテム名が見つからない専用出品は数えない
   const { name, known, kind } = itemOf(o.t), q = kind === 'gacha' ? 1 : qty(o.t); // セットは1セットとして数える
-  return [{ name, known, kind, q, unit: Math.round(o.p / q) }];
+  // 名前が分からず「1点ずつ」「各」「セット」「＋」などがある単品は、何個分の値段か分からないので単価に使わない
+  const mixed = kind === 'item' && /ずつ|各|セット|[+＋&＆、/／]/.test(o.t.normalize('NFKC'));
+  return [{ name, known, kind, q, unit: Math.round(o.p / q), priced: !mixed }];
 }
 function rank(since) {
   const agg = new Map();
@@ -169,16 +171,17 @@ function rank(since) {
     if (skip(o)) continue;
     const isSold = o.s === 'sold' && o.d >= since, isActive = o.s === 'active';
     if (!isSold && !isActive) continue;
-    for (const { name, known, kind, q, unit } of entriesOf(o)) {
+    for (const { name, known, kind, q, unit, priced } of entriesOf(o)) {
       const k = kind + name, a = agg.get(k) || { name, known, kind, sold: 0, active: 0, soldPrices: [], activePrices: [], days: [], ex: o.t };
       // 単価は「1回の取引ごとの1個あたりの値段」を並べて、その真ん中の値を使う
-      if (isSold) { a.sold += q; a.soldPrices.push(unit); a.days.push(days(o.f, o.d)); } else { a.active += q; a.activePrices.push(unit); }
+      // 単価が分からない取引は、個数だけ数えて単価の計算には入れない
+      if (isSold) { a.sold += q; if (priced) a.soldPrices.push(unit); a.days.push(days(o.f, o.d)); } else { a.active += q; if (priced) a.activePrices.push(unit); }
       agg.set(k, a);
     }
   }
   return [...agg.values()].filter(a => a.sold > 0).map(a => ({
     name: a.name, known: a.known, kind: a.kind, sold: a.sold, active: a.active, ex: a.ex,
-    price: med(a.soldPrices), low: Math.min(...a.soldPrices), high: Math.max(...a.soldPrices), listPrice: med(a.activePrices), deals: a.soldPrices.length, days: +(a.days.reduce((x, y) => x + y, 0) / a.days.length).toFixed(1),
+    price: med(a.soldPrices), low: a.soldPrices.length ? Math.min(...a.soldPrices) : null, high: a.soldPrices.length ? Math.max(...a.soldPrices) : null, listPrice: med(a.activePrices), deals: a.soldPrices.length, days: +(a.days.reduce((x, y) => x + y, 0) / a.days.length).toFixed(1),
   })).sort((a, b) => b.sold - a.sold || a.days - b.days);
 }
 // 説明文を残していなかった専用出品は、1回だけ詳細ページを見て説明文を取っておく
