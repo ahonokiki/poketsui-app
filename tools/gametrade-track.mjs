@@ -152,6 +152,7 @@ function rank(since) {
 }
 const firstDay = Object.values(L).reduce((m, o) => o.f < m ? o.f : m, today);
 const ranking = { updated: today, since: firstDay, tracked: Object.values(L).filter(o => o.s === 'active').length,
+  d1: rank(today), // 今日の集計で売れたと分かった分（前回の集計からの約1日）
   d3: rank(daysAgo(3)), d7: rank(daysAgo(7)), d14: rank(daysAgo(14)), d30: rank(daysAgo(30)) };
 
 mkdirSync(new URL('data/', ROOT), { recursive: true });

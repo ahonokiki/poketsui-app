@@ -59,7 +59,7 @@
 
   <section id="view" hidden>
     <div class="row seg" id="period">
-      <button type="button" data-p="d3">3日</button><button type="button" data-p="d7" class="on">1週間</button>
+      <button type="button" data-p="d1">1日</button><button type="button" data-p="d3">3日</button><button type="button" data-p="d7" class="on">1週間</button>
       <button type="button" data-p="d14">2週間</button><button type="button" data-p="d30">1か月</button>
     </div>
     <div class="row seg kind" id="kind">
@@ -93,7 +93,7 @@ async function openData(pass){
 let DATA=null, period='d7', kind='item';
 try{ period=localStorage.getItem('rk_period')||period; kind=localStorage.getItem('rk_kind')||kind; }catch(e){}
 const yen=n=>n==null?'—':'¥'+n.toLocaleString('ja-JP');
-const LABEL={d3:'3日',d7:'1週間',d14:'2週間',d30:'1か月'};
+const LABEL={d1:'1日',d3:'3日',d7:'1週間',d14:'2週間',d30:'1か月'};
 function render(){
   document.querySelectorAll('#period button').forEach(b=>b.classList.toggle('on',b.dataset.p===period));
   document.querySelectorAll('#kind button').forEach(b=>b.classList.toggle('on',b.dataset.k===kind));
