@@ -46,11 +46,14 @@ async function listPage(n) {
 // 詳細ページ：取引が終わっていれば sold、ページがなければ removed、まだ出品中なら active
 async function detail(id) {
   const r = await get(`${BASE}/${id}`, { headers: UA });
-  if (!r) return 'unknown';
-  if (r.status === 404 || r.status === 410) return 'removed';
-  if (!r.ok) return 'unknown';
+  if (!r) return { s: 'unknown' };
+  if (r.status === 404 || r.status === 410) return { s: 'removed' };
+  if (!r.ok) return { s: 'unknown' };
   const h = await r.text();
-  return /取引が終了しました/.test(h) ? 'sold' : /削除されました|公開停止|見つかりません/.test(h) ? 'removed' : 'active';
+  // 出品の説明文（「○○様」の専用出品は、ここにアイテム名が書いてあることが多い）
+  const desc = dec(((h.match(/class="item-description">([\s\S]*?)<\/div>/) || [])[1] || '').replace(/<br\s*\/?>/g, '\n').replace(/<[^>]+>/g, '')).trim().slice(0, 500);
+  const s = /class="done"[^>]*>\s*取引が終了しました/.test(h) || /取引が終了しました/.test(h) ? 'sold' : /削除されました|公開停止|見つかりません/.test(h) ? 'removed' : 'active';
+  return { s, desc };
 }
 
 const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); // 日本の日付
@@ -64,7 +67,7 @@ const L = state.listings; // id → {t:題名, p:値段, f:初めて見た日, l
 
 // 1) 新着順の一覧を記録（最大99ページ・1ページごとに2秒あける）
 let seen = 0, pages = 0;
-const MAX_PAGES = +process.env.MAX_PAGES || 99; // 試しに動かすとき用
+const MAX_PAGES = process.env.MAX_PAGES ? +process.env.MAX_PAGES : 99; // 試しに動かすとき用
 for (let n = 1; n <= MAX_PAGES; n++) {
   const got = await listPage(n); if (!got || !got.length) break; pages++;
   for (const x of got) {
@@ -75,14 +78,14 @@ for (let n = 1; n <= MAX_PAGES; n++) {
   }
   await sleep(2000);
 }
-if (!seen) { console.error('一覧から出品を1件も読めませんでした。ゲームトレードのページの作りが変わったかもしれません'); process.exit(1); }
+if (!seen && MAX_PAGES) { console.error('一覧から出品を1件も読めませんでした。ゲームトレードのページの作りが変わったかもしれません'); process.exit(1); }
 
 // 2) 今日一覧に出てこなかった出品を確認（1日最大500件・1件ごとに1秒）
 const gone = Object.entries(L).filter(([, o]) => o.s === 'active' && o.l !== RUN);
 let checked = 0, sold = 0;
 for (const [id, o] of gone.slice(0, process.env.MAX_CHECKS ? +process.env.MAX_CHECKS : 500)) {
-  const s = await detail(id); checked++;
-  if (s === 'sold') { o.s = 'sold'; o.d = today; sold++; }
+  const { s, desc } = await detail(id); checked++;
+  if (s === 'sold') { o.s = 'sold'; o.d = today; sold++; if (desc) o.x = desc; } // 説明文も残す（専用出品のアイテム名を探すため）
   else if (s === 'removed') { o.s = 'removed'; o.d = today; }
   else if (s === 'active') o.s = 'old'; // 99ページより後ろに下がっただけ。これ以上は追わない
   await sleep(1000);
@@ -127,29 +130,60 @@ function itemOf(title) {
 }
 // 問い合わせ用の仮の値段や、たくさんのアイテムをまとめた出品はアイテムの人気が分からないので除く
 const skip = o => o.p >= 30000 || /^(\d)\1{3,}$/.test(String(o.p)) ||
-  /ダブリ|まとめ|引退|一覧|リスト|福袋|詰め合わせ|バラ売|在庫|各種|何点でも|過去ガチャ|\d{4}年|月ガチャ|アカウント|垢|均一|相談|ハピ|all\s|\d+円|販売|ドリフェス|ココリウムセット|^ココリウム$|様\s*(専用)?\s*$|様専用|^専用/i.test(o.t); // 「○○様」だけの専用出品は何のアイテムか分からない
+  /ダブリ|まとめ|引退|一覧|リスト|福袋|詰め合わせ|バラ売|在庫|各種|何点でも|過去ガチャ|\d{4}年|月ガチャ|アカウント|垢|均一|相談|ハピ|all\s|\d+円|販売|ドリフェス|ココリウムセット|^ココリウム$/i.test(o.t);
 // 1つの出品に何個入っているか（双子分=2、3点セット=3 など）。単価 = 値段 ÷ 個数
 function qty(t) { t = t.normalize('NFKC');
   const m = t.match(/(\d+)\s*(点|個|セット|種)/); if (m && +m[1] > 0 && +m[1] <= 50) return +m[1] * (/双子分|2人分|二人分/.test(t) ? 2 : 1);
   return /双子分|2人分|二人分/.test(t) ? 2 : 1; }
 const days = (a, b) => Math.max(0, Math.round((Date.parse(b) - Date.parse(a)) / 864e5));
 const med = p => { const s = [...p].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : null; };
+// 「○○様」「専用」だけの題名：アイテム名は説明文から探す
+const isReserved = t => /様\s*(専用)?\s*$|様専用|^専用|専用出品/.test(t.normalize('NFKC'));
+// 文の中からアイテム名一覧の名前をすべて探す（長い名前から先に、重ならないように）
+function knownNamesIn(text) {
+  let t = norm(text); const found = [];
+  for (const [k, n] of byName) { if (t.includes(k)) { found.push(n); t = t.split(k).join('\u0000'); } }
+  return found;
+}
+// 1つの出品を「どのアイテムが何個・1個いくらで」に分ける
+function entriesOf(o) {
+  const reserved = isReserved(o.t);
+  const names = knownNamesIn(reserved ? o.t + '\n' + (o.x || '') : o.t);
+  // 説明文に「アイテム名 400」のように1個ずつの値段が書いてあれば、それを単価にする
+  const priceIn = n => { if (!reserved || !o.x) return null;
+    const m = o.x.normalize('NFKC').replace(/\s/g, '').match(new RegExp(norm(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[:：¥￥]*(\\d{2,6})円?'));
+    return m ? +m[1] : null; };
+  if (reserved && names.length && names.every(priceIn)) return names.map(n => ({ name: n, known: true, kind: 'item', q: 1, unit: priceIn(n) }));
+  if (names.length >= 2) { // 複数のアイテムをまとめた出品：値段を個数で割って、それぞれ1個ずつ数える（双子分なら2個ずつ）
+    const each = /双子分|2人分|二人分/.test(o.t.normalize('NFKC')) ? 2 : 1, unit = Math.round(o.p / (names.length * each));
+    return names.map(n => ({ name: n, known: true, kind: 'item', q: each, unit }));
+  }
+  if (names.length === 1) { const q = qty(reserved ? o.t + ' ' + (o.x || '') : o.t); return [{ name: names[0], known: true, kind: 'item', q, unit: Math.round(o.p / q) }]; }
+  if (reserved) return []; // 説明文にもアイテム名が見つからない専用出品は数えない
+  const { name, known, kind } = itemOf(o.t), q = kind === 'gacha' ? 1 : qty(o.t); // セットは1セットとして数える
+  return [{ name, known, kind, q, unit: Math.round(o.p / q) }];
+}
 function rank(since) {
   const agg = new Map();
   for (const o of Object.values(L)) {
     if (skip(o)) continue;
     const isSold = o.s === 'sold' && o.d >= since, isActive = o.s === 'active';
     if (!isSold && !isActive) continue;
-    const { name, known, kind } = itemOf(o.t), k = kind + name;
-    const a = agg.get(k) || { name, known, kind, sold: 0, active: 0, soldPrices: [], activePrices: [], days: [], ex: o.t };
-    const q = kind === 'gacha' ? 1 : qty(o.t), unit = Math.round(o.p / q); // セットは1セットとして数える
-    if (isSold) { a.sold += q; a.soldPrices.push(unit); a.days.push(days(o.f, o.d)); } else { a.active += q; a.activePrices.push(unit); }
-    agg.set(k, a);
+    for (const { name, known, kind, q, unit } of entriesOf(o)) {
+      const k = kind + name, a = agg.get(k) || { name, known, kind, sold: 0, active: 0, soldPrices: [], activePrices: [], days: [], ex: o.t };
+      // 単価は「1回の取引ごとの1個あたりの値段」を並べて、その真ん中の値を使う
+      if (isSold) { a.sold += q; a.soldPrices.push(unit); a.days.push(days(o.f, o.d)); } else { a.active += q; a.activePrices.push(unit); }
+      agg.set(k, a);
+    }
   }
   return [...agg.values()].filter(a => a.sold > 0).map(a => ({
     name: a.name, known: a.known, kind: a.kind, sold: a.sold, active: a.active, ex: a.ex,
     price: med(a.soldPrices), low: Math.min(...a.soldPrices), high: Math.max(...a.soldPrices), listPrice: med(a.activePrices), deals: a.soldPrices.length, days: +(a.days.reduce((x, y) => x + y, 0) / a.days.length).toFixed(1),
   })).sort((a, b) => b.sold - a.sold || a.days - b.days);
+}
+// 説明文を残していなかった専用出品は、1回だけ詳細ページを見て説明文を取っておく
+for (const [id, o] of Object.entries(L).filter(([, o]) => o.s === 'sold' && o.x === undefined && isReserved(o.t)).slice(0, 100)) {
+  const { desc } = await detail(id); o.x = desc || ''; await sleep(1000);
 }
 const firstDay = Object.values(L).reduce((m, o) => o.f < m ? o.f : m, today);
 const ranking = { updated: today, since: firstDay, tracked: Object.values(L).filter(o => o.s === 'active').length,
