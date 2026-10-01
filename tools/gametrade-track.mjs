@@ -195,23 +195,32 @@ function entriesOf(o) {
 }
 // 同じ商品の書き方の違い（空白・記号）をまとめるための鍵
 const keyOf = n => n.normalize('NFKC').replace(/[\s♡♥☆★・･.,、。!！?？~〜ー\-]/g, '').toLowerCase();
-// since：この日付以降に売れた分（sinceTs を渡すと、この時刻以降に売れたと分かった分）
-function rank(since, sinceTs) {
+// 直近 N 日（N=1 なら24時間）に売れた分のランキング。あわせて
+// - prev：その前の同じ長さの期間に売れた数（急上昇を見るため。記録を始める前にかかる期間なら null）
+// - rate：売れやすさ＝売れた数 ÷（売れた数＋今出品中の数）。出品が少ないのに売れている商品ほど高い
+const soldMs = o => Date.parse(o.dt || o.d + 'T12:00:00+09:00');
+function rank(N) {
+  const now = Date.now(), from = now - N * 864e5, prevFrom = now - 2 * N * 864e5;
+  const prevKnown = prevFrom >= Date.parse(state.since + 'T00:00:00+09:00');
   const agg = new Map();
   for (const o of Object.values(L)) {
     if (skip(o)) continue;
-    const isSold = o.s === 'sold' && (sinceTs ? (o.dt || o.d + 'T00:00:00Z') >= sinceTs : o.d >= since), isActive = o.s === 'active';
-    if (!isSold && !isActive) continue;
+    const t = o.s === 'sold' ? soldMs(o) : 0;
+    const isSold = o.s === 'sold' && t >= from, isPrev = o.s === 'sold' && t >= prevFrom && t < from, isActive = o.s === 'active';
+    if (!isSold && !isPrev && !isActive) continue;
     for (const { name, known, kind, q, unit, priced } of entriesOf(o)) {
-      const k = kind + keyOf(name), a = agg.get(k) || { name, known, kind, sold: 0, active: 0, soldPrices: [], activePrices: [], days: [], ex: o.t };
+      const k = kind + keyOf(name), a = agg.get(k) || { name, known, kind, sold: 0, prev: 0, active: 0, soldPrices: [], activePrices: [], days: [], ex: o.t };
       // 単価は「1回の取引ごとの1個あたりの値段」を並べて、その真ん中の値を使う
       // 単価が分からない取引は、個数だけ数えて単価の計算には入れない
-      if (isSold) { a.sold += q; if (priced) a.soldPrices.push(unit); if (o.f > state.since && o.nw !== false) a.days.push(days(o.f, o.d)); } else { a.active += q; if (priced) a.activePrices.push(unit); }
+      if (isSold) { a.sold += q; if (priced) a.soldPrices.push(unit); if (o.f > state.since && o.nw !== false) a.days.push(days(o.f, o.d)); }
+      else if (isPrev) a.prev += q;
+      else { a.active += q; if (priced) a.activePrices.push(unit); }
       agg.set(k, a);
     }
   }
   return [...agg.values()].filter(a => a.sold > 0).map(a => ({
     name: a.name, known: a.known, kind: a.kind, sold: a.sold, active: a.active, ex: a.ex,
+    prev: prevKnown ? a.prev : null, rate: Math.round(a.sold / (a.sold + a.active) * 100),
     days: a.days.length ? +(a.days.reduce((x, y) => x + y, 0) / a.days.length).toFixed(1) : null,
     price: med(a.soldPrices), low: a.soldPrices.length ? Math.min(...a.soldPrices) : null, high: a.soldPrices.length ? Math.max(...a.soldPrices) : null, listPrice: med(a.activePrices), deals: a.soldPrices.length,
   })).sort((a, b) => b.sold - a.sold || (a.days ?? 99) - (b.days ?? 99));
@@ -222,8 +231,7 @@ for (const [id, o] of Object.entries(L).filter(([, o]) => o.s === 'sold' && o.x 
 }
 const firstDay = state.since;
 const ranking = { updated: today, since: firstDay, tracked: Object.values(L).filter(o => o.s === 'active').length,
-  d1: rank(daysAgo(1), new Date(Date.now() - 864e5).toISOString()), // 直近24時間に売れたと分かった分
-  d3: rank(daysAgo(3)), d7: rank(daysAgo(7)), d14: rank(daysAgo(14)), d30: rank(daysAgo(30)) };
+  d1: rank(1), d3: rank(3), d7: rank(7), d14: rank(14), d30: rank(30) }; // d1 は直近24時間
 
 mkdirSync(new URL('data/', ROOT), { recursive: true });
 writeFileSync(STATE, seal(state));

@@ -38,6 +38,7 @@
   .sold small{font-size:11px;font-weight:800}
   .sub{grid-column:2/4;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
   .sub b{color:var(--ink)}
+  .up{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;background:#ff6fae;color:#fff;font-size:11px;font-weight:900;vertical-align:2px;white-space:nowrap}
   .empty{padding:26px;text-align:center;color:var(--sub);font-size:14px;line-height:1.7}
   .note{font-size:12px;color:var(--sub);line-height:1.7;margin:14px 4px}
   label.chk{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:8px}
@@ -65,6 +66,9 @@
     <div class="row seg kind" id="kind">
       <button type="button" data-k="item" class="on">単品アイテム</button><button type="button" data-k="gacha">ガチャ・セット</button>
     </div>
+    <div class="row seg" id="sortBy">
+      <button type="button" data-s="sold" class="on">売れた数順</button><button type="button" data-s="up">急上昇順</button><button type="button" data-s="rate">売れやすさ順</button>
+    </div>
     <div class="meta" id="kindNote"></div>
     <input type="search" id="q" placeholder="名前で絞り込み" autocomplete="off">
     <div class="meta" id="meta"></div>
@@ -91,18 +95,26 @@ async function openData(pass){
   const text=await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
   return JSON.parse(text);
 }
-let DATA=null, period='d7', kind='item';
-try{ period=localStorage.getItem('rk_period')||period; kind=localStorage.getItem('rk_kind')||kind; }catch(e){}
+let DATA=null, period='d7', kind='item', sortBy='sold';
+try{ sortBy=localStorage.getItem('rk_sort')||sortBy; period=localStorage.getItem('rk_period')||period; kind=localStorage.getItem('rk_kind')||kind; }catch(e){}
 const yen=n=>n==null?'—':'¥'+n.toLocaleString('ja-JP');
 const LABEL={d1:'1日',d3:'3日',d7:'1週間',d14:'2週間',d30:'1か月'};
 function render(){
   document.querySelectorAll('#period button').forEach(b=>b.classList.toggle('on',b.dataset.p===period));
   document.querySelectorAll('#kind button').forEach(b=>b.classList.toggle('on',b.dataset.k===kind));
+  document.querySelectorAll('#sortBy button').forEach(b=>b.classList.toggle('on',b.dataset.s===sortBy));
   $('kindNote').textContent = kind==='gacha' ? 'ガチャのコンプやまとめ売り（3点以上）の出品を、1セット単位で数えています' : '商品名ごとに、売れた個数を数えています（まとめ出品は商品ごとに分けて数えます）';
   const q=$('q').value.trim().normalize('NFKC').toLowerCase();
   const rows=(DATA[period]||[]).filter(r=>r.kind===kind && (!q||r.name.normalize('NFKC').toLowerCase().includes(q)));
+  // 急上昇：前の同じ長さの期間より売れた数の増えた分。売れやすさ：売れた数÷（売れた数＋出品中）
+  const gain=r=>r.prev==null?0:r.sold-r.prev;
+  if (sortBy==='up') rows.sort((a,b)=>gain(b)-gain(a)||b.sold-a.sold);
+  else if (sortBy==='rate') rows.sort((a,b)=>(b.rate??0)-(a.rate??0)||b.sold-a.sold);
   const total=rows.reduce((a,r)=>a+r.sold,0);
-  $('meta').textContent=`${DATA.updated} 更新・直近${LABEL[period]}に売れた ${total}個（記録開始 ${DATA.since}）`;
+  const noPrev = rows.length && rows.every(r=>r.prev==null);
+  $('meta').textContent=`${DATA.updated} 更新・直近${LABEL[period]}に売れた ${total}個（記録開始 ${DATA.since}）`+
+    (sortBy==='up'&&noPrev?'　※比べる前の期間の記録がまだないので、急上昇はまだ出せません':'')+
+    (sortBy==='rate'?'　※売れやすさ＝売れた数÷（売れた数＋今出品中の数）。高いほど、出品が少ないのに売れている':'');
   const ol=$('list'); ol.textContent='';
   if(!rows.length){ const d=document.createElement('div'); d.className='empty';
     d.textContent = q ? '見つかりませんでした' : '売れたデータがまだありません。毎日記録しているので、数日たつと出てきます'; ol.append(d); return; }
@@ -111,12 +123,14 @@ function render(){
     li.innerHTML='<span class="rk"></span><span class="nm"></span><span class="sold"></span><span class="sub"></span>';
     li.querySelector('.rk').textContent=i+1;
     li.querySelector('.nm').textContent=r.name;
+    if (r.prev!=null && r.sold>r.prev){ const u=document.createElement('span'); u.className='up'; u.textContent=r.prev?`↑ 前の期間 ${r.prev}→${r.sold}`:'↑ 新しく売れ始め'; li.querySelector('.nm').append(u); }
     li.querySelector('.sold').innerHTML=`${r.sold}<small>${kind==='gacha'?'セット':'個'}</small>`;
     const sub=li.querySelector('.sub');
     const add=(k,v)=>{ const s=document.createElement('span'); s.append(k+' '); const b=document.createElement('b'); b.textContent=v; s.append(b); sub.append(s); };
     add(kind==='gacha'?'1セット':'単価',r.price==null?'不明':yen(r.price)+(r.deals>1&&r.low!==r.high?`（${yen(r.low)}〜${yen(r.high)}）`:''));
     add('売れるまで',r.days==null?'不明':`${r.days}日`);
     add('出品中',`${r.active}個`+(r.listPrice?` ${yen(r.listPrice)}`:''));
+    if (r.rate!=null) add('売れやすさ',`${r.rate}%`);
     ol.append(li);
   });
 }
@@ -133,6 +147,7 @@ async function unlock(pass,quiet){
 }
 $('unlock').addEventListener('submit',e=>{ e.preventDefault(); const p=$('pass').value; if(p) unlock(p); });
 $('period').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; period=b.dataset.p; try{ localStorage.setItem('rk_period',period); }catch(_){} render(); };
+$('sortBy').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; sortBy=b.dataset.s; try{ localStorage.setItem('rk_sort',sortBy); }catch(_){} render(); };
 $('kind').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; kind=b.dataset.k; try{ localStorage.setItem('rk_kind',kind); }catch(_){} render(); };
 $('q').addEventListener('input',()=>DATA&&render());
 $('forget').onclick=()=>{ try{ localStorage.removeItem('rk_pass'); }catch(e){} location.reload(); };
