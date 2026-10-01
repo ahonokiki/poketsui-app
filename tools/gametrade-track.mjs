@@ -35,15 +35,16 @@ async function get(url, opt) {
   }
 }
 const dec = s => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-async function listPage(n) {
-  const r = await get(`${BASE}?sort=new&page=${n}`, { headers: UA }); if (!r?.ok) return null;
+async function listPage(n, sort = 'new') {
+  const r = await get(`${BASE}?sort=${sort}&page=${n}`, { headers: UA }); if (!r?.ok) return null;
   const out = [];
   for (const m of (await r.text()).matchAll(/name="exhibit_data" type="hidden" value="([^"]+)"/g)) {
     try { const d = JSON.parse(dec(m[1])); out.push({ id: d.id, title: d.name, price: +d.price }); } catch (e) {}
   }
   return out;
 }
-// 詳細ページ：取引が終わっていれば sold、ページがなければ removed、まだ出品中なら active
+// 詳細ページ：取引が終わっていれば sold、ページがなければ removed、「購入する」ボタンがあれば active（まだ出品中）、
+// どちらでもなければ pending（購入されて取引中など。次の集計でもう一度確かめる）
 async function detail(id) {
   const r = await get(`${BASE}/${id}`, { headers: UA });
   if (!r) return { s: 'unknown' };
@@ -52,12 +53,13 @@ async function detail(id) {
   const h = await r.text();
   // 出品の説明文（「○○様」の専用出品は、ここにアイテム名が書いてあることが多い）
   const desc = dec(((h.match(/class="item-description">([\s\S]*?)<\/div>/) || [])[1] || '').replace(/<br\s*\/?>/g, '\n').replace(/<[^>]+>/g, '')).trim().slice(0, 500);
-  const s = /class="done"[^>]*>\s*取引が終了しました/.test(h) || /取引が終了しました/.test(h) ? 'sold' : /削除されました|公開停止|見つかりません/.test(h) ? 'removed' : 'active';
+  const s = /取引が終了しました/.test(h) ? 'sold' : /購入する/.test(h) ? 'active' : 'pending';
   return { s, desc };
 }
 
 const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); // 日本の日付
-const RUN = new Date().toISOString(); // この集計の時刻（1日に2回動かしても、前回と区別できるように）
+const RUN = new Date().toISOString();
+const daysAgo = n => new Date(Date.now() + 9 * 3600e3 - n * 864e5).toISOString().slice(0, 10); // この集計の時刻（1日に2回動かしても、前回と区別できるように）
 let state = { listings: {} };
 if (existsSync(STATE)) {
   try { state = open(readFileSync(STATE, 'utf8')); }
@@ -65,36 +67,42 @@ if (existsSync(STATE)) {
 }
 // 記録を始めた日（この日の一覧に出ていた出品は、それより前から出ていたので「売れるまで」の日数が分からない）
 state.since ??= Object.values(state.listings).reduce((m, o) => o.f < m ? o.f : m, today);
-const L = state.listings; // id → {t:題名, p:値段, f:初めて見た日, l:最後に一覧で見た日, s:'active'|'sold'|'removed'|'old', d:終わった日}
+const L = state.listings; // id → {t:題名, p:値段, f:初めて見た日, l:最後に一覧で見た時刻, s:'active'|'sold'|'removed'|'old', d:終わった日, dt:売れたと分かった時刻, c:最後に詳細を確かめた時刻, nw:新着順で見つけたか}
 
-// 1) 新着順の一覧を記録（最大99ページ・1ページごとに2秒あける）
+// 1) 一覧を記録（1ページごとに2秒あける）
+//    新着順（最大99ページ）に加えて安い順（最大99ページ）も見る。新着順だけだと、99ページより後ろに下がった出品が売れても気づけないため
 let seen = 0, pages = 0;
 const MAX_PAGES = process.env.MAX_PAGES ? +process.env.MAX_PAGES : 99; // 試しに動かすとき用
-for (let n = 1; n <= MAX_PAGES; n++) {
-  const got = await listPage(n); if (!got || !got.length) break; pages++;
-  for (const x of got) {
-    const o = L[x.id];
-    if (o) { o.l = RUN; o.p = x.price; o.t = x.title; if (o.s !== 'active') { o.s = 'active'; delete o.d; } }
-    else L[x.id] = { t: x.title, p: x.price, f: today, l: RUN, s: 'active' };
-    seen++;
+for (const sort of ['new', 'low-price']) {
+  for (let n = 1; n <= MAX_PAGES; n++) {
+    const got = await listPage(n, sort); if (!got || !got.length) break; pages++;
+    for (const x of got) {
+      const o = L[x.id];
+      if (o) { o.l = RUN; o.p = x.price; o.t = x.title; if (o.s !== 'active') { o.s = 'active'; delete o.d; delete o.dt; } }
+      else L[x.id] = { t: x.title, p: x.price, f: today, l: RUN, s: 'active', nw: sort === 'new' }; // 安い順で初めて見た出品は、いつ出品されたか分からない
+      seen++;
+    }
+    await sleep(2000);
   }
-  await sleep(2000);
 }
 if (!seen && MAX_PAGES) { console.error('一覧から出品を1件も読めませんでした。ゲームトレードのページの作りが変わったかもしれません'); process.exit(1); }
 
-// 2) 今日一覧に出てこなかった出品を確認（1日最大500件・1件ごとに1秒）
+// 2) 一覧に出てこなかった出品を詳細ページで確かめる（1回最大800件・1件ごとに1秒）
+//    まず今回一覧から消えた出品、残りの回数で「一覧の外に下がった出品」（30日以内に見つけたもの）を、前に確かめたのが古い順に確かめ直す
+const BUDGET = process.env.MAX_CHECKS ? +process.env.MAX_CHECKS : 800;
 const gone = Object.entries(L).filter(([, o]) => o.s === 'active' && o.l !== RUN);
+const recheck = Object.entries(L).filter(([, o]) => o.s === 'old' && o.f >= daysAgo(30)).sort(([, a], [, b]) => (a.c || '').localeCompare(b.c || ''));
 let checked = 0, sold = 0;
-for (const [id, o] of gone.slice(0, process.env.MAX_CHECKS ? +process.env.MAX_CHECKS : 500)) {
-  const { s, desc } = await detail(id); checked++;
-  if (s === 'sold') { o.s = 'sold'; o.d = today; sold++; if (desc) o.x = desc; } // 説明文も残す（専用出品のアイテム名を探すため）
+for (const [id, o] of [...gone, ...recheck].slice(0, BUDGET)) {
+  const { s, desc } = await detail(id); checked++; o.c = RUN;
+  if (s === 'sold') { o.s = 'sold'; o.d = today; o.dt = RUN; sold++; if (desc) o.x = desc; } // 説明文も残す（専用出品のアイテム名を探すため）
   else if (s === 'removed') { o.s = 'removed'; o.d = today; }
-  else if (s === 'active') o.s = 'old'; // 99ページより後ろに下がっただけ。これ以上は追わない
+  else if (s === 'active') o.s = 'old'; // 一覧の外に下がっただけ。ときどき確かめ直す
+  // pending（取引中など）と unknown（つながらない）は active のまま。次の集計でもう一度確かめる
   await sleep(1000);
 }
 
 // 3) 古い記録を消す（終わってから90日・追うのをやめてから30日）
-const daysAgo = n => new Date(Date.now() + 9 * 3600e3 - n * 864e5).toISOString().slice(0, 10);
 for (const [id, o] of Object.entries(L)) {
   if ((o.s === 'sold' || o.s === 'removed') && o.d < daysAgo(90)) delete L[id];
   else if (o.s === 'old' && o.l < daysAgo(30)) delete L[id];
@@ -185,17 +193,20 @@ function entriesOf(o) {
   const mixed = kind === 'item' && (/ずつ|各|[+、]/.test(t) || (/(?<![\p{Script=Katakana}ー])セット/u.test(t) && q === 1) || [...t.matchAll(/\/([^/\s]+)/g)].some(([, w]) => !suffixes.has(w) && w.length > 4));
   return [{ name, known, kind, q, unit: Math.round(o.p / q), priced: !mixed }];
 }
-function rank(since) {
+// 同じ商品の書き方の違い（空白・記号）をまとめるための鍵
+const keyOf = n => n.normalize('NFKC').replace(/[\s♡♥☆★・･.,、。!！?？~〜ー\-]/g, '').toLowerCase();
+// since：この日付以降に売れた分（sinceTs を渡すと、この時刻以降に売れたと分かった分）
+function rank(since, sinceTs) {
   const agg = new Map();
   for (const o of Object.values(L)) {
     if (skip(o)) continue;
-    const isSold = o.s === 'sold' && o.d >= since, isActive = o.s === 'active';
+    const isSold = o.s === 'sold' && (sinceTs ? (o.dt || o.d + 'T00:00:00Z') >= sinceTs : o.d >= since), isActive = o.s === 'active';
     if (!isSold && !isActive) continue;
     for (const { name, known, kind, q, unit, priced } of entriesOf(o)) {
-      const k = kind + name, a = agg.get(k) || { name, known, kind, sold: 0, active: 0, soldPrices: [], activePrices: [], days: [], ex: o.t };
+      const k = kind + keyOf(name), a = agg.get(k) || { name, known, kind, sold: 0, active: 0, soldPrices: [], activePrices: [], days: [], ex: o.t };
       // 単価は「1回の取引ごとの1個あたりの値段」を並べて、その真ん中の値を使う
       // 単価が分からない取引は、個数だけ数えて単価の計算には入れない
-      if (isSold) { a.sold += q; if (priced) a.soldPrices.push(unit); if (o.f > state.since) a.days.push(days(o.f, o.d)); } else { a.active += q; if (priced) a.activePrices.push(unit); }
+      if (isSold) { a.sold += q; if (priced) a.soldPrices.push(unit); if (o.f > state.since && o.nw !== false) a.days.push(days(o.f, o.d)); } else { a.active += q; if (priced) a.activePrices.push(unit); }
       agg.set(k, a);
     }
   }
@@ -211,7 +222,7 @@ for (const [id, o] of Object.entries(L).filter(([, o]) => o.s === 'sold' && o.x 
 }
 const firstDay = state.since;
 const ranking = { updated: today, since: firstDay, tracked: Object.values(L).filter(o => o.s === 'active').length,
-  d1: rank(today), // 今日の集計で売れたと分かった分（前回の集計からの約1日）
+  d1: rank(daysAgo(1), new Date(Date.now() - 864e5).toISOString()), // 直近24時間に売れたと分かった分
   d3: rank(daysAgo(3)), d7: rank(daysAgo(7)), d14: rank(daysAgo(14)), d30: rank(daysAgo(30)) };
 
 mkdirSync(new URL('data/', ROOT), { recursive: true });
