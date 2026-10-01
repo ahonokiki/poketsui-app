@@ -65,6 +65,7 @@
     <div class="row seg kind" id="kind">
       <button type="button" data-k="item" class="on">単品アイテム</button><button type="button" data-k="gacha">ガチャ・セット</button>
     </div>
+    <div class="meta" id="kindNote"></div>
     <input type="search" id="q" placeholder="名前で絞り込み" autocomplete="off">
     <div class="meta" id="meta"></div>
     <ol id="list"></ol>
@@ -97,6 +98,7 @@ const LABEL={d1:'1日',d3:'3日',d7:'1週間',d14:'2週間',d30:'1か月'};
 function render(){
   document.querySelectorAll('#period button').forEach(b=>b.classList.toggle('on',b.dataset.p===period));
   document.querySelectorAll('#kind button').forEach(b=>b.classList.toggle('on',b.dataset.k===kind));
+  $('kindNote').textContent = kind==='gacha' ? 'ガチャのコンプやまとめ売り（3点以上）の出品を、1セット単位で数えています' : '商品名ごとに、売れた個数を数えています（まとめ出品は商品ごとに分けて数えます）';
   const q=$('q').value.trim().normalize('NFKC').toLowerCase();
   const rows=(DATA[period]||[]).filter(r=>r.kind===kind && (!q||r.name.normalize('NFKC').toLowerCase().includes(q)));
   const total=rows.reduce((a,r)=>a+r.sold,0);
