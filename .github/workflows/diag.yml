@@ -1,0 +1,14 @@
+name: diag
+on:
+  push:
+    branches: [claude/diag]
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -sS -o /tmp/p.html -w "status=%{http_code} size=%{size_download}\n" -A "Mozilla/5.0 (personal ranking; github.com/ahonokiki/poketsui-app)" "https://gametrade.jp/pokekoro-twin/exhibits?sort=new&page=1"
+          head -c 600 /tmp/p.html; echo
+          grep -c exhibit_data /tmp/p.html || true
+          curl -sS -o /tmp/q.html -w "browserUA status=%{http_code} size=%{size_download}\n" -A "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1" "https://gametrade.jp/pokekoro-twin/exhibits?sort=new&page=1"
+          grep -c exhibit_data /tmp/q.html || true
