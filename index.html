@@ -236,7 +236,7 @@
 
   <section class="card"><h2>複数アイテムの並び順</h2><div class="in">
     <img src="img/layouts.png" alt="1〜12個の並べ方の案" style="width:100%;border-radius:14px">
-    <div class="note">写真を選んだ順に、左上から番号の順で並びます。2・3個は横並び、4個は2＋2、5個は3＋2、6個は3＋3、7個は4＋3、8個は4＋4、9個は3＋3＋3、10個は4＋3＋3、11個は4＋4＋3、12個は4＋4＋4。下に入れる「計○点」の数字は大きく使います。</div>
+    <div class="note">写真を選んだ順に、左上から番号の順で並びます。並べ方は、画像がいちばん大きくなるように自動で選びます（横に最大4個・できるだけ均等に）。たとえば3個はふつう2＋1、7個は3＋2＋2、8個は3＋3＋2になり、縦長の画像のときは4＋3・4＋4のように行を減らします。下に入れる「計○点」の数字は大きく使います。</div>
   </div></section>
 
   <section class="card"><h2>切り抜き位置</h2><div class="in">
@@ -703,7 +703,13 @@ function neon(x,y,w,h,r,edge,k){
   ctx.lineWidth=EC; ctx.strokeStyle='#fffaff'; ctx.shadowColor='#fff'; ctx.shadowBlur=6*k;
   rr(x-o2,y-o2,w+o2*2,h+o2*2,r+o2); ctx.stroke(); ctx.restore();
 }
-const ROWS={2:[2],3:[3],4:[2,2],5:[3,2],6:[3,3],7:[4,3],8:[4,4],9:[3,3,3],10:[4,3,3],11:[4,4,3],12:[4,4,4]};
+// 並べ方：n個を1〜4行にできるだけ均等に分けた候補（横は最大4個）の中から、画像がいちばん大きくなる並びを選ぶ
+// 例：3個は横長の画像なら 2＋1、縦長なら横1列。7個は 3＋2＋2 か 4＋3
+function rowSplits(n){ const out=[]; for (let r=1;r<=4;r++){ const base=Math.floor(n/r), extra=n%r; if (!base || base+(extra?1:0)>4) continue;
+  out.push(Array.from({length:r},(_,i)=>base+(i<extra?1:0))); } return out; }
+function bestRows(n,ar,gap){ const availW=S-56*2, availH=S-70-215; let best=null, bw=0;
+  for (const rows of rowSplits(n)){ const cols=Math.max(...rows), w=Math.min((availW-gap*(cols-1))/cols,(availH-gap*(rows.length-1))/rows.length/ar);
+    if (w>bw+0.5){ best=rows; bw=w; } } return best; }
 
 function draw(){
   ctx.clearRect(0,0,S,S);
@@ -730,12 +736,13 @@ function draw(){
 
 // 複数アイテム：選んだ順に左上から並べ、下に「計○点」
 function drawMulti(edge){
-  const n=Math.min(items.length,12), rows=ROWS[n], cols=Math.max(...rows);
+  const n=Math.min(items.length,12);
   const PAD=56, TOP=70, FOOT=215, GAP=n>6?34:44;
   // カードの縦横比（アイテム上端〜名前の行まで）
   items.forEach(it=>{ it.cardBottom = showOwned()&&it.ownedBottom ? it.ownedBottom : (it.nameBottom ?? it.cardBottom); });
   const ratios=items.map(it=>(it.cardBottom-it.top)/it.img.width).filter(r=>r>0.5&&r<1.6);
   const ar=ratios.length? ratios.sort((a,b)=>a-b)[ratios.length>>1] : 1;
+  const rows=bestRows(n,ar,GAP), cols=Math.max(...rows);
   const availW=S-PAD*2, availH=S-TOP-FOOT;
   const cw=Math.min((availW-GAP*(cols-1))/cols, (availH-GAP*(rows.length-1))/rows.length/ar), ch=cw*ar;
   const k=cw/1000, r=Math.max(14,R*k*1.6);
