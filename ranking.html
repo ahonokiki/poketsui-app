@@ -71,7 +71,7 @@
     <ol id="list"></ol>
     <p class="note">
       ゲームトレードの新着出品を毎日記録し、一覧から消えて「取引が終了しました」になったものを売れた数として数えています（記録を始めた日より前の分はありません）。
-      単価は「双子分」「3点セット」などを1個あたりに直した値段の真ん中の値です。売れるまでの日数は、記録を始めてから売れるまでの平均です。
+      単価は「双子分」「3点セット」などを1個あたりに直した値段の真ん中の値です。売れるまでの日数は、出品を初めて見つけてから売れるまでの平均です（記録を始めた日にすでに出ていた出品は、いつ出品されたか分からないので入れていません）。
       問い合わせ用の仮の値段や、たくさんのアイテムをまとめた出品は除いています。<br>
       <button type="button" class="link" id="forget">この端末の合言葉を消す</button>
     </p>
@@ -115,7 +115,7 @@ function render(){
     const sub=li.querySelector('.sub');
     const add=(k,v)=>{ const s=document.createElement('span'); s.append(k+' '); const b=document.createElement('b'); b.textContent=v; s.append(b); sub.append(s); };
     add(kind==='gacha'?'1セット':'単価',r.price==null?'不明':yen(r.price)+(r.deals>1&&r.low!==r.high?`（${yen(r.low)}〜${yen(r.high)}）`:''));
-    add('売れるまで',`${r.days}日`);
+    add('売れるまで',r.days==null?'不明':`${r.days}日`);
     add('出品中',`${r.active}個`+(r.listPrice?` ${yen(r.listPrice)}`:''));
     ol.append(li);
   });

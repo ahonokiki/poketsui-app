@@ -63,6 +63,8 @@ if (existsSync(STATE)) {
   try { state = open(readFileSync(STATE, 'utf8')); }
   catch (e) { console.warn('前回の記録を開けませんでした（合言葉を変えた？）。記録を最初からやり直します'); }
 }
+// 記録を始めた日（この日の一覧に出ていた出品は、それより前から出ていたので「売れるまで」の日数が分からない）
+state.since ??= Object.values(state.listings).reduce((m, o) => o.f < m ? o.f : m, today);
 const L = state.listings; // id → {t:題名, p:値段, f:初めて見た日, l:最後に一覧で見た日, s:'active'|'sold'|'removed'|'old', d:終わった日}
 
 // 1) 新着順の一覧を記録（最大99ページ・1ページごとに2秒あける）
@@ -110,9 +112,11 @@ const itemsJson = JSON.parse(readFileSync(new URL('items.json', ROOT)));
 (itemsJson.items || []).forEach(x => x.g && gachas.add(x.g));
 const norm = t => t.normalize('NFKC').replace(/\s/g, '');
 const longFirst = arr => arr.map(n => [norm(n), n]).filter(([k]) => k.length >= 4).sort((a, b) => b[0].length - a[0].length);
+// アイテム名の「/」の後ろに付く言葉（顔パーツ・黒・手持ち など）
+const suffixes = new Set(itemsJson.names.map(n => (n.normalize('NFKC').match(/\/([^/]+)$/) || [])[1]).filter(Boolean));
 const byName = longFirst(itemsJson.names), byGacha = longFirst([...gachas]);
 const clean = t => t.normalize('NFKC').replace(/【[^】]*】|「[^」]*」|\([^)]*\)|（[^）]*）|\[[^\]]*\]/g, ' ')
-  .replace(/双子分|1人分|2人分|一人分|即購入[可○⭕OK]*|最安値?|バラ売り?|原本|レプリカ|オリジナル品?|\d+点(セット)?|セット|まとめ|期間限定|お?値下げ中?|タイムセール中?|売り切り!*|在庫限り|多分|専用|[\p{Extended_Pictographic}️♡♥☆★]/gu, ' ')
+  .replace(/双子分|1人分|2人分|一人分|即購入[可○⭕OK]*|最安値?|バラ売り?|原本|レプリカ|オリジナル品?|\d+(点|個)(セット)?|(?<![\p{Script=Katakana}ー])セット|まとめ|期間限定|お?値下げ中?|タイムセール中?|売り切り!*|在庫限り|多分|専用|[\p{Extended_Pictographic}️♡♥☆★]/gu, ' ')
   .replace(/\s+/g, ' ').trim().replace(/^[:：/／、,・+\-\s]+|[:：/／、,・+\-\s]+$/g, '');
 // 飾りを外した名前。短すぎる・意味のない名前になったら、絵文字と記号だけ外した題名を使う
 const plain = t => t.normalize('NFKC').replace(/[\p{Extended_Pictographic}\uFE0F♡♥☆★✦✧◆◇⭐︎]/gu, ' ').replace(/\s+/g, ' ').trim();
@@ -136,7 +140,7 @@ const skip = o => o.p >= 30000 || /^(\d)\1{3,}$/.test(String(o.p)) ||
   /ダブリ|まとめ|引退|一覧|リスト|福袋|詰め合わせ|バラ売|在庫|各種|何点でも|過去ガチャ|\d{4}年|月ガチャ|アカウント|垢|均一|相談|ハピ|all\s|\d+円|販売|ドリフェス|ココリウムセット|^ココリウム$/i.test(o.t);
 // 1つの出品に何個入っているか（双子分=2、3点セット=3 など）。単価 = 値段 ÷ 個数
 function qty(t) { t = t.normalize('NFKC');
-  const m = t.match(/(\d+)\s*(点|個|セット|種)/); if (m && +m[1] > 0 && +m[1] <= 50) return +m[1] * (/双子分|2人分|二人分/.test(t) ? 2 : 1);
+  const m = t.match(/(\d+)\s*(点|個|種|(?<![\p{Script=Katakana}ー])セット)/u); if (m && +m[1] > 0 && +m[1] <= 50) return +m[1] * (/双子分|2人分|二人分/.test(t) ? 2 : 1);
   return /双子分|2人分|二人分/.test(t) ? 2 : 1; }
 const days = (a, b) => Math.max(0, Math.round((Date.parse(b) - Date.parse(a)) / 864e5));
 const med = p => { const s = [...p].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : null; };
@@ -166,15 +170,19 @@ function entriesOf(o) {
   const { name, known, kind } = itemOf(o.t), q = kind === 'gacha' ? 1 : qty(o.t); // セットは1セットとして数える
   if (kind === 'item') {
     // 「A 3個&B 1個」「A＋B」のように商品名が並んだ題名は、商品ごとに分けて数える（値段の内訳は分からないので単価には使わない）
-    const parts = o.t.normalize('NFKC').split(/[&+、/]/).map(x => ({ n: nameOf(x), q: qty(x) })).filter(x => x.n);
+    // 「/顔パーツ」「/黒」のように名前の一部の「/」（後ろの言葉がアイテム名に付く語か4文字以下）では区切らない
+    const sep = o.t.normalize('NFKC').replace(/\/([^/\s&+、]+)/g, (m, w) => suffixes.has(w) || w.length <= 4 ? '\u0001' + w : '/' + w);
+    const parts = sep.split(/[&+、/]/).map(x => x.replace(/\u0001/g, '/')).map(x => ({ n: nameOf(x), q: qty(x) })).filter(x => x.n);
     if (parts.length >= 2) return parts.map(x => ({ name: x.n, known: false, kind: 'item', q: x.q, unit: 0, priced: false }));
     if (!name) { // 題名に商品名がない（「2点セット」など）：説明文にアイテム名一覧の名前があればそれを数え、なければ数えない
       const fromDesc = o.x ? knownNamesIn(o.x) : [];
       return fromDesc.map(n => ({ name: n, known: true, kind: 'item', q: 1, unit: 0, priced: false }));
     }
   }
-  // 名前が分からず「1点ずつ」「各」「セット」「＋」などがある単品は、何個分の値段か分からないので単価に使わない
-  const mixed = kind === 'item' && /ずつ|各|セット|[+＋&＆、/／]/.test(o.t.normalize('NFKC'));
+  // 名前が分からず「1点ずつ」「各」「＋」や、個数の書いていない「セット」がある単品は、何個分の値段か分からないので単価に使わない
+  // 「/顔パーツ」「/黒紫」「&しっぽ」のようにアイテム名そのものに入っている「/」「&」は区切りとみなさない
+  const t = o.t.normalize('NFKC');
+  const mixed = kind === 'item' && (/ずつ|各|[+、]/.test(t) || (/(?<![\p{Script=Katakana}ー])セット/u.test(t) && q === 1) || [...t.matchAll(/\/([^/\s]+)/g)].some(([, w]) => !suffixes.has(w) && w.length > 4));
   return [{ name, known, kind, q, unit: Math.round(o.p / q), priced: !mixed }];
 }
 function rank(since) {
@@ -187,20 +195,21 @@ function rank(since) {
       const k = kind + name, a = agg.get(k) || { name, known, kind, sold: 0, active: 0, soldPrices: [], activePrices: [], days: [], ex: o.t };
       // 単価は「1回の取引ごとの1個あたりの値段」を並べて、その真ん中の値を使う
       // 単価が分からない取引は、個数だけ数えて単価の計算には入れない
-      if (isSold) { a.sold += q; if (priced) a.soldPrices.push(unit); a.days.push(days(o.f, o.d)); } else { a.active += q; if (priced) a.activePrices.push(unit); }
+      if (isSold) { a.sold += q; if (priced) a.soldPrices.push(unit); if (o.f > state.since) a.days.push(days(o.f, o.d)); } else { a.active += q; if (priced) a.activePrices.push(unit); }
       agg.set(k, a);
     }
   }
   return [...agg.values()].filter(a => a.sold > 0).map(a => ({
     name: a.name, known: a.known, kind: a.kind, sold: a.sold, active: a.active, ex: a.ex,
-    price: med(a.soldPrices), low: a.soldPrices.length ? Math.min(...a.soldPrices) : null, high: a.soldPrices.length ? Math.max(...a.soldPrices) : null, listPrice: med(a.activePrices), deals: a.soldPrices.length, days: +(a.days.reduce((x, y) => x + y, 0) / a.days.length).toFixed(1),
-  })).sort((a, b) => b.sold - a.sold || a.days - b.days);
+    days: a.days.length ? +(a.days.reduce((x, y) => x + y, 0) / a.days.length).toFixed(1) : null,
+    price: med(a.soldPrices), low: a.soldPrices.length ? Math.min(...a.soldPrices) : null, high: a.soldPrices.length ? Math.max(...a.soldPrices) : null, listPrice: med(a.activePrices), deals: a.soldPrices.length,
+  })).sort((a, b) => b.sold - a.sold || (a.days ?? 99) - (b.days ?? 99));
 }
 // 説明文を残していなかった専用出品は、1回だけ詳細ページを見て説明文を取っておく
 for (const [id, o] of Object.entries(L).filter(([, o]) => o.s === 'sold' && o.x === undefined && isReserved(o.t)).slice(0, 100)) {
   const { desc } = await detail(id); o.x = desc || ''; await sleep(1000);
 }
-const firstDay = Object.values(L).reduce((m, o) => o.f < m ? o.f : m, today);
+const firstDay = state.since;
 const ranking = { updated: today, since: firstDay, tracked: Object.values(L).filter(o => o.s === 'active').length,
   d1: rank(today), // 今日の集計で売れたと分かった分（前回の集計からの約1日）
   d3: rank(daysAgo(3)), d7: rank(daysAgo(7)), d14: rank(daysAgo(14)), d30: rank(daysAgo(30)) };
