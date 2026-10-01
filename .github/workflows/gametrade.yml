@@ -2,6 +2,7 @@ name: 売れ筋ランキングを更新（毎日）
 on:
   schedule:
     - cron: '47 18 * * *'   # 毎日 3:47（日本時間）
+    - cron: '47 6 * * *'    # 毎日 15:47（日本時間）。GitHub が予定の実行を飛ばすことがあるので1日2回
   workflow_dispatch:
 permissions:
   contents: write
