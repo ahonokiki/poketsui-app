@@ -18,10 +18,11 @@ if not exist "%DIR%\key.txt" (
   set /p "KEY=売れ筋ランキングの合言葉を入れて Enter: "
   call > "%DIR%\key.txt" echo %%KEY%%
 )
-rem 毎日 3:47 と 15:47 に動かす。その時刻にパソコンが止まっていたら、次に起動したときに動かす
-powershell -NoProfile -Command "$a=New-ScheduledTaskAction -Execute '%DIR%\collect.bat'; $t=@((New-ScheduledTaskTrigger -Daily -At 3:47),(New-ScheduledTaskTrigger -Daily -At 15:47)); $s=New-ScheduledTaskSettingsSet -StartWhenAvailable -WakeToRun -ExecutionTimeLimit (New-TimeSpan -Hours 2); Register-ScheduledTask -TaskName 'GametradeRanking' -Action $a -Trigger $t -Settings $s -Force | Out-Null"
+rem 毎日 9:47 と 21:47 に動かす。その時刻にパソコンが止まっていたら、次に起動したときに動かす
+rem （Claude の自動集計 3:47・15:47 と同時に動くと記録がぶつかるので、パソコンで動かすときは Claude 側を止めてから使う）
+powershell -NoProfile -Command "$a=New-ScheduledTaskAction -Execute '%DIR%\collect.bat'; $t=@((New-ScheduledTaskTrigger -Daily -At 9:47),(New-ScheduledTaskTrigger -Daily -At 21:47)); $s=New-ScheduledTaskSettingsSet -StartWhenAvailable -WakeToRun -ExecutionTimeLimit (New-TimeSpan -Hours 2); Register-ScheduledTask -TaskName 'GametradeRanking' -Action $a -Trigger $t -Settings $s -Force | Out-Null"
 echo.
-echo 毎日 3:47 と 15:47 に自動で集計するように登録しました。
+echo 毎日 9:47 と 21:47 に自動で集計するように登録しました。
 echo 続けて1回目の集計をします（20〜40分ほど）。GitHub のログイン画面が出たらログインしてください。
 call "%DIR%\collect.bat"
 echo.
