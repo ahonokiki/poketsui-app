@@ -11,6 +11,11 @@ cd /d "%DIR%%1"
 git pull -q --rebase >> "%DIR%log.txt" 2>&1
 >> "%DIR%log.txt" echo [%1]
 node tools\gametrade-track.mjs >> "%DIR%log.txt" 2>&1
+if errorlevel 1 (
+  >> "%DIR%log.txt" echo [%1] 集計に失敗したので、この回は保存しません
+  git checkout -q -- data
+  exit /b
+)
 git add data
 git diff --cached --quiet || (git commit -q -m "売れ筋ランキングを更新（パソコンから）" && git pull -q --rebase && git push -q) >> "%DIR%log.txt" 2>&1
 exit /b

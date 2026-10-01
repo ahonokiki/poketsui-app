@@ -74,8 +74,11 @@
     <div class="meta" id="meta"></div>
     <ol id="list"></ol>
     <p class="note">
-      ゲームトレードの新着出品（最大99ページ＝およそ10日分）を1日2回記録し、出品ページが「取引が終了しました」になったものを売れた数として数えています（記録を始めた日より前の分はありません）。「1日」は直近24時間です。
-      単価は「双子分」「3点セット」などを1個あたりに直した値段の真ん中の値です。売れるまでの日数は、出品を初めて見つけてから売れるまでの平均です（記録を始めた日にすでに出ていた出品は、いつ出品されたか分からないので入れていません）。
+      ゲームトレードの新着出品（最大99ページ）を1日2回（3:47・15:47）記録し、出品ページが「取引が終了しました」になったものを売れた数として数えています（記録を始めた日より前の分はありません）。
+      「売れた日」は、ページに出ている購入時刻から求めています（分からないときは確認した日）。確認と確認の間に出品されて売れてしまった分は入りません。30日以上動きのない出品は追いかけるのをやめます。「1日」は直近24時間です。<br>
+      「2個（1件・出品者1人）」は、売れた個数・取引の件数・売った人の数です。1人がまとめて売っただけなのか、いろいろな人から売れているのかの目安になります。
+      単価は「双子分」「3点セット」などを1個あたりに直した値段の真ん中の値です（専用出品やまとめ出品など1個の値段が分からないものは単価に入れていません）。
+      売れるまでの日数は、出品を初めて見つけてから売れるまでの平均です（記録を始めた日にすでに出ていた出品や、再出品で上がってきたものは入れていません）。
       問い合わせ用の仮の値段や、たくさんのアイテムをまとめた出品は除いています。<br>
       <button type="button" class="link" id="forget">この端末の合言葉を消す</button>
     </p>
@@ -109,12 +112,17 @@ function render(){
   // 急上昇：前の同じ長さの期間より売れた数の増えた分。売れやすさ：売れた数÷（売れた数＋出品中）
   const gain=r=>r.prev==null?0:r.sold-r.prev;
   if (sortBy==='up') rows.sort((a,b)=>gain(b)-gain(a)||b.sold-a.sold);
-  else if (sortBy==='rate') rows.sort((a,b)=>(b.rate??0)-(a.rate??0)||b.sold-a.sold);
+  else if (sortBy==='rate') rows.sort((a,b)=>(b.rateSort??0)-(a.rateSort??0)||b.sold-a.sold);
   const total=rows.reduce((a,r)=>a+r.sold,0);
   const noPrev = rows.length && rows.every(r=>r.prev==null);
-  $('meta').textContent=`${DATA.updated} 更新・直近${LABEL[period]}に売れた ${total}個（記録開始 ${DATA.since}）`+
+  const at=DATA.updatedAt?new Date(DATA.updatedAt):null;
+  const atText=at?`${at.getMonth()+1}/${at.getDate()} ${at.getHours()}:${String(at.getMinutes()).padStart(2,'0')} 時点`:`${DATA.updated} 更新`;
+  const stale=at&&Date.now()-at.getTime()>20*3600e3;
+  $('meta').textContent=`${atText}・直近${LABEL[period]}に売れた ${total}個（記録開始 ${DATA.since}）`+
+    (stale?'　⚠ 集計が20時間以上止まっています':'')+
     (sortBy==='up'&&noPrev?'　※比べる前の期間の記録がまだないので、急上昇はまだ出せません':'')+
-    (sortBy==='rate'?'　※売れやすさ＝売れた数÷（売れた数＋今出品中の数）。高いほど、出品が少ないのに売れている':'');
+    (sortBy==='rate'?'　※売れやすさ＝売れた数÷（売れた数＋今出品中の数）。高いほど、出品が少ないのに売れている（3個未満は—）':'')+
+    (sortBy==='up'?'　※急上昇＝前の同じ長さの期間より2倍以上に増えたもの':'');
   const ol=$('list'); ol.textContent='';
   if(!rows.length){ const d=document.createElement('div'); d.className='empty';
     d.textContent = q ? '見つかりませんでした' : '売れたデータがまだありません。毎日記録しているので、数日たつと出てきます'; ol.append(d); return; }
@@ -123,14 +131,16 @@ function render(){
     li.innerHTML='<span class="rk"></span><span class="nm"></span><span class="sold"></span><span class="sub"></span>';
     li.querySelector('.rk').textContent=i+1;
     li.querySelector('.nm').textContent=r.name;
-    if (r.prev!=null && r.sold>r.prev){ const u=document.createElement('span'); u.className='up'; u.textContent=r.prev?`↑ 前の期間 ${r.prev}→${r.sold}`:'↑ 新しく売れ始め'; li.querySelector('.nm').append(u); }
-    li.querySelector('.sold').innerHTML=`${r.sold}<small>${kind==='gacha'?'セット':'個'}</small>`;
+    if (r.prev!=null && r.sold>=3 && r.sold>=2*r.prev){ const u=document.createElement('span'); u.className='up'; u.textContent=`↑ 前の期間 ${r.prev}→${r.sold}`; li.querySelector('.nm').append(u); }
+    const unit=kind==='gacha'?'セット':'個';
+    li.querySelector('.sold').innerHTML=`${r.sold}<small>${unit}</small>`+(r.deals?`<br><small style="color:var(--sub)">${r.deals}件${r.sellers?`・出品者${r.sellers}人`:''}</small>`:'');
     const sub=li.querySelector('.sub');
     const add=(k,v)=>{ const s=document.createElement('span'); s.append(k+' '); const b=document.createElement('b'); b.textContent=v; s.append(b); sub.append(s); };
-    add(kind==='gacha'?'1セット':'単価',r.price==null?'不明':yen(r.price)+(r.deals>1&&r.low!==r.high?`（${yen(r.low)}〜${yen(r.high)}）`:''));
+    add(kind==='gacha'?'1セット':'単価',r.price==null?'不明':yen(r.price)+(r.priced>1&&r.low!==r.high?`（${yen(r.low)}〜${yen(r.high)}）`:''));
     add('売れるまで',r.days==null?'不明':`${r.days}日`);
     add('出品中',`${r.active}個`+(r.listPrice?` ${yen(r.listPrice)}`:''));
-    if (r.rate!=null) add('売れやすさ',`${r.rate}%`);
+    if (sortBy==='rate') add('売れやすさ',r.rate==null?'—':`${r.rate}%`);
+    else if (r.rate!=null) add('売れやすさ',`${r.rate}%`);
     ol.append(li);
   });
 }
