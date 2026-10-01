@@ -116,16 +116,19 @@ const clean = t => t.normalize('NFKC').replace(/【[^】]*】|「[^」]*」|\([^
   .replace(/\s+/g, ' ').trim().replace(/^[:：/／、,・+\-\s]+|[:：/／、,・+\-\s]+$/g, '');
 // 飾りを外した名前。短すぎる・意味のない名前になったら、絵文字と記号だけ外した題名を使う
 const plain = t => t.normalize('NFKC').replace(/[\p{Extended_Pictographic}\uFE0F♡♥☆★✦✧◆◇⭐︎]/gu, ' ').replace(/\s+/g, ' ').trim();
+// 題名から商品名だけを取り出す。商品名が残らない題名（「2点セット」など）は null
 function nameOf(title) {
-  const c = clean(title).replace(/[【】「」『』［］\[\]]/g, ' ').replace(/[^\p{L}\p{N}]+$/u, '').replace(/^[^\p{L}\p{N}♪]+/u, '').replace(/\s+/g, ' ').trim();
-  return c.length < 3 || /^(画像|各|セット|ココリウム|ファッション|アイテム|\d+点?)$/.test(c) ? plain(title) : c;
+  let t = title.normalize('NFKC').replace(/《[^》]*》|〈[^〉]*〉|<[^>]*>/g, ' ').replace(/^[^《]*》/, ' ').replace(/^[^「]*」/, ' '); // 「〇》」「即購入可》」のような前置きは外す
+  const c = clean(t).replace(/[【】「」『』《》［］\[\]]/g, ' ').replace(/\d+\s*(個|点|コ)/g, ' ')
+    .replace(/[^\p{L}\p{N}]+$/u, '').replace(/^[^\p{L}\p{N}♪]+/u, '').replace(/\s+/g, ' ').trim();
+  return c.length < 3 || /^(画像|各|セット|ココリウム|ファッション|アイテム|\d+点?|点セット|セット販売|まとめ)$/.test(c) ? null : c;
 }
 function itemOf(title) {
   const t = norm(title);
   for (const [k, n] of byName) if (t.includes(k)) return { name: n, known: true, kind: 'item' };
   for (const [k, g] of byGacha) if (t.includes(k)) return { name: g, known: true, kind: 'gacha' }; // ガチャ名そのものの出品は「ガチャ・セット」
   // 3点以上のセットは単品ではないので「ガチャ・セット」に入れる
-  if (/([3-9]|\d{2,})\s*(点|種)|各\d*種|フルセット|コンプ/.test(title.normalize('NFKC'))) return { name: nameOf(title), known: false, kind: 'gacha' };
+  if (/([3-9]|\d{2,})\s*(点|種)|各\d*種|フルセット|コンプ/.test(title.normalize('NFKC'))) return { name: nameOf(title) || plain(title), known: false, kind: 'gacha' };
   return { name: nameOf(title), known: false, kind: 'item' };
 }
 // 問い合わせ用の仮の値段や、たくさんのアイテムをまとめた出品はアイテムの人気が分からないので除く
@@ -161,6 +164,15 @@ function entriesOf(o) {
   if (names.length === 1) { const q = qty(reserved ? o.t + ' ' + (o.x || '') : o.t); return [{ name: names[0], known: true, kind: 'item', q, unit: Math.round(o.p / q), priced: !reserved }]; } // 専用出品は他のアイテムの分も入っていることがあるので単価に使わない
   if (reserved) return []; // 説明文にもアイテム名が見つからない専用出品は数えない
   const { name, known, kind } = itemOf(o.t), q = kind === 'gacha' ? 1 : qty(o.t); // セットは1セットとして数える
+  if (kind === 'item') {
+    // 「A 3個&B 1個」「A＋B」のように商品名が並んだ題名は、商品ごとに分けて数える（値段の内訳は分からないので単価には使わない）
+    const parts = o.t.normalize('NFKC').split(/[&+、/]/).map(x => ({ n: nameOf(x), q: qty(x) })).filter(x => x.n);
+    if (parts.length >= 2) return parts.map(x => ({ name: x.n, known: false, kind: 'item', q: x.q, unit: 0, priced: false }));
+    if (!name) { // 題名に商品名がない（「2点セット」など）：説明文にアイテム名一覧の名前があればそれを数え、なければ数えない
+      const fromDesc = o.x ? knownNamesIn(o.x) : [];
+      return fromDesc.map(n => ({ name: n, known: true, kind: 'item', q: 1, unit: 0, priced: false }));
+    }
+  }
   // 名前が分からず「1点ずつ」「各」「セット」「＋」などがある単品は、何個分の値段か分からないので単価に使わない
   const mixed = kind === 'item' && /ずつ|各|セット|[+＋&＆、/／]/.test(o.t.normalize('NFKC'));
   return [{ name, known, kind, q, unit: Math.round(o.p / q), priced: !mixed }];
