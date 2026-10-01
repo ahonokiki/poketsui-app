@@ -69,11 +69,11 @@ if (existsSync(STATE)) {
 state.since ??= Object.values(state.listings).reduce((m, o) => o.f < m ? o.f : m, today);
 const L = state.listings; // id → {t:題名, p:値段, f:初めて見た日, l:最後に一覧で見た時刻, s:'active'|'sold'|'removed'|'old', d:終わった日, dt:売れたと分かった時刻, c:最後に詳細を確かめた時刻, nw:新着順で見つけたか}
 
-// 1) 一覧を記録（1ページごとに2秒あける）
-//    新着順（最大99ページ）に加えて安い順（最大99ページ）も見る。新着順だけだと、99ページより後ろに下がった出品が売れても気づけないため
+// 1) 新着順の一覧を記録（最大99ページ＝新しい出品のおよそ10日分・1ページごとに2秒あける）
+//    99ページより後ろに下がった出品は、2) で確かめ直して後から売れた分も数える
 let seen = 0, pages = 0;
 const MAX_PAGES = process.env.MAX_PAGES ? +process.env.MAX_PAGES : 99; // 試しに動かすとき用
-for (const sort of ['new', 'low-price']) {
+for (const sort of ['new']) {
   for (let n = 1; n <= MAX_PAGES; n++) {
     const got = await listPage(n, sort); if (!got || !got.length) break; pages++;
     for (const x of got) {
