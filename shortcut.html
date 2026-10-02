@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ショートカットの作り方</title>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--pink:#ff6fae;--ink:#5a4a5e;--sub:#9a8a9e;--line:#f6d6e6}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff0f6 radial-gradient(circle at 10px 10px,#ffe0ee 3px,transparent 4px) 0 0/22px 22px;min-height:100vh;
+    font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif;color:var(--ink);line-height:1.7}
+  header{position:sticky;top:0;z-index:2;background:linear-gradient(135deg,#9d86d8,#c38fd8 55%,#f59ac8);color:#fff;text-align:center;
+    padding:14px 56px 12px;font-size:18px;font-weight:900;letter-spacing:.06em;border-radius:0 0 22px 22px;box-shadow:0 3px 10px #b07ad044}
+  header a{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;background:#fff;color:#c38fd8;
+    display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:20px;font-weight:900;box-shadow:0 3px 0 #c9a3dd}
+  main{max-width:560px;margin:0 auto;padding:12px 16px 40px;font-size:14px}
+  .card{background:#fff;border-radius:20px;padding:14px 16px;box-shadow:0 4px 14px #e7a3c833;margin:12px 0}
+  h2{margin:0 0 6px;font-size:16px;color:#d0508a}
+  ol{padding-left:22px;margin:6px 0}
+  li{margin:6px 0}
+  code{background:#fff1f7;border:1px solid #ffd0e6;border-radius:8px;padding:1px 6px;font-size:13px;overflow-wrap:anywhere}
+  .act{display:block;background:#f6f1ff;border-left:4px solid #a98be0;border-radius:0 12px 12px 0;padding:6px 10px;margin:4px 0;font-weight:800}
+  .act small{display:block;font-weight:700;color:var(--sub)}
+  .note{font-size:12px;color:var(--sub)}
+  .url{display:block;background:#fff1f7;border:2px dashed #ffd0e6;border-radius:12px;padding:10px;font-size:13px;overflow-wrap:anywhere;text-align:center;margin:8px 0}
+  button.copy{width:100%;border:0;border-radius:99px;padding:11px;font:inherit;font-weight:900;color:#fff;background:linear-gradient(135deg,#ff7aa0,#ff9cc8);box-shadow:0 4px 0 #e0579a;cursor:pointer}
+</style>
+</head>
+<body>
+<header><a href="./" aria-label="アプリに戻る">‹</a>ショートカットの作り方</header>
+<main>
+  <section class="card">
+    <h2>できること</h2>
+    ゲーム画面のスクショを撮って <b>iPhoneの背面を3回たたく</b> と、iPhoneがスクショの文字を読み、このアプリが名前と所持数が入った状態で開きます。コピーや貼り付けの操作はありません。<br>
+    あとはアプリで同じスクショを「アイテム画像を選ぶ」から選ぶだけです。
+    <div class="note">読み取りはiPhoneに入っている文字認識（写真の文字を長押しで選べるのと同じもの）で、アプリ内の読み取りよりずっと正確です。</div>
+  </section>
+
+  <section class="card">
+    <h2>1. ショートカットを作る（一度だけ）</h2>
+    「ショートカット」アプリを開き、右上の「＋」で新しいショートカットを作って、次のアクションを上から順に足します。アクションは下の検索欄に名前を入れると出てきます。
+    <ol>
+      <li><span class="act">写真を検索<small>フィルタを追加：「メディアタイプ」が「スクリーンショット」／「作成日」が「直近」「15分」<br>並び順：作成日／昇順（古い順）　制限：オン・8件</small></span></li>
+      <li><span class="act">カウント<small>「写真」の「項目」の数（上の「写真を検索」の結果を選ぶ）</small></span></li>
+      <li><span class="act">if文<small>「カウント」が「次より小さい」1</small></span>
+        <span class="act" style="margin-left:14px">通知を表示<small>「15分以内のスクショがありません」</small></span>
+        <span class="act" style="margin-left:14px">ショートカットを停止</span>
+        <span class="act">if文の終了</span></li>
+      <li><span class="act">各項目を繰り返す<small>「写真」（「写真を検索」の結果を選ぶ）</small></span>
+        <span class="act" style="margin-left:14px">イメージからテキストを抽出<small>「繰り返し項目」から</small></span>
+        <span class="act" style="margin-left:14px">変数に追加<small>名前：読み取り</small></span>
+        <span class="act">繰り返しの終了</span></li>
+      <li><span class="act">テキストを結合<small>「読み取り」を「カスタム」で結合。区切り：<code>=====</code>（イコール5つ）</small></span></li>
+      <li><span class="act">URLエンコード<small>「結合されたテキスト」を</small></span></li>
+      <li><span class="act">URLを開く<small>下のURLのあとに、ひとつ前の「URLエンコード済みのテキスト」をつなげる</small></span>
+        <span class="url" id="u">https://ahonokiki.github.io/poketsui-app/#t=</span>
+        <button class="copy" type="button" id="cp">このURLをコピー</button>
+        <div class="note">「URLを開く」のURL欄に貼り付けてから、欄の中の最後をタップして「変数を選択」→「URLエンコード済みのテキスト」を選びます。</div></li>
+    </ol>
+    名前を「ポケツイ」などにして保存します。
+  </section>
+
+  <section class="card">
+    <h2>2. 背面タップに割り当てる（一度だけ）</h2>
+    <ol>
+      <li>「設定」→「アクセシビリティ」→「タッチ」→「背面タップ」</li>
+      <li>「トリプルタップ」を選び、いちばん下の「ショートカット」の中から作ったショートカット（ポケツイ）を選ぶ</li>
+    </ol>
+    <div class="note">初めて動かすとき「写真へのアクセス」を聞かれるので「許可」します。ケースが厚いとタップに反応しにくいことがあります。</div>
+  </section>
+
+  <section class="card">
+    <h2>3. 毎回の使い方</h2>
+    <ol>
+      <li>ゲームでアイテムの画面を開き、スクショを撮る（何枚でも。15分以内に次へ）</li>
+      <li>iPhoneの背面を3回たたく → Safariでこのアプリが開き、「○枚分の名前を受け取りました」と出る</li>
+      <li>「アイテム画像を選ぶ」で、同じスクショを撮った順に選ぶ（並びがずれてもアプリが直します）</li>
+      <li>名前が全部「一覧と一致」（緑）になっていれば「題名」「文字」でコピー。赤い名前はタップして候補から選ぶ</li>
+    </ol>
+    <div class="note">ショートカットはSafariでアプリを開きます。ホーム画面に追加したアプリの画面ではなく、開いたSafariの画面でそのまま続けてください。</div>
+  </section>
+</main>
+<script>
+document.getElementById('cp').onclick=async()=>{ const t=document.getElementById('u').textContent.trim();
+  try{ await navigator.clipboard.writeText(t); alert('コピーしました'); }catch(e){ prompt('長押しでコピーしてください',t); } };
+</script>
+</body>
+</html>

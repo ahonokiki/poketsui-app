@@ -155,6 +155,17 @@
   .chip img.snap{width:auto;height:20px;max-width:70px;object-fit:contain;border-radius:6px;background:#fff}
   .nosnap{font-size:10px;color:var(--sub);font-weight:800}
   .copy{flex:none;padding:12px 10px;font-size:14px;background:linear-gradient(180deg,#c3b0f0,var(--lav));box-shadow:0 4px 0 var(--lav2)}
+  /* 読み取った名前の一覧（辞書と一致＝緑、不一致＝赤） */
+  #names{width:100%;display:flex;flex-direction:column;gap:4px}
+  .nmRow{display:flex;align-items:center;gap:6px;background:#fff;border-radius:14px;padding:5px 8px;box-shadow:0 2px 0 #f6cfe2;font-size:13px;cursor:pointer;border:2px solid transparent}
+  .nmRow .no{flex:none;width:18px;height:18px;border-radius:50%;background:var(--pink);color:#fff;font-size:11px;font-weight:900;line-height:18px;text-align:center}
+  .nmRow .t{flex:1;min-width:0;overflow-wrap:anywhere;font-weight:800}
+  .nmRow .st{flex:none;font-size:11px;font-weight:900;border-radius:99px;padding:2px 8px}
+  .nmRow.ok .st{background:#dff7e8;color:#1f9a57}.nmRow.ng{border-color:#ff8aa0;background:#fff4f6}.nmRow.ng .st{background:#ffd9e0;color:#d0304f}
+  .nmRow.wait .st{background:#f3eef5;color:var(--sub)}
+  .cand{display:flex;align-items:center;gap:8px;width:100%;border:2px solid #f6e4ee;border-radius:14px;background:#fff;padding:9px 12px;margin-top:6px;font:inherit;font-size:14px;font-weight:800;color:var(--ink);text-align:left;cursor:pointer}
+  .cand small{flex:none;color:var(--sub);font-weight:700}
+  .cand.best{border-color:var(--pink)}
 </style>
 </head>
 <body>
@@ -176,6 +187,7 @@
   </div>
   <img id="ownSnap" alt="元画像の所持数" hidden>
   <div id="multi"></div>
+  <div id="names"></div>
 </div>
 </main>
 
@@ -212,10 +224,17 @@
     </select></div>
     <div class="row"><label>題名の×1 <select id="titleOne"><option value="show">×1も付ける</option><option value="hide">×1は省く</option></select></label></div>
     <div class="row"><label><input type="checkbox" id="titleTotal" checked> 題名に「計○点」を付ける（2個以上のとき）</label></div>
+    <div class="row"><label><input type="checkbox" id="autoCopy" checked> 「題名」「文字」を押したらすぐコピーする</label></div>
+    <div class="note">オフにすると、押したときは文字を表示するだけで、確認してから「コピー」を押します。どちらでも、赤い名前（一覧にない名前）が残っている間はコピーできません。</div>
     <div class="row"><label style="width:100%">最初の行（空欄なら入れない）<input type="text" id="txtHead" placeholder="例：【即購入OK】" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font-size:16px"></label></div>
     <div class="row"><label style="width:100%">合計の書き方<input type="text" id="txtTotal" value="計{n}点" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font-size:16px"></label></div>
     <div class="row"><label style="width:100%">最後の行（空欄なら入れない）<textarea id="txtFoot" rows="3" placeholder="例：購入後にマイコードとお名前をお知らせください" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font:inherit;font-size:16px"></textarea></label></div>
     <div class="note">{n} が合計の数に置き換わります。変えた書式は次回も使われます。</div>
+  </div></section>
+
+  <section class="card"><h2>ショートカット連携（iPhone）</h2><div class="in">
+    <div class="note">iPhoneの「ショートカット」にスクショの文字を読ませて、このアプリに渡せます。背面タップで起動すれば、スクショを撮って背面を3回たたくだけで名前と所持数が入ります。</div>
+    <a class="pill wide" href="shortcut.html" style="margin-top:8px;text-decoration:none;display:flex">📱 ショートカットの作り方</a>
   </div></section>
 
   <section class="card"><h2>フチの色</h2><div class="in">
@@ -259,6 +278,14 @@
   <p class="note" id="txtMsg" style="font-weight:800;margin:12px 0 8px"></p>
   <textarea id="txtBox" rows="10" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:10px;font:inherit;font-size:16px;background:#fff"></textarea>
   <button class="pill wide" id="txtCopy" type="button" style="margin-top:10px">もう一度コピー</button>
+</div></div>
+<div id="fixSheet" class="sheet" hidden><div class="sheetIn">
+  <div class="sheetHead">✏️ 名前を直す<button class="close" id="fixClose" type="button">✕</button></div>
+  <p class="note" id="fixMsg" style="font-weight:800;margin:12px 0 6px"></p>
+  <input type="text" id="fixInput" autocomplete="off" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:10px;font:inherit;font-size:16px;background:#fff">
+  <div id="fixCands"></div>
+  <div class="row" style="margin-top:10px"><button class="pill" id="fixUse" type="button" style="flex:1">この名前にする</button><button class="pill lav" id="fixAsIs" type="button" style="flex:1">一覧にないけどOK</button></div>
+  <div class="note">候補をタップすると、その名前に直して覚えます。一覧にない新しいアイテムは「一覧にないけどOK」で、そのまま使えるようになります。</div>
 </div></div>
 <div class="bar"><div class="inner"><button class="pill copy" id="copyTitle" type="button">🏷 題名</button><button class="pill copy" id="copyTxt" type="button">📋 文字</button><button class="pill save" id="dl">🎁 画像を保存</button></div></div>
 
@@ -349,9 +376,12 @@ const timeLimit=(p,ms)=>Promise.race([p,new Promise((_,ng)=>setTimeout(()=>ng(ne
 // 読み間違えやすいカタカナの補正
 function fixKana(t){ return t.replace(/ン(?=[ャュョ])/g,'シ').replace(/ソ(?=[ャュョ])/g,'シ').replace(/ー{2,}/g,'ー'); }
 // アイテム名一覧（items.json）と、この端末で直した名前（学習）で、読み取った名前をいちばん近い名前に置き換える
-let itemNames=null;
-const loadItemNames=()=>itemNames ??= fetch('items.json',{cache:'no-cache'}).then(r=>{ if(!r.ok) throw 0; return r.json(); }).then(j=>j.names||[])
-  .catch(()=>{ itemNames=null; return []; }); // 読み込めなかったら次の読み取りでもう一度試す
+let itemNames=null, dictExact=new Set();
+// 辞書：items.json（公式一覧サイト）＋ data/gametrade-names.json（出品の題名で見かけた名前）
+const loadItemNames=()=>itemNames ??= Promise.all(['items.json','data/gametrade-names.json'].map(u=>fetch(u,{cache:'no-cache'}).then(r=>r.ok?r.json():{}).catch(()=>({}))))
+  .then(([a,b])=>{ const names=[...new Set([...(a.names||[]),...(b.names||[])])]; if(!names.length) itemNames=null; // 読み込めなかったら次の読み取りでもう一度試す
+    dictExact=new Set(names); return names; });
+loadItemNames();
 const normName=t=>t.normalize('NFKC').replace(/[\s・･「」『』【】（）()]/g,'').replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+96));
 // 保存形式：{正規化した読み取り: {from:読み取った文字, to:直した名前}}
 const learned={ all(){ try{ return JSON.parse(localStorage.getItem('promo_learned')||'{}'); }catch(e){ return {}; } },
@@ -444,22 +474,88 @@ async function analyzeShot(img){
   if (m) r.owned=+m[1];
   return r;
 }
-let shotName='', shotRaw='';
-function setShot(i){ shotName=''; $('ownSnap').hidden=true; items=[]; renderItems(); shotImg=i; $('count').value=''; readOwned(i); }
+let shotName='', shotRaw='', shotReading=false;
+function setShot(i){ shotName=''; shotRaw=''; $('ownSnap').hidden=true; items=[]; renderItems(); shotImg=i; $('count').value=''; shotReading=true; renderNames(); readOwned(i); }
 async function readOwned(img){
   const seq=++ocrSeq; $('ownState').textContent='読取中…';
+  const pend=pendingList();
+  if (pend.length===1){ // ショートカットから1枚分を受け取っている：先に名前と所持数を入れる
+    shotName=pend[0].name||''; shotRaw=''; if (pend[0].owned){ $('owned').value=pend[0].owned; $('count').value=''; $('ownState').textContent='自動'; } shotReading=false; renderNames(); draw(); }
   try{
     const r=await analyzeShot(img); if (seq!==ocrSeq) return;
     if (!r) throw 0;
     const sb=showOwned()? r.squareBottom : (r.nameBottom??r.squareBottom);
     if (sb) $('ct').value=Math.max(0,+(((sb-img.width)/img.width)*100).toFixed(1));
-    if (false) $('ct').value=Math.max(0,+(((r.squareBottom-img.width)/img.width)*100).toFixed(1));
-    shotName=r.name||''; shotRaw=r.raw||''; $('ownSnap').src=r.snap||''; $('ownSnap').hidden=!r.snap;
-    if (r.owned){ $('owned').value=r.owned; $('count').value=''; $('ownState').textContent='自動'; }
-    else $('ownState').textContent='読取×';
-    draw();
-  }catch(e){ if(seq===ocrSeq) $('ownState').textContent='読取×'; }
+    $('ownSnap').src=r.snap||''; $('ownSnap').hidden=!r.snap;
+    if (pend.length){ // 受け取った名前のうち、画面の文字にいちばん近いものを使う
+      const p=pend.length===1 ? pend[0] : nearestPending(r.raw||r.name||'',pend);
+      shotName=p.name||''; shotRaw=r.raw||''; if (p.owned){ $('owned').value=p.owned; $('count').value=''; $('ownState').textContent='自動'; } else if (r.owned){ $('owned').value=r.owned; $('count').value=''; $('ownState').textContent='自動'; } else $('ownState').textContent='読取×';
+      clearPending();
+    } else {
+      shotName=r.name||''; shotRaw=r.raw||'';
+      if (r.owned){ $('owned').value=r.owned; $('count').value=''; $('ownState').textContent='自動'; }
+      else $('ownState').textContent='読取×';
+    }
+    shotReading=false; renderNames(); draw();
+  }catch(e){ if(seq===ocrSeq){ $('ownState').textContent='読取×'; shotReading=false; renderNames(); } }
 }
+// ---- ショートカット（iPhoneの文字認識）から受け取った文字：URLの #t= に「=====」区切りで1枚ずつ入っている ----
+const PENDING_KEY='promo_pendingOcr';
+const JUNK=/リリース|欲しい|ショップ|タイプ|所持数|持数|コピー|ココリウム|ファッション|^[\d:：個]+$/;
+async function parseBlock(t){
+  const lines=t.split(/\n/).map(l=>l.trim()).filter(Boolean), flat=t.replace(/\s/g,'');
+  const m=flat.match(/持数[^0-9]*(\d+)/)||flat.match(/(\d+)個/), owned=m?+m[1]:null;
+  await loadItemNames();
+  const exact=lines.find(l=>dictExact.has(l.normalize('NFKC'))); if (exact) return {name:exact.normalize('NFKC'), owned, lines};
+  const li=lines.findIndex(l=>/持数|所持/.test(l.replace(/\s/g,'')));
+  const hint=(li>0?lines[li-1]:lines.filter(l=>!JUNK.test(l)).sort((a,b)=>b.length-a.length)[0])||'';
+  return {name:await nearestItemName(fixKana(hint.normalize('NFKC'))), owned, lines, raw:hint};
+}
+async function takeHashText(){
+  const m=location.hash.match(/^#t=(.*)$/s); if(!m) return; let t=m[1]; try{ t=decodeURIComponent(t); }catch(e){}
+  history.replaceState(null,'',location.pathname+location.search);
+  const blocks=t.split(/\s*={3,}\s*/).map(x=>x.trim()).filter(Boolean); if(!blocks.length) return;
+  const list=[]; for (const b of blocks) list.push(await parseBlock(b));
+  try{ localStorage.setItem(PENDING_KEY,JSON.stringify({at:Date.now(),list})); }catch(e){}
+  toast(`ショートカットから${list.length}枚分の名前を受け取りました。\n同じスクショを「アイテム画像を選ぶ」で選んでください`);
+}
+function pendingList(){ try{ const j=JSON.parse(localStorage.getItem(PENDING_KEY)||'null'); return j && Date.now()-j.at<30*60e3 ? j.list : []; }catch(e){ return []; } }
+function clearPending(){ try{ localStorage.removeItem(PENDING_KEY); }catch(e){} }
+function nearestPending(raw,pend){ const a=normName(raw); let best=pend[0], bd=Infinity; for (const p of pend){ const d=editCost(a,normName(p.name||'')); if (d<bd){ bd=d; best=p; } } return best; }
+window.addEventListener('hashchange',takeHashText); takeHashText();
+// ---- 読み取った名前の確認（辞書と完全一致＝緑、違う＝赤。赤が残っている間はコピーしない） ----
+const nameOk=n=>!!n && (dictExact.has(n) || Object.values(learned.all()).some(v=>(v?.to??v)===n));
+function nameEntries(){ return items.length>1 ? items.map((it,i)=>({i, name:it.name||'', raw:it.raw||'', reading:it.reading}))
+  : (shotImg ? [{i:0, name:shotName, raw:shotRaw, reading:shotReading}] : []); }
+function setEntryName(i,v){ if (items.length>1) items[i].name=v; else shotName=v; renderNames(); }
+function renderNames(){
+  const box=$('names'); box.innerHTML='';
+  nameEntries().forEach(e=>{ const d=document.createElement('div'); const ok=nameOk(e.name);
+    d.className='nmRow '+(e.reading&&!e.name?'wait':ok?'ok':'ng');
+    d.innerHTML=`<span class="no">${e.i+1}</span><span class="t"></span><span class="st">${e.reading&&!e.name?'読取中':ok?'一覧と一致':e.name?'一覧にない':'読めず'}</span>`;
+    d.querySelector('.t').textContent=e.name||'（名前なし）'; d.onclick=()=>openFix(e.i); box.appendChild(d); });
+}
+let fixIdx=0;
+async function openFix(i){
+  fixIdx=i; const e=nameEntries()[i]; if(!e) return;
+  $('fixInput').value=e.name; $('fixMsg').textContent=e.raw&&e.raw!==e.name?`読み取った文字：${e.raw}`:'読み取った文字をもとに、近い名前を出しています';
+  $('fixSheet').hidden=false; $('fixCands').innerHTML='<div class="note">候補をさがしています…</div>';
+  const names=await loadItemNames(); const q=normName(e.raw||e.name||''); if(!q){ $('fixCands').innerHTML=''; return; }
+  const scored=[]; for (const n of names){ const b=normName(n); if (Math.abs(b.length-q.length)>6) continue; scored.push([editCost(q,b),n]); }
+  for (const p of pendingList()) if (p.name) scored.push([editCost(q,normName(p.name))-0.5,p.name]);
+  scored.sort((a,b)=>a[0]-b[0]); const box=$('fixCands'); box.innerHTML=''; const seen=new Set();
+  scored.filter(([,n])=>!seen.has(n)&&seen.add(n)).slice(0,8).forEach(([d,n],k)=>{ const b=document.createElement('button'); b.type='button'; b.className='cand'+(k===0?' best':''); b.innerHTML='<span></span><small></small>';
+    b.firstChild.textContent=n; b.lastChild.textContent=d<=0.5?'ほぼ一致':d<=1.5?'近い':''; b.onclick=()=>applyFix(n,true); box.appendChild(b); });
+}
+function applyFix(v,learn){ v=v.trim(); if(!v) return; const e=nameEntries()[fixIdx]; if(!e) return;
+  if (learn && (e.raw||e.name) && v!==(e.raw||e.name)) learned.add(e.raw||e.name,v); else if (learn) learned.add(v,v);
+  setEntryName(fixIdx,v); $('fixSheet').hidden=true; toast(nameOk(v)?'直しました':'直しました（一覧にない名前です）'); }
+$('fixUse').onclick=()=>applyFix($('fixInput').value,true);
+$('fixAsIs').onclick=()=>{ const v=$('fixInput').value.trim(); if(!v) return; learned.add(v,v); applyFix(v,false); };
+$('fixClose').onclick=()=>{ $('fixSheet').hidden=true; };
+// コピーの前の確認：赤い名前があれば止めて、直す画面を開く
+function namesReady(){ const bad=nameEntries().find(e=>!nameOk(e.name)); if(!bad) return true;
+  toast(bad.reading?'まだ読み取り中です':'赤い名前を直してください（一覧にない名前）'); if(!bad.reading) openFix(bad.i); return false; }
 
 // ---- アプリの背景：公式サイトの今月の壁紙（wallpaper.json は GitHub Actions が毎月更新） ----
 fetch('wallpaper.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{ if(!j?.image) return;
@@ -479,11 +575,23 @@ async function setItems(files){
   items=list;
   if (bad) toast(`読み込めない画像が${bad}枚あったので飛ばしました`);
   if (files.length>12) toast('13個以上は選べないので、最初の12個を使います');
-  renderItems(); draw();
+  // ショートカットから受け取った名前・所持数があれば、選んだ順に当てはめる（読み取り後に画面の文字で並びを直す）
+  const pend=pendingList();
+  if (pend.length){ items.forEach((it,i)=>{ const p=pend[i]; if(!p) return; it.name=p.name; it.pend=i; if (p.owned) it.owned=p.owned; });
+    if (pend.length!==items.length) toast(`受け取ったのは${pend.length}枚分、選んだのは${items.length}枚です`); }
+  renderItems(); renderNames(); draw();
   for (const it of items){ try{ const r=await analyzeShot(it.img); if (seq!==ocrSeq) return;
-      if (r?.owned) it.owned=r.owned;
-      it.snap=r?.snap; it.name=r?.name; it.raw=r?.raw; if (r?.cardBottom){ it.ownedBottom=r.ownedBottom; it.nameBottom=r.nameBottom; it.cardBottom=r.cardBottom; it.top=r.top ?? Math.max(0,r.squareBottom-it.img.width); }
-    }catch(e){} it.reading=false; renderItems(); draw(); }
+      if (r?.owned && !(pend.length && it.owned)) it.owned=r.owned;
+      it.snap=r?.snap; it.raw=r?.raw; if (!pend.length) it.name=r?.name; if (r?.cardBottom){ it.ownedBottom=r.ownedBottom; it.nameBottom=r.nameBottom; it.cardBottom=r.cardBottom; it.top=r.top ?? Math.max(0,r.squareBottom-it.img.width); }
+    }catch(e){} it.reading=false; renderItems(); renderNames(); draw(); }
+  if (pend.length>=2 && items.every(it=>it.raw)){ // 画面から読めた文字と受け取った名前を見比べて、対応がずれていたら直す
+    const n=Math.min(items.length,pend.length), cost=(i,j)=>editCost(normName(items[i].raw),normName(pend[j].name||''));
+    const used=new Set(), pick=[]; const pairs=[]; for (let i=0;i<n;i++) for (let j=0;j<n;j++) pairs.push([cost(i,j),i,j]); pairs.sort((a,b)=>a[0]-b[0]);
+    const usedI=new Set(); for (const [,i,j] of pairs){ if (usedI.has(i)||used.has(j)) continue; usedI.add(i); used.add(j); pick[i]=j; }
+    const before=items.slice(0,n).reduce((a,_,i)=>a+cost(i,i),0), after=items.slice(0,n).reduce((a,_,i)=>a+cost(i,pick[i]),0);
+    if (after+1<=before && pick.some((j,i)=>j!==i)){ items.forEach((it,i)=>{ const p=pend[pick[i]]; if(!p) return; it.name=p.name; if (p.owned) it.owned=p.owned; }); toast('画像と名前の対応を直しました'); renderItems(); renderNames(); draw(); }
+  }
+  if (pend.length) clearPending();
 }
 function renderItems(){
   const box=$('multi'); document.body.classList.toggle('isMulti',items.length>1);
@@ -818,9 +926,15 @@ function titleText(){ // タイトル用：アイテム名×数だけ
 async function copyText(t){
   try{ await navigator.clipboard.writeText(t); return true; }
   catch(e){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(_){} ta.remove(); return ok; } }
-$('copyTxt').onclick=async()=>{ const t=listText(); if(!t){ toast('アイテム画像を選んでください'); return; }
-  const ok=await copyText(t); $('txtBox').value=t; txtShown=t; $('txtSheet').hidden=false;
-  $('txtMsg').textContent= ok ? 'コピーしました。読み間違いがあれば直して「もう一度コピー」' : 'コピーできませんでした。下の文字を長押ししてコピーしてください'; };
+try{ const v=localStorage.getItem('promo_autoCopy'); if(v!==null) $('autoCopy').checked=v==='1'; }catch(e){}
+$('autoCopy').addEventListener('change',()=>{ try{ localStorage.setItem('promo_autoCopy',$('autoCopy').checked?'1':'0'); }catch(e){} });
+async function showCopy(t,label){
+  $('txtBox').value=t; txtShown=t; $('txtSheet').hidden=false;
+  if (!$('autoCopy').checked){ $('txtCopy').textContent='コピー'; $('txtMsg').textContent=label+'：内容を確認して「コピー」を押してください'; return; }
+  $('txtCopy').textContent='もう一度コピー';
+  const ok=await copyText(t);
+  $('txtMsg').textContent= ok ? label+'をコピーしました。読み間違いがあれば直して「もう一度コピー」' : 'コピーできませんでした。下の文字を長押ししてコピーしてください'; }
+$('copyTxt').onclick=()=>{ const t=listText(); if(!t){ toast('アイテム画像を選んでください'); return; } if(!namesReady()) return; showCopy(t,'文字'); };
 // 直した文字から、各アイテムの正しい名前を取り出して覚える（次からは同じ読み間違いを自動で直す）
 let txtShown='';
 function learnFromEdit(before,after){
@@ -848,11 +962,9 @@ function learnFromEdit(before,after){
   }
   return learnedN;
 }
-$('txtCopy').onclick=async()=>{ const v=$('txtBox').value, n=learnFromEdit(txtShown,v); txtShown=v;
+$('txtCopy').onclick=async()=>{ const v=$('txtBox').value, n=learnFromEdit(txtShown,v); txtShown=v; renderNames(); $('txtCopy').textContent='もう一度コピー';
   toast((await copyText(v)?'コピーしました':'コピーできませんでした')+(n?`（${n}個の名前を覚えました）`:'')); };
-$('copyTitle').onclick=async()=>{ const t=titleText(); if(!t){ toast('アイテム画像を選んでください'); return; }
-  const ok=await copyText(t); $('txtBox').value=t; txtShown=t; $('txtSheet').hidden=false;
-  $('txtMsg').textContent= ok ? 'タイトル用にコピーしました。読み間違いがあれば直して「もう一度コピー」' : 'コピーできませんでした。下の文字を長押ししてコピーしてください'; };
+$('copyTitle').onclick=()=>{ const t=titleText(); if(!t){ toast('アイテム画像を選んでください'); return; } if(!namesReady()) return; showCopy(t,'題名'); };
 $('txtClose').onclick=()=>{ $('txtSheet').hidden=true; };
 $('outClose').onclick=()=>{ $('out').hidden=true; };
 draw();

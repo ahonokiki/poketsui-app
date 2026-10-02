@@ -288,6 +288,13 @@ const ranking = { updated: today, updatedAt: RUN, since: firstDay, tracked: Obje
   d1: rank(1), d3: rank(3), d7: rank(7), d14: rank(14), d30: rank(30) }; // d1 は直近24時間
 
 mkdirSync(new URL('data/', ROOT), { recursive: true });
+// 出品の題名から拾ったアイテム名（items.json に載っていないもの）を、文字起こしの辞書用に平文で書き出す
+// 値段や出品の情報は入れない。誤って拾った飾り言葉を減らすため、2件以上の出品に出てきた名前だけ
+{ const cnt = new Map();
+  for (const o of Object.values(L)) { if (skip(o)) continue;
+    for (const e of entriesOf(o)) if (e.kind === 'item' && !e.known && e.name && e.name.length >= 3 && e.name.length <= 30 && !/\d{3,}|円|様|アイテム|各$|の$|セット$/.test(e.name)) cnt.set(e.name, (cnt.get(e.name) || 0) + 1); }
+  const names = [...cnt].filter(([, c]) => c >= 2).map(([n]) => n).sort((a, b) => a.localeCompare(b, 'ja'));
+  writeFileSync(new URL('data/gametrade-names.json', ROOT), JSON.stringify({ _説明: 'ゲームトレードの出品題名から拾ったアイテム名（文字起こしの辞書用・tools/gametrade-track.mjs が更新）', updated: today, names }, null, 0) + '\n'); }
 for (const o of Object.values(L)) delete o.id;
 writeFileSync(STATE, seal(state));
 writeFileSync(OUT, seal(ranking));
