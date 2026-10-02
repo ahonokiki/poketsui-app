@@ -43,6 +43,18 @@
   .note{font-size:12px;color:var(--sub);line-height:1.7;margin:14px 4px}
   label.chk{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:8px}
   .link{background:none;border:0;color:#d0508a;font:inherit;font-size:12px;text-decoration:underline;cursor:pointer;padding:0}
+  li{cursor:pointer}
+  .detail{grid-column:1/4;background:#fff6fa;border-radius:14px;padding:8px 10px;margin-top:4px;font-size:12px}
+  .detail .top{display:flex;gap:10px;align-items:flex-start}
+  .detail img{width:72px;height:72px;object-fit:cover;border-radius:10px;background:#fff;border:2px solid #ffd0e6;flex:none}
+  .detail .noimg{width:72px;height:72px;border-radius:10px;background:#f3eef5;color:var(--sub);font-size:10px;display:flex;align-items:center;justify-content:center;text-align:center;flex:none}
+  .deal{display:flex;gap:8px;align-items:center;padding:5px 0;border-top:1px dashed var(--line);font-variant-numeric:tabular-nums}
+  .deal:first-child{border-top:0}
+  .deal .d{flex:none;color:var(--sub);width:34px}.deal .p{flex:none;font-weight:900;color:#e0468f;width:62px;text-align:right}
+  .deal .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .deal a{flex:none;color:#d0508a;font-weight:900;text-decoration:none;border:2px solid #ffd0e6;border-radius:99px;padding:2px 8px;background:#fff}
+  .gt{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:8px 14px;border-radius:99px;background:linear-gradient(135deg,#a98be0,#c38fd8);color:#fff;font-weight:900;text-decoration:none;font-size:13px}
+  .detail .nm2{font-weight:900;font-size:13px;margin-bottom:4px;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -102,6 +114,31 @@ let DATA=null, period='d7', kind='item', sortBy='sold';
 try{ sortBy=localStorage.getItem('rk_sort')||sortBy; period=localStorage.getItem('rk_period')||period; kind=localStorage.getItem('rk_kind')||kind; }catch(e){}
 const yen=n=>n==null?'—':'¥'+n.toLocaleString('ja-JP');
 const LABEL={d1:'1日',d3:'3日',d7:'1週間',d14:'2週間',d30:'1か月'};
+const GT='https://gametrade.jp/pokekoro-twin/exhibits', CDN='https://cdn.gametrade.jp/0/exhibit_image/file/';
+let openKey=null; // 開いている詳細（名前＋種類）
+function detailOf(r){
+  const d=document.createElement('div'); d.className='detail';
+  const top=document.createElement('div'); top.className='top';
+  const im=r.im||r.list?.find(x=>x.im)?.im;
+  if (im){ const i=document.createElement('img'); i.loading='lazy'; i.alt=''; i.src=CDN+im; i.onerror=()=>i.replaceWith(Object.assign(document.createElement('div'),{className:'noimg',textContent:'写真なし'})); top.append(i); }
+  else top.append(Object.assign(document.createElement('div'),{className:'noimg',textContent:'写真は次の集計から'}));
+  const info=document.createElement('div'); info.style.flex='1'; info.style.minWidth='0';
+  const nm=document.createElement('div'); nm.className='nm2'; nm.textContent=r.name; info.append(nm);
+  const a=document.createElement('a'); a.className='gt'; a.target='_blank'; a.rel='noopener'; a.href=`${GT}?keyword=${encodeURIComponent(r.name)}&sort=new`; a.textContent='🔎 ゲームトレードで検索'; info.append(a);
+  top.append(info); d.append(top);
+  const ul=document.createElement('div'); ul.style.marginTop='8px';
+  (r.list||[]).forEach(x=>{ const row=document.createElement('div'); row.className='deal';
+    const dd=document.createElement('span'); dd.className='d'; dd.textContent=x.d?x.d.slice(5).replace('-','/'):'';
+    const pp=document.createElement('span'); pp.className='p'; pp.textContent=yen(x.p)+(x.q>1?`/${x.q}個`:'');
+    const tt=document.createElement('span'); tt.className='t'; tt.textContent=x.t;
+    const ln=document.createElement('a'); ln.href=`${GT}/${x.id}`; ln.target='_blank'; ln.rel='noopener'; ln.textContent='出品ページ';
+    row.append(dd,pp,tt,ln); ul.append(row); });
+  if (!(r.list||[]).length){ const n=document.createElement('div'); n.className='meta'; n.textContent='売れた出品の詳細は次の集計から出ます'; ul.append(n); }
+  d.append(ul);
+  const note=document.createElement('div'); note.className='meta'; note.textContent='売れた出品の新しい順（10件まで）。値段は出品の値段（まとめ出品は全部の値段）。タップで閉じる'; d.append(note);
+  d.onclick=e=>{ if (e.target.closest('a')) e.stopPropagation(); };
+  return d;
+}
 function render(){
   document.querySelectorAll('#period button').forEach(b=>b.classList.toggle('on',b.dataset.p===period));
   document.querySelectorAll('#kind button').forEach(b=>b.classList.toggle('on',b.dataset.k===kind));
@@ -141,6 +178,9 @@ function render(){
     add('出品中',`${r.active}個`+(r.listPrice?` ${yen(r.listPrice)}`:''));
     if (sortBy==='rate') add('売れやすさ',r.rate==null?'—':`${r.rate}%`);
     else if (r.rate!=null) add('売れやすさ',`${r.rate}%`);
+    const key=r.kind+'\u0000'+r.name;
+    if (openKey===key) li.append(detailOf(r));
+    li.onclick=e=>{ if (e.target.closest('a')) return; openKey = openKey===key ? null : key; render(); };
     ol.append(li);
   });
 }

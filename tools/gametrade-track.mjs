@@ -44,9 +44,11 @@ async function listPage(n, sort = 'new') {
   const r = await get(`${BASE}?sort=${sort}&page=${n}`, { headers: UA });
   if (r && (r.status === 404 || r.status === 410)) return [];
   if (!r?.ok) return null;
-  const out = [];
-  for (const m of (await r.text()).matchAll(/name="exhibit_data" type="hidden" value="([^"]+)"/g)) {
-    try { const d = JSON.parse(dec(m[1])); out.push({ id: d.id, title: d.name, price: +d.price }); } catch (e) {}
+  const out = [], html = await r.text();
+  // 出品ごとの hidden input の後ろに、その出品の写真（小さいサムネイル）が続く。写真はランキングで「どのアイテムか」を見分けるために残す
+  for (const m of html.matchAll(/name="exhibit_data" type="hidden" value="([^"]+)"([\s\S]*?)(?=name="exhibit_data"|$)/g)) {
+    try { const d = JSON.parse(dec(m[1])), im = (m[2].match(/exhibit_image\/file\/(\d+\/small_thumb_[\w.-]+)/) || [])[1];
+      out.push({ id: d.id, title: d.name, price: +d.price, im }); } catch (e) {}
   }
   return out;
 }
@@ -100,8 +102,8 @@ for (const sort of ['new']) {
     if (!got.length) break; pages++;
     for (const x of got) {
       const o = L[x.id];
-      if (o) { o.l = RUN; o.p = x.price; o.t = x.title; if (o.s !== 'active') { o.s = 'active'; delete o.d; delete o.dt; } }
-      else L[x.id] = { t: x.title, p: x.price, f: today, ft: RUN, l: RUN, s: 'active', ...(maxId && +x.id < maxId ? { b: true } : {}) };
+      if (o) { o.l = RUN; o.p = x.price; o.t = x.title; if (x.im) o.im = x.im; if (o.s !== 'active') { o.s = 'active'; delete o.d; delete o.dt; } }
+      else L[x.id] = { t: x.title, p: x.price, f: today, ft: RUN, l: RUN, s: 'active', ...(x.im ? { im: x.im } : {}), ...(maxId && +x.id < maxId ? { b: true } : {}) };
       seen++;
     }
     await sleep(2000);
@@ -259,11 +261,14 @@ function rank(N) {
     const isSold = o.s === 'sold' && t >= from, isPrev = o.s === 'sold' && t >= prevFrom && t < from, isActive = o.s === 'active' || o.s === 'old'; // 'old'（一覧の外に下がったがまだ出品中）も出品中に数える
     if (!isSold && !isPrev && !isActive) continue;
     for (const { name, known, kind, q, unit, priced } of entriesOf(o)) {
-      const k = kind + keyOf(name), a = agg.get(k) || { name, known, kind, sold: 0, prev: 0, active: 0, soldPrices: [], activePrices: [], days: [], ex: o.t, deals: new Set(), sellers: new Set() };
+      const k = kind + keyOf(name), a = agg.get(k) || { name, known, kind, sold: 0, prev: 0, active: 0, soldPrices: [], activePrices: [], days: [], ex: o.t, deals: new Set(), sellers: new Set(), list: [], im: null };
+      if (!a.im && o.im) a.im = o.im;
       // 単価は「1回の取引ごとの1個あたりの値段」を並べて、その真ん中の値を使う
       // 単価が分からない取引は、個数だけ数えて単価の計算には入れない
       // 売れるまでの日数：初めて見た時刻から売れた時刻まで。記録を始めた日にすでに出ていた出品・編集で先頭に戻ってきた出品（b）は、いつ出品されたか分からないので入れない
       if (isSold) { a.sold += q; a.deals.add(o.id); if (o.u) a.sellers.add(o.u); if (priced) a.soldPrices.push(unit);
+        // 売れた出品の詳細（ランキングで名前をタップすると出す）：id・題名・値段・1個あたり・個数・売れた日・写真
+        if (!a.list.some(x => x.id === o.id)) a.list.push({ id: o.id, t: o.t.slice(0, 60), p: o.p, u: priced ? unit : null, q, d: o.d, t2: t, ...(o.im ? { im: o.im } : {}) });
         if (o.f > state.since && o.nw !== false && !o.b && o.ft) a.days.push(Math.max(0, (Date.parse(o.dt || o.d + 'T12:00:00+09:00') - Date.parse(o.ft)) / 864e5)); }
       else if (isPrev) a.prev += q;
       else { a.active += q; if (priced) a.activePrices.push(unit); }
@@ -277,6 +282,7 @@ function rank(N) {
     prev: prevKnown ? a.prev : null, rate: a.sold + a.active >= 3 ? Math.round(a.sold / (a.sold + a.active) * 100) : null, rateSort: (a.sold + 1) / (a.sold + a.active + 3),
     days: a.days.length ? +(a.days.reduce((x, y) => x + y, 0) / a.days.length).toFixed(1) : null,
     price: med(a.soldPrices), low: a.soldPrices.length ? Math.min(...a.soldPrices) : null, high: a.soldPrices.length ? Math.max(...a.soldPrices) : null, listPrice: med(a.activePrices), priced: a.soldPrices.length,
+    im: a.im, list: a.list.sort((x, y) => y.t2 - x.t2).slice(0, 10).map(({ t2, ...x }) => x), // 新しい順に10件まで
   })).sort((a, b) => b.sold - a.sold || b.deals - a.deals || b.sellers - a.sellers || (a.days ?? 99) - (b.days ?? 99));
 }
 // 説明文を残していなかった専用出品は、1回だけ詳細ページを見て説明文を取っておく
