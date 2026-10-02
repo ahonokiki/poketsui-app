@@ -163,6 +163,8 @@
   .nmRow .st{flex:none;font-size:11px;font-weight:900;border-radius:99px;padding:2px 8px}
   .nmRow.ok .st{background:#dff7e8;color:#1f9a57}.nmRow.ng{border-color:#ff8aa0;background:#fff4f6}.nmRow.ng .st{background:#ffd9e0;color:#d0304f}
   .nmRow.wait .st{background:#f3eef5;color:var(--sub)}
+  .nmRow .rm{flex:none;width:30px;height:30px;border-radius:50%;border:0;background:#f3eef5;color:#8a7a8e;font-size:16px;font-weight:900;cursor:pointer;line-height:30px;padding:0}
+  .nmRow .rm.sure{background:#ff5a6e;color:#fff;width:auto;padding:0 10px;font-size:12px}
   .cand{display:flex;align-items:center;gap:8px;width:100%;border:2px solid #f6e4ee;border-radius:14px;background:#fff;padding:9px 12px;margin-top:6px;font:inherit;font-size:14px;font-weight:800;color:var(--ink);text-align:left;cursor:pointer}
   .cand small{flex:none;color:var(--sub);font-weight:700}
   .cand.best{border-color:var(--pink)}
@@ -533,7 +535,19 @@ function renderNames(){
   nameEntries().forEach(e=>{ const d=document.createElement('div'); const ok=nameOk(e.name);
     d.className='nmRow '+(e.reading&&!e.name?'wait':ok?'ok':'ng');
     d.innerHTML=`<span class="no">${e.i+1}</span><span class="t"></span><span class="st">${e.reading&&!e.name?'読取中':ok?'一覧と一致':e.name?'一覧にない':'読めず'}</span>`;
-    d.querySelector('.t').textContent=e.name||'（名前なし）'; d.onclick=()=>openFix(e.i); box.appendChild(d); });
+    d.querySelector('.t').textContent=e.name||'（名前なし）'; d.onclick=()=>openFix(e.i);
+    if (items.length>1){ const b=document.createElement('button'); b.type='button'; b.className='rm'; b.textContent='✕'; b.setAttribute('aria-label','このアイテムを外す');
+      b.onclick=ev=>{ ev.stopPropagation(); if (b.dataset.sure){ removeItem(e.i); } else { b.dataset.sure=1; b.classList.add('sure'); b.textContent='外す？'; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.classList.remove('sure'); b.textContent='✕'; } },3000); } };
+      d.appendChild(b); }
+    box.appendChild(d); });
+}
+// 複数アイテムから1つ外す。1つだけ残ったら、その画像を1個の表示に切り替える
+function removeItem(i){
+  const [gone]=items.splice(i,1); if (gone?.src) try{ URL.revokeObjectURL(gone.src); }catch(e){}
+  if (items.length===1){ const it=items[0]; items=[]; shotImg=it.img; shotName=it.name||''; shotRaw=it.raw||''; shotReading=!!it.reading;
+    $('owned').value=it.owned||''; $('count').value=it.count ?? ''; $('ownSnap').src=it.snap||''; $('ownSnap').hidden=!it.snap; $('ownState').textContent=it.owned?'自動':'読取×';
+    const W=it.img.width, sb=showOwned()&&it.ownedBottom ? it.ownedBottom : (it.nameBottom ?? it.cardBottom); if (sb) $('ct').value=Math.max(0,+(((sb-W)/W)*100).toFixed(1)); }
+  renderItems(); renderNames(); draw(); toast(`${i+1}番を外しました`);
 }
 let fixIdx=0;
 async function openFix(i){
