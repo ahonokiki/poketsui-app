@@ -297,7 +297,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='40'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='41'; // 変えたら上げる（古いページを読み直すための目印）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
 // アイテム画像の位置・サイズは常に固定（正方形）
@@ -522,7 +522,8 @@ function uniqSigs(pend,imgs){ const cnt=new Map(), ci=new Map(); pend.forEach(p=
   // 受け取った中で1枚にしかなく、選んだ画像の中でも1枚にしかない数字だけ（同じガチャのリリース日のような共通の数字は使わない）
   return s=>(s||[]).filter(x=>cnt.get(x)===1 && (!imgs || (ci.get(x)||0)<=1)); }
 const sigScore=(a,b)=>{ if(!a?.length||!b?.length) return 0; const B=new Set(b); return a.filter(x=>B.has(x)).length; };
-const NOGIFT=/プレゼント\s*(禁止|不可|できません|できない|NG)|贈(れない|り物不可|与不可)|譲渡不可/;
+// ゲームの表示は「ギフト不可」（「ギフト出来ません」はマスターの段階で出るだけなので含めない）
+const NOGIFT=/ギフト\s*不可|プレゼント\s*(禁止|不可|できません|できない|NG)|贈(り物不可|与不可)|譲渡不可/;
 // ---- ショートカット（iPhoneの文字認識）から受け取った文字：URLの #t= に「=====」区切りで1枚ずつ入っている ----
 const PENDING_KEY='promo_pendingOcr';
 const JUNK=/リリース|欲しい|ショップ|タイプ|所持数|持数|コピー|ココリウム|ファッション|^[\d:：個]+$/;
