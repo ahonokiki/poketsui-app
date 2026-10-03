@@ -163,6 +163,7 @@
   .nmRow .st{flex:none;font-size:11px;font-weight:900;border-radius:99px;padding:2px 8px}
   .nmRow.ok .st{background:#dff7e8;color:#1f9a57}.nmRow.ng{border-color:#ff8aa0;background:#fff4f6}.nmRow.ng .st{background:#ffd9e0;color:#d0304f}
   .nmRow.wait .st{background:#f3eef5;color:var(--sub)}
+  .nmRow.iph{border-color:#ffd66b;background:#fffbea}.nmRow.iph .st{background:#fff0b8;color:#a87400}
   .nmRow .rm{flex:none;width:30px;height:30px;border-radius:50%;border:0;background:#f3eef5;color:#8a7a8e;font-size:16px;font-weight:900;cursor:pointer;line-height:30px;padding:0}
   .nmRow .rm.sure{background:#ff5a6e;color:#fff;width:auto;padding:0 10px;font-size:12px}
   .cand{display:flex;align-items:center;gap:8px;width:100%;border:2px solid #f6e4ee;border-radius:14px;background:#fff;padding:9px 12px;margin-top:6px;font:inherit;font-size:14px;font-weight:800;color:var(--ink);text-align:left;cursor:pointer}
@@ -476,13 +477,13 @@ async function analyzeShot(img){
   if (m) r.owned=+m[1];
   return r;
 }
-let shotName='', shotRaw='', shotReading=false;
-function setShot(i){ shotName=''; shotRaw=''; $('ownSnap').hidden=true; items=[]; renderItems(); shotImg=i; $('count').value=''; shotReading=true; renderNames(); readOwned(i); }
+let shotName='', shotRaw='', shotReading=false, shotIph=false;
+function setShot(i){ shotName=''; shotRaw=''; shotIph=false; $('ownSnap').hidden=true; items=[]; renderItems(); shotImg=i; $('count').value=''; shotReading=true; renderNames(); readOwned(i); }
 async function readOwned(img){
   const seq=++ocrSeq; $('ownState').textContent='読取中…';
   const pend=pendingList();
   if (pend.length===1){ // ショートカットから1枚分を受け取っている：先に名前と所持数を入れる
-    shotName=pend[0].name||''; shotRaw=''; if (pend[0].owned){ $('owned').value=pend[0].owned; $('count').value=''; $('ownState').textContent='自動'; } shotReading=false; renderNames(); draw(); }
+    shotName=pend[0].name||''; shotRaw=''; shotIph=true; if (pend[0].owned){ $('owned').value=pend[0].owned; $('count').value=''; $('ownState').textContent='自動'; } shotReading=false; renderNames(); draw(); }
   try{
     const r=await analyzeShot(img); if (seq!==ocrSeq) return;
     if (!r) throw 0;
@@ -491,10 +492,10 @@ async function readOwned(img){
     $('ownSnap').src=r.snap||''; $('ownSnap').hidden=!r.snap;
     if (pend.length){ // 受け取った名前のうち、画面の文字にいちばん近いものを使う
       const p=pend.length===1 ? pend[0] : nearestPending(r.raw||r.name||'',pend);
-      shotName=p.name||''; shotRaw=r.raw||''; if (p.owned){ $('owned').value=p.owned; $('count').value=''; $('ownState').textContent='自動'; } else if (r.owned){ $('owned').value=r.owned; $('count').value=''; $('ownState').textContent='自動'; } else $('ownState').textContent='読取×';
+      shotName=p.name||''; shotRaw=r.raw||''; shotIph=true; if (p.owned){ $('owned').value=p.owned; $('count').value=''; $('ownState').textContent='自動'; } else if (r.owned){ $('owned').value=r.owned; $('count').value=''; $('ownState').textContent='自動'; } else $('ownState').textContent='読取×';
       clearPending();
     } else {
-      shotName=r.name||''; shotRaw=r.raw||'';
+      shotName=r.name||''; shotRaw=r.raw||''; shotIph=false;
       if (r.owned){ $('owned').value=r.owned; $('count').value=''; $('ownState').textContent='自動'; }
       else $('ownState').textContent='読取×';
     }
@@ -504,22 +505,28 @@ async function readOwned(img){
 // ---- ショートカット（iPhoneの文字認識）から受け取った文字：URLの #t= に「=====」区切りで1枚ずつ入っている ----
 const PENDING_KEY='promo_pendingOcr';
 const JUNK=/リリース|欲しい|ショップ|タイプ|所持数|持数|コピー|ココリウム|ファッション|^[\d:：個]+$/;
+// iPhoneの読み取りはほぼ正確なので、名前の行はそのまま使う（一覧と完全一致・覚えた名前があればそちら）
 async function parseBlock(t){
   const lines=t.split(/\n/).map(l=>l.trim()).filter(Boolean), flat=t.replace(/\s/g,'');
+  if (!/持数|リリース|欲しい|未作成/.test(flat)) return null; // ゲームのアイテム画面ではないスクショは使わない
   const m=flat.match(/持数[^0-9]*(\d+)/)||flat.match(/(\d+)個/), owned=m?+m[1]:null;
   await loadItemNames();
-  const exact=lines.find(l=>dictExact.has(l.normalize('NFKC'))); if (exact) return {name:exact.normalize('NFKC'), owned, lines};
+  const exact=lines.find(l=>dictExact.has(l.normalize('NFKC'))); if (exact) return {name:exact.normalize('NFKC'), owned, iph:true};
   const li=lines.findIndex(l=>/持数|所持/.test(l.replace(/\s/g,'')));
-  const hint=(li>0?lines[li-1]:lines.filter(l=>!JUNK.test(l)).sort((a,b)=>b.length-a.length)[0])||'';
-  return {name:await nearestItemName(fixKana(hint.normalize('NFKC'))), owned, lines, raw:hint};
+  let hint=(li>0?lines[li-1]:lines.filter(l=>!JUNK.test(l)).sort((a,b)=>b.length-a.length)[0])||'';
+  hint=hint.normalize('NFKC').replace(/[\s©®□■◻︎⧉📋]+$/u,'').replace(/^[\s・]+/,'').trim();
+  const M=learned.all(), k=normName(hint);
+  return {name:(M[k]?.to ?? M[k]) || hint, owned, iph:true};
 }
 async function takeHashText(){
   const m=location.hash.match(/^#t=(.*)$/s); if(!m) return; let t=m[1]; try{ t=decodeURIComponent(t); }catch(e){}
   history.replaceState(null,'',location.pathname+location.search);
   const blocks=t.split(/\s*={3,}\s*/).map(x=>x.trim()).filter(Boolean); if(!blocks.length) return;
-  const list=[]; for (const b of blocks) list.push(await parseBlock(b));
+  const list=[]; for (const b of blocks){ const r=await parseBlock(b); if (r?.name) list.push(r); }
+  if (!list.length){ toast('ショートカットから受け取ったスクショに、アイテムの画面がありませんでした'); return; }
   try{ localStorage.setItem(PENDING_KEY,JSON.stringify({at:Date.now(),list})); }catch(e){}
-  toast(`ショートカットから${list.length}枚分の名前を受け取りました。\n同じスクショを「アイテム画像を選ぶ」で選んでください`);
+  const skipped=blocks.length-list.length;
+  toast(`ショートカットから${list.length}枚分の名前を受け取りました`+(skipped?`（アイテム以外のスクショ${skipped}枚は使いません）`:'')+`。\n同じスクショを「アイテム画像を選ぶ」で選んでください`);
 }
 function pendingList(){ try{ const j=JSON.parse(localStorage.getItem(PENDING_KEY)||'null'); return j && Date.now()-j.at<30*60e3 ? j.list : []; }catch(e){ return []; } }
 function clearPending(){ try{ localStorage.removeItem(PENDING_KEY); }catch(e){} }
@@ -527,14 +534,16 @@ function nearestPending(raw,pend){ const a=normName(raw); let best=pend[0], bd=I
 window.addEventListener('hashchange',takeHashText); takeHashText();
 // ---- 読み取った名前の確認（辞書と完全一致＝緑、違う＝赤。赤が残っている間はコピーしない） ----
 const nameOk=n=>!!n && (dictExact.has(n) || Object.values(learned.all()).some(v=>(v?.to??v)===n));
-function nameEntries(){ return items.length>1 ? items.map((it,i)=>({i, name:it.name||'', raw:it.raw||'', reading:it.reading}))
-  : (shotImg ? [{i:0, name:shotName, raw:shotRaw, reading:shotReading}] : []); }
-function setEntryName(i,v){ if (items.length>1) items[i].name=v; else shotName=v; renderNames(); }
+// 'ok'＝一覧・覚えた名前と一致（緑）、'iph'＝一覧にないがiPhoneで読んだ名前（黄・コピーできる）、'ng'＝赤
+const nameStatus=e=>nameOk(e.name)?'ok':(e.iph&&e.name?'iph':'ng');
+function nameEntries(){ return items.length>1 ? items.map((it,i)=>({i, name:it.name||'', raw:it.raw||'', reading:it.reading, iph:it.iph}))
+  : (shotImg ? [{i:0, name:shotName, raw:shotRaw, reading:shotReading, iph:shotIph}] : []); }
+function setEntryName(i,v){ if (items.length>1){ items[i].name=v; items[i].iph=false; } else { shotName=v; shotIph=false; } renderNames(); }
 function renderNames(){
   const box=$('names'); box.innerHTML='';
-  nameEntries().forEach(e=>{ const d=document.createElement('div'); const ok=nameOk(e.name);
-    d.className='nmRow '+(e.reading&&!e.name?'wait':ok?'ok':'ng');
-    d.innerHTML=`<span class="no">${e.i+1}</span><span class="t"></span><span class="st">${e.reading&&!e.name?'読取中':ok?'一覧と一致':e.name?'一覧にない':'読めず'}</span>`;
+  nameEntries().forEach(e=>{ const d=document.createElement('div'); const st=nameStatus(e);
+    d.className='nmRow '+(e.reading&&!e.name?'wait':st);
+    d.innerHTML=`<span class="no">${e.i+1}</span><span class="t"></span><span class="st">${e.reading&&!e.name?'読取中':st==='ok'?'一覧と一致':st==='iph'?'iPhoneで読んだ':e.name?'一覧にない':'読めず'}</span>`;
     d.querySelector('.t').textContent=e.name||'（名前なし）'; d.onclick=()=>openFix(e.i);
     if (items.length>1){ const b=document.createElement('button'); b.type='button'; b.className='rm'; b.textContent='✕'; b.setAttribute('aria-label','このアイテムを外す');
       b.onclick=ev=>{ ev.stopPropagation(); if (b.dataset.sure){ removeItem(e.i); } else { b.dataset.sure=1; b.classList.add('sure'); b.textContent='外す？'; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.classList.remove('sure'); b.textContent='✕'; } },3000); } };
@@ -568,7 +577,7 @@ $('fixUse').onclick=()=>applyFix($('fixInput').value,true);
 $('fixAsIs').onclick=()=>{ const v=$('fixInput').value.trim(); if(!v) return; learned.add(v,v); applyFix(v,false); };
 $('fixClose').onclick=()=>{ $('fixSheet').hidden=true; };
 // コピーの前の確認：赤い名前があれば止めて、直す画面を開く
-function namesReady(){ const bad=nameEntries().find(e=>!nameOk(e.name)); if(!bad) return true;
+function namesReady(){ const bad=nameEntries().find(e=>nameStatus(e)==='ng'); if(!bad) return true;
   toast(bad.reading?'まだ読み取り中です':'赤い名前を直してください（一覧にない名前）'); if(!bad.reading) openFix(bad.i); return false; }
 
 // ---- アプリの背景：公式サイトの今月の壁紙（wallpaper.json は GitHub Actions が毎月更新） ----
@@ -591,19 +600,23 @@ async function setItems(files){
   if (files.length>12) toast('13個以上は選べないので、最初の12個を使います');
   // ショートカットから受け取った名前・所持数があれば、選んだ順に当てはめる（読み取り後に画面の文字で並びを直す）
   const pend=pendingList();
-  if (pend.length){ items.forEach((it,i)=>{ const p=pend[i]; if(!p) return; it.name=p.name; it.pend=i; if (p.owned) it.owned=p.owned; });
-    if (pend.length!==items.length) toast(`受け取ったのは${pend.length}枚分、選んだのは${items.length}枚です`); }
+  if (pend.length===items.length) items.forEach((it,i)=>{ const p=pend[i]; it.name=p.name; it.iph=true; if (p.owned) it.owned=p.owned; }); // 枚数が同じなら、まず撮った順に当てはめる
   renderItems(); renderNames(); draw();
   for (const it of items){ try{ const r=await analyzeShot(it.img); if (seq!==ocrSeq) return;
       if (r?.owned && !(pend.length && it.owned)) it.owned=r.owned;
-      it.snap=r?.snap; it.raw=r?.raw; if (!pend.length) it.name=r?.name; if (r?.cardBottom){ it.ownedBottom=r.ownedBottom; it.nameBottom=r.nameBottom; it.cardBottom=r.cardBottom; it.top=r.top ?? Math.max(0,r.squareBottom-it.img.width); }
+      it.snap=r?.snap; it.raw=r?.raw; if (!it.iph) it.name=r?.name; if (r?.cardBottom){ it.ownedBottom=r.ownedBottom; it.nameBottom=r.nameBottom; it.cardBottom=r.cardBottom; it.top=r.top ?? Math.max(0,r.squareBottom-it.img.width); }
     }catch(e){} it.reading=false; renderItems(); renderNames(); draw(); }
-  if (pend.length>=2 && items.every(it=>it.raw)){ // 画面から読めた文字と受け取った名前を見比べて、対応がずれていたら直す
-    const n=Math.min(items.length,pend.length), cost=(i,j)=>editCost(normName(items[i].raw),normName(pend[j].name||''));
-    const used=new Set(), pick=[]; const pairs=[]; for (let i=0;i<n;i++) for (let j=0;j<n;j++) pairs.push([cost(i,j),i,j]); pairs.sort((a,b)=>a[0]-b[0]);
-    const usedI=new Set(); for (const [,i,j] of pairs){ if (usedI.has(i)||used.has(j)) continue; usedI.add(i); used.add(j); pick[i]=j; }
-    const before=items.slice(0,n).reduce((a,_,i)=>a+cost(i,i),0), after=items.slice(0,n).reduce((a,_,i)=>a+cost(i,pick[i]),0);
-    if (after+1<=before && pick.some((j,i)=>j!==i)){ items.forEach((it,i)=>{ const p=pend[pick[i]]; if(!p) return; it.name=p.name; if (p.owned) it.owned=p.owned; }); toast('画像と名前の対応を直しました'); renderItems(); renderNames(); draw(); }
+  if (pend.length && (pend.length!==items.length || items.length>=2)){ // 画面から読めた文字と受け取った名前を見比べて、いちばん近いものどうしを組にする
+    const cost=(i,j)=>{ const a=normName(items[i].raw||''), b=normName(pend[j].name||''); return a&&b ? editCost(a,b)/Math.max(a.length,b.length) : 9; };
+    const pairs=[]; items.forEach((_,i)=>pend.forEach((_,j)=>pairs.push([cost(i,j),i,j]))); pairs.sort((a,b)=>a[0]-b[0]);
+    const usedI=new Set(), usedJ=new Set(), pick=[];
+    for (const [c,i,j] of pairs){ if (c>.6 || usedI.has(i)||usedJ.has(j)) continue; usedI.add(i); usedJ.add(j); pick[i]=j; } // 半分以上違うものは組にしない
+    let moved=0; items.forEach((it,i)=>{ const j=pick[i];
+      if (j==null){ if (pend.length!==items.length && it.iph){ it.iph=false; } return; }
+      const p=pend[j]; if (it.name!==p.name) moved++; it.name=p.name; it.iph=true; if (p.owned) it.owned=p.owned; });
+    if (pend.length!==items.length) toast(`ショートカットの${pend.length}枚分のうち、${usedJ.size}枚を選んだ画像に当てはめました`);
+    else if (moved) toast('画像と名前の対応を直しました');
+    renderItems(); renderNames(); draw();
   }
   if (pend.length) clearPending();
 }
