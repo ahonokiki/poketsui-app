@@ -189,6 +189,7 @@
     <input type="hidden" id="count">
   </div>
   <img id="ownSnap" alt="元画像の所持数" hidden>
+  <div id="pendNote" class="note" style="width:100%;text-align:center;font-weight:800;margin:0" hidden></div>
   <div id="multi"></div>
   <div id="names"></div>
 </div>
@@ -521,15 +522,21 @@ async function parseBlock(t){
 async function takeHashText(){
   const m=location.hash.match(/^#t=(.*)$/s); if(!m) return; let t=m[1]; try{ t=decodeURIComponent(t); }catch(e){}
   history.replaceState(null,'',location.pathname+location.search);
-  const blocks=t.split(/\s*={3,}\s*/).map(x=>x.trim()).filter(Boolean); if(!blocks.length) return;
+  const blocks=t.split(/\s*={3,}\s*/).map(x=>x.trim()).filter(Boolean);
+  if(!blocks.length){ toast('ショートカットから文字が届きませんでした。\n15分以内に撮ったスクショがあるか確かめてください'); return; }
   const list=[]; for (const b of blocks){ const r=await parseBlock(b); if (r?.name) list.push(r); }
   if (!list.length){ toast('ショートカットから受け取ったスクショに、アイテムの画面がありませんでした'); return; }
-  try{ localStorage.setItem(PENDING_KEY,JSON.stringify({at:Date.now(),list})); }catch(e){}
+  try{ localStorage.setItem(PENDING_KEY,JSON.stringify({at:Date.now(),list})); }catch(e){} renderPendNote();
   const skipped=blocks.length-list.length;
   toast(`ショートカットから${list.length}枚分の名前を受け取りました`+(skipped?`（アイテム以外のスクショ${skipped}枚は使いません）`:'')+`。\n同じスクショを「アイテム画像を選ぶ」で選んでください`);
 }
+// ショートカットから受け取った名前があるかを、画像を選ぶボタンの下に出しておく（受け取れているか目で分かるように）
+function renderPendNote(){ const el=$('pendNote'); let j=null; try{ j=JSON.parse(localStorage.getItem(PENDING_KEY)||'null'); }catch(e){}
+  const ok=j && Date.now()-j.at<30*60e3 && j.list?.length;
+  el.hidden=!ok; if (ok) el.textContent=`📱 ショートカットから${j.list.length}枚分の名前を受け取っています（${Math.max(0,Math.round((Date.now()-j.at)/60e3))}分前）。画像を選ぶと当てはめます`; }
+setInterval(renderPendNote,30000); setTimeout(renderPendNote,0);
 function pendingList(){ try{ const j=JSON.parse(localStorage.getItem(PENDING_KEY)||'null'); return j && Date.now()-j.at<30*60e3 ? j.list : []; }catch(e){ return []; } }
-function clearPending(){ try{ localStorage.removeItem(PENDING_KEY); }catch(e){} }
+function clearPending(){ try{ localStorage.removeItem(PENDING_KEY); }catch(e){} renderPendNote(); }
 function nearestPending(raw,pend){ const a=normName(raw); let best=pend[0], bd=Infinity; for (const p of pend){ const d=editCost(a,normName(p.name||'')); if (d<bd){ bd=d; best=p; } } return best; }
 window.addEventListener('hashchange',takeHashText); takeHashText();
 // ---- 読み取った名前の確認（辞書と完全一致＝緑、違う＝赤。赤が残っている間はコピーしない） ----
