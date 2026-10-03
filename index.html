@@ -227,6 +227,7 @@
       <option value="plain">名前×2（記号なし）</option>
     </select></div>
     <div class="row"><label>題名の×1 <select id="titleOne"><option value="show">×1も付ける</option><option value="hide">×1は省く</option></select></label></div>
+    <div class="row"><label>題名の名前の区切り <select id="titleSep"><option value="nl">改行（1行に1つ）</option><option value="sp">空白（1行にまとめる）</option></select></label></div>
     <div class="row"><label><input type="checkbox" id="titleTotal" checked> 題名に「計○点」を付ける（2個以上のとき）</label></div>
     <div class="row"><label><input type="checkbox" id="autoCopy" checked> 「題名」「文字」を押したらすぐコピーする</label></div>
     <div class="note">オフにすると、押したときは文字を表示するだけで、確認してから「コピー」を押します。どちらでも、赤い名前（一覧にない名前）が残っている間はコピーできません。</div>
@@ -297,7 +298,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='41'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='42'; // 変えたら上げる（古いページを読み直すための目印）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
 // アイテム画像の位置・サイズは常に固定（正方形）
@@ -1037,7 +1038,7 @@ $('dl').onclick=()=>{ const name='poketsui-'+Date.now()+'.png';
   },'image/png'); };
 try{ const v=localStorage.getItem('promo_titleTotal'); if(v!==null) $('titleTotal').checked=v==='1'; }catch(e){}
 $('titleTotal').addEventListener('change',()=>{ try{ localStorage.setItem('promo_titleTotal',$('titleTotal').checked?'1':'0'); }catch(e){} });
-['txtStyle','titleOne','txtHead','txtTotal','txtFoot'].forEach(id=>{ try{ const v=localStorage.getItem('promo_'+id); if(v!==null) $(id).value=v; }catch(e){}
+['txtStyle','titleOne','titleSep','txtHead','txtTotal','txtFoot'].forEach(id=>{ try{ const v=localStorage.getItem('promo_'+id); if(v!==null) $(id).value=v; }catch(e){}
   $(id).addEventListener('input',()=>{ try{ localStorage.setItem('promo_'+id,$(id).value); }catch(e){} }); });
 function listText(){
   const list = items.length>1 ? items.map(it=>({name:it.name||'（名前を読み取れませんでした）', n:itemCount(it)}))
@@ -1057,8 +1058,9 @@ function listText(){
 function titleText(){ // タイトル用：アイテム名×数だけ
   const list = items.length>1 ? items.map(it=>({name:it.name||'', n:itemCount(it)})) : (shotImg ? [{name:shotName||'', n:countValue()??0}] : []);
   const rows=list.filter(x=>x.n>0); if(!rows.length) return '';
-  const t=rows.map(x=>x.n===1&&$('titleOne').value==='hide' ? x.name : `${x.name}×${x.n}`).join(' ');
-  return rows.length>1 && $('titleTotal').checked ? `${t} 計${rows.reduce((a,x)=>a+x.n,0)}点` : t;
+  const sep=$('titleSep').value==='sp' ? ' ' : '\n';
+  const t=rows.map(x=>x.n===1&&$('titleOne').value==='hide' ? x.name : `${x.name}×${x.n}`).join(sep);
+  return rows.length>1 && $('titleTotal').checked ? `${t}${sep}計${rows.reduce((a,x)=>a+x.n,0)}点` : t;
 }
 async function copyText(t){
   try{ await navigator.clipboard.writeText(t); return true; }
