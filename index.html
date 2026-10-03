@@ -239,6 +239,8 @@
   <section class="card"><h2>ショートカット連携（iPhone）</h2><div class="in">
     <div class="note">iPhoneの「ショートカット」にスクショの文字を読ませて、このアプリに渡せます。背面タップで起動すれば、スクショを撮って背面を3回たたくだけで名前と所持数が入ります。</div>
     <a class="pill wide" href="shortcut.html" style="margin-top:8px;text-decoration:none;display:flex">📱 ショートカットの作り方</a>
+    <div class="note" id="recvLog" style="white-space:pre-line;margin-top:8px"></div>
+    <div class="note" id="appVer" style="text-align:right"></div>
   </div></section>
 
   <section class="card"><h2>フチの色</h2><div class="in">
@@ -295,6 +297,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
+const APP_VER='37'; // 変えたら上げる（古いページを読み直すための目印）
 const S = 1254;
 // アイテム画像の位置・サイズは常に固定（正方形）
 const BOX = {x:127, y:128, size:1000};
@@ -332,7 +335,7 @@ function renderFonts(){ const g=$('fontGrid'); g.innerHTML='';
     b.innerHTML=`<span class="fn">${n}</span><span class="fs" style="font-family:'${f}',sans-serif;font-weight:${w}">×1 2 3 4 5 6 7 8 9 10</span>`;
     b.onclick=()=>{ $('font').value=n; store.set('font',n); renderFonts(); draw(); }; g.appendChild(b); }); }
 renderFonts();
-$('openSet').onclick=()=>{ $('settings').hidden=false; renderLearned(); document.querySelector('.fontOpt.on')?.scrollIntoView({block:'nearest'});  };
+$('openSet').onclick=()=>{ $('settings').hidden=false; renderLearned(); renderRecv(); $('appVer').textContent='アプリの版：'+APP_VER; document.querySelector('.fontOpt.on')?.scrollIntoView({block:'nearest'});  };
 const closeSet=()=>{ $('settings').hidden=true;  };
 $('closeSet').onclick=closeSet; $('settings').addEventListener('click',e=>{ if(e.target.id==='settings') closeSet(); });
 $('showCount').addEventListener('change',draw);
@@ -383,8 +386,8 @@ function fixKana(t){ return t.replace(/ン(?=[ャュョ])/g,'シ').replace(/ソ(
 let itemNames=null, dictExact=new Set();
 // 辞書：items.json（公式一覧サイト）＋ data/gametrade-names.json（出品の題名で見かけた名前）
 const loadItemNames=()=>itemNames ??= Promise.all(['items.json','data/gametrade-names.json'].map(u=>fetch(u,{cache:'no-cache'}).then(r=>r.ok?r.json():{}).catch(()=>({}))))
-  .then(([a,b])=>{ const names=[...new Set([...(a.names||[]),...(b.names||[])])]; if(!names.length) itemNames=null; // 読み込めなかったら次の読み取りでもう一度試す
-    dictExact=new Set(names); return names; });
+  .then(([a,b])=>{ const names=[...new Set([...(Array.isArray(a?.names)?a.names:[]),...(Array.isArray(b?.names)?b.names:[])])]; if(!names.length) itemNames=null; // 読み込めなかったら次の読み取りでもう一度試す
+    dictExact=new Set(names); return names; }).catch(()=>{ itemNames=null; return []; });
 loadItemNames();
 const normName=t=>t.normalize('NFKC').replace(/[\s・･「」『』【】（）()]/g,'').replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+96));
 // 保存形式：{正規化した読み取り: {from:読み取った文字, to:直した名前}}
@@ -477,6 +480,7 @@ async function analyzeShot(img){
   const t=(line?line.text:data.text).replace(/\s/g,''), m=t.match(/持数[^0-9]*(\d+)/) || t.match(/(\d+)個/);
   if (m) r.owned=+m[1];
   if (NOGIFT.test((data.text||'').replace(/\s/g,''))) r.noGift=true;
+  r.sig=numSig(data.text);
   return r;
 }
 let shotName='', shotRaw='', shotReading=false, shotIph=false, shotNoGift=false;
@@ -493,7 +497,7 @@ async function readOwned(img){
     if (sb) $('ct').value=Math.max(0,+(((sb-img.width)/img.width)*100).toFixed(1));
     $('ownSnap').src=r.snap||''; $('ownSnap').hidden=!r.snap;
     if (pend.length){ // 受け取った名前のうち、画面の文字にいちばん近いものを使う
-      const p=pend.length===1 ? pend[0] : nearestPending(r.raw||r.name||'',pend);
+      const p=pend.length===1 ? pend[0] : nearestPending(r.raw||r.name||'',pend,r.sig);
       shotName=p.name||''; shotRaw=r.raw||''; shotIph=true; shotNoGift=!!(p.noGift||r.noGift); if (p.owned){ $('owned').value=p.owned; $('count').value=''; $('ownState').textContent='自動'; } else if (r.owned){ $('owned').value=r.owned; $('count').value=''; $('ownState').textContent='自動'; } else $('ownState').textContent='読取×';
       clearPending();
     } else {
@@ -505,6 +509,13 @@ async function readOwned(img){
   }catch(e){ if(seq===ocrSeq){ $('ownState').textContent='読取×'; shotReading=false; renderNames(); } }
 }
 // プレゼント禁止のアイテム（画面に「プレゼント禁止」「プレゼント不可」などの表示がある）
+// 画面の数字（「欲しい」の数・リリース日など）で、ショートカットの読み取りと選んだ画像を組にする
+// アプリ内の読み取りは文字が苦手でも数字はよく読めるので、名前より確実に合わせられる
+function numSig(text){ const t=(text||'').normalize('NFKC'), out=new Set();
+  for (const m of t.matchAll(/(\d{4})\s*[年/.\-]\s*(\d{1,2})\s*[月/.\-]\s*(\d{1,2})/g)) out.add(`d${+m[1]}-${+m[2]}-${+m[3]}`); // リリース日
+  for (const m of t.replace(/(\d),(\d{3})/g,'$1$2').matchAll(/\d{3,}/g)) if (!/^(19|20)\d\d$/.test(m[0])) out.add('n'+(+m[0])); // 3桁以上の数（年だけの数は除く）
+  return [...out]; }
+const sigScore=(a,b)=>{ if(!a?.length||!b?.length) return 0; const B=new Set(b); return a.filter(x=>B.has(x)).length; };
 const NOGIFT=/プレゼント\s*(禁止|不可|できません|できない|NG)|贈(れない|り物不可|与不可)|譲渡不可/;
 // ---- ショートカット（iPhoneの文字認識）から受け取った文字：URLの #t= に「=====」区切りで1枚ずつ入っている ----
 const PENDING_KEY='promo_pendingOcr';
@@ -515,25 +526,38 @@ async function parseBlock(t){
   if (!/持数|リリース|欲しい|未作成/.test(flat)) return null; // ゲームのアイテム画面ではないスクショは使わない
   const m=flat.match(/持数[^0-9]*(\d+)/)||flat.match(/(\d+)個/), owned=m?+m[1]:null;
   await loadItemNames();
-  const noGift=NOGIFT.test(flat);
-  const exact=lines.find(l=>dictExact.has(l.normalize('NFKC'))); if (exact) return {name:exact.normalize('NFKC'), owned, iph:true, noGift};
+  const noGift=NOGIFT.test(flat), sig=numSig(t);
+  const exact=lines.find(l=>dictExact.has(l.normalize('NFKC'))); if (exact) return {name:exact.normalize('NFKC'), owned, iph:true, noGift, sig};
   const li=lines.findIndex(l=>/持数|所持/.test(l.replace(/\s/g,'')));
   const okLine=l=>!JUNK.test(l) && !NOGIFT.test(l.replace(/\s/g,'')) && !/未作成|^[\d\s:：.,/年月日]+$/.test(l);
   let hint=(li>0 ? lines.slice(0,li).reverse().find(okLine) : lines.filter(okLine).sort((a,b)=>b.length-a.length)[0])||'';
   hint=hint.normalize('NFKC').replace(/[\s©®□■◻︎⧉📋]+$/u,'').replace(/^[\s・]+/,'').trim();
   const M=learned.all(), k=normName(hint);
-  return {name:(M[k]?.to ?? M[k]) || hint, owned, iph:true, noGift};
+  return {name:(M[k]?.to ?? M[k]) || hint, owned, iph:true, noGift, sig};
 }
+// 受け取った記録（設定の「ショートカット連携」に表示。うまくいかないときに画面で原因が分かるように）
+const RECV_KEY='promo_lastRecv';
+function saveRecv(o){ try{ localStorage.setItem(RECV_KEY,JSON.stringify({at:Date.now(),ver:APP_VER,...o})); }catch(e){} renderRecv(); }
+function renderRecv(){ const el=$('recvLog'); if(!el) return; let j=null; try{ j=JSON.parse(localStorage.getItem(RECV_KEY)||'null'); }catch(e){}
+  if(!j){ el.textContent='まだショートカットから受け取っていません'; return; }
+  const d=new Date(j.at); el.textContent=`最後に受け取った：${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}（版${j.ver}）\n`+
+    `スクショ${j.blocks??0}枚分・使った${j.kept??0}枚・文字数${j.len??0}`+(j.err?`\nエラー：${j.err}`:'')+(j.names?.length?`\n名前：${j.names.join(' / ')}`:''); }
+let hashBusy=false;
 async function takeHashText(){
-  const m=location.hash.match(/^#t=(.*)$/s); if(!m) return; let t=m[1]; try{ t=decodeURIComponent(t); }catch(e){}
+  const m=location.hash.match(/^#t=(.*)$/s); if(!m || hashBusy) return; hashBusy=true; let t=m[1]; try{ t=decodeURIComponent(t); }catch(e){}
   history.replaceState(null,'',location.pathname+location.search);
-  const blocks=t.split(/\s*={3,}\s*/).map(x=>x.trim()).filter(Boolean);
-  if(!blocks.length){ toast('ショートカットから文字が届きませんでした。\n15分以内に撮ったスクショがあるか確かめてください'); return; }
-  const list=[]; for (const b of blocks){ const r=await parseBlock(b); if (r?.name) list.push(r); }
-  if (!list.length){ toast('ショートカットから受け取ったスクショに、アイテムの画面がありませんでした'); return; }
-  try{ localStorage.setItem(PENDING_KEY,JSON.stringify({at:Date.now(),list})); }catch(e){} renderPendNote();
-  const skipped=blocks.length-list.length;
-  toast(`ショートカットから${list.length}枚分の名前を受け取りました`+(skipped?`（アイテム以外のスクショ${skipped}枚は使いません）`:'')+`。\n同じスクショを「アイテム画像を選ぶ」で選んでください`);
+  try{
+    const blocks=t.split(/\s*={3,}\s*/).map(x=>x.trim()).filter(Boolean);
+    if(!blocks.length){ saveRecv({blocks:0,kept:0,len:t.length}); toast('ショートカットから文字が届きませんでした。\n15分以内に撮ったスクショがあるか確かめてください'); return; }
+    await timeLimit(loadItemNames(),6000).catch(()=>{}); // 辞書が読み込めなくても受け取りは止めない
+    const list=[]; for (const b of blocks){ const r=await parseBlock(b); if (r?.name) list.push(r); }
+    saveRecv({blocks:blocks.length,kept:list.length,len:t.length,names:list.map(x=>x.name)});
+    if (!list.length){ toast('ショートカットから受け取ったスクショに、アイテムの画面がありませんでした'); return; }
+    try{ localStorage.setItem(PENDING_KEY,JSON.stringify({at:Date.now(),list})); }catch(e){} renderPendNote();
+    const skipped=blocks.length-list.length;
+    toast(`ショートカットから${list.length}枚分の名前を受け取りました`+(skipped?`（アイテム以外のスクショ${skipped}枚は使いません）`:'')+`。\n同じスクショを「アイテム画像を選ぶ」で選んでください`);
+  }catch(e){ saveRecv({err:String(e?.message||e),len:t.length}); toast('ショートカットの文字を読み込めませんでした：'+(e?.message||e)); }
+  finally{ hashBusy=false; }
 }
 // ショートカットから受け取った名前があるかを、画像を選ぶボタンの下に出しておく（受け取れているか目で分かるように）
 function renderPendNote(){ const el=$('pendNote'); let j=null; try{ j=JSON.parse(localStorage.getItem(PENDING_KEY)||'null'); }catch(e){}
@@ -542,8 +566,22 @@ function renderPendNote(){ const el=$('pendNote'); let j=null; try{ j=JSON.parse
 setInterval(renderPendNote,30000); setTimeout(renderPendNote,0);
 function pendingList(){ try{ const j=JSON.parse(localStorage.getItem(PENDING_KEY)||'null'); return j && Date.now()-j.at<30*60e3 ? j.list : []; }catch(e){ return []; } }
 function clearPending(){ try{ localStorage.removeItem(PENDING_KEY); }catch(e){} renderPendNote(); }
-function nearestPending(raw,pend){ const a=normName(raw); let best=pend[0], bd=Infinity; for (const p of pend){ const d=editCost(a,normName(p.name||'')); if (d<bd){ bd=d; best=p; } } return best; }
+function nearestPending(raw,pend,sig){ const bySig=pend.map(p=>sigScore(sig,p.sig)), top=Math.max(...bySig);
+  if (top>0 && bySig.filter(x=>x===top).length===1) return pend[bySig.indexOf(top)]; // 数字が一致するものがあればそれ
+  const a=normName(raw); let best=pend[0], bd=Infinity; for (const p of pend){ const d=editCost(a,normName(p.name||'')); if (d<bd){ bd=d; best=p; } } return best; }
 window.addEventListener('hashchange',takeHashText); takeHashText();
+// 前に開いていたページが戻ってきたとき（Safariの「戻る」やタブの復元）も受け取る
+window.addEventListener('pageshow',()=>{ takeHashText(); renderPendNote(); });
+// ---- 新しい版の確認：古いページのままだとショートカットの文字を受け取れないので、開いたときに新しい版があれば読み直す ----
+(async()=>{ try{
+  const r=await fetch(location.pathname+'?vc='+Date.now(),{cache:'no-store'}); if(!r.ok) return;
+  const v=((await r.text()).match(/const APP_VER='([^']+)'/)||[])[1]; if(!v || v===APP_VER) return;
+  let tried=null; try{ tried=sessionStorage.getItem('promo_reloadFor'); }catch(e){}
+  if (tried===v) return; // 同じ版のために何度も読み直さない
+  try{ sessionStorage.setItem('promo_reloadFor',v); }catch(e){}
+  if (!shotImg && items.length===0){ location.replace(location.pathname+'?v='+v); } // まだ画像を選んでいなければ自動で読み直す（受け取った名前は端末に保存済み）
+  else toast('新しい版があります。画面を下に引っぱって読み直してください');
+}catch(e){} })();
 // ---- 読み取った名前の確認（辞書と完全一致＝緑、違う＝赤。赤が残っている間はコピーしない） ----
 const nameOk=n=>!!n && (dictExact.has(n) || Object.values(learned.all()).some(v=>(v?.to??v)===n));
 // 'ok'＝一覧・覚えた名前と一致（緑）、'iph'＝一覧にないがiPhoneで読んだ名前（黄・コピーできる）、'ng'＝赤
@@ -619,10 +657,12 @@ async function setItems(files){
   renderItems(); renderNames(); draw();
   for (const it of items){ try{ const r=await analyzeShot(it.img); if (seq!==ocrSeq) return;
       if (r?.owned && !(pend.length && it.owned)) it.owned=r.owned;
-      it.snap=r?.snap; it.raw=r?.raw; it.ocrName=r?.name; if (!it.iph) it.name=r?.name; if (r?.noGift){ it.noGift=true; it.ocrNoGift=true; } if (r?.cardBottom){ it.ownedBottom=r.ownedBottom; it.nameBottom=r.nameBottom; it.cardBottom=r.cardBottom; it.top=r.top ?? Math.max(0,r.squareBottom-it.img.width); }
+      it.snap=r?.snap; it.raw=r?.raw; it.ocrName=r?.name; it.sig=r?.sig; if (!it.iph) it.name=r?.name; if (r?.noGift){ it.noGift=true; it.ocrNoGift=true; } if (r?.cardBottom){ it.ownedBottom=r.ownedBottom; it.nameBottom=r.nameBottom; it.cardBottom=r.cardBottom; it.top=r.top ?? Math.max(0,r.squareBottom-it.img.width); }
     }catch(e){} it.reading=false; renderItems(); renderNames(); draw(); }
   if (pend.length && (pend.length!==items.length || items.length>=2)){ // 画面から読めた文字と受け取った名前を見比べて、いちばん近いものどうしを組にする
-    const cost=(i,j)=>{ const a=normName(items[i].raw||''), b=normName(pend[j].name||''); return a&&b ? editCost(a,b)/Math.max(a.length,b.length) : 9; };
+    // 数字が1つでも一致すれば強く組にする（一致した数が多いほど強い）。数字で決まらなければ名前の近さ
+    const cost=(i,j)=>{ const sc=sigScore(items[i].sig,pend[j].sig); if (sc>0) return -sc;
+      const a=normName(items[i].raw||''), b=normName(pend[j].name||''); return a&&b ? editCost(a,b)/Math.max(a.length,b.length) : 9; };
     const pairs=[]; items.forEach((_,i)=>pend.forEach((_,j)=>pairs.push([cost(i,j),i,j]))); pairs.sort((a,b)=>a[0]-b[0]);
     const usedI=new Set(), usedJ=new Set(), pick=[];
     for (const [c,i,j] of pairs){ if (c>.6 || usedI.has(i)||usedJ.has(j)) continue; usedI.add(i); usedJ.add(j); pick[i]=j; } // 半分以上違うものは組にしない
