@@ -166,6 +166,9 @@
   .nmRow.iph{border-color:#ffd66b;background:#fffbea}.nmRow.iph .st{background:#fff0b8;color:#a87400}
   .nmRow .rm{flex:none;width:30px;height:30px;border-radius:50%;border:0;background:#f3eef5;color:#8a7a8e;font-size:16px;font-weight:900;cursor:pointer;line-height:30px;padding:0}
   .nmRow .rm.sure{background:#ff5a6e;color:#fff;width:auto;padding:0 10px;font-size:12px}
+  .nmRow .tx{flex:none;border:0;border-radius:99px;padding:6px 8px;font:inherit;font-size:11px;font-weight:900;cursor:pointer;background:#e9f9ef;color:#1f9a57}
+  .nmRow .tx.off{background:#f3eef5;color:#9a8a9e;text-decoration:line-through}
+  .nmRow.skip .t{color:#b3a6b6;text-decoration:line-through}
   .cand{display:flex;align-items:center;gap:8px;width:100%;border:2px solid #f6e4ee;border-radius:14px;background:#fff;padding:9px 12px;margin-top:6px;font:inherit;font-size:14px;font-weight:800;color:var(--ink);text-align:left;cursor:pointer}
   .cand small{flex:none;color:var(--sub);font-weight:700}
   .cand.best{border-color:var(--pink)}
@@ -298,7 +301,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='42'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='43'; // 変えたら上げる（古いページを読み直すための目印）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
 // アイテム画像の位置・サイズは常に固定（正方形）
@@ -630,8 +633,8 @@ window.addEventListener('storage',e=>{ if (e.key===PENDING_KEY) renderPendNote()
 const nameOk=n=>!!n && (dictExact.has(n) || Object.values(learned.all()).some(v=>(v?.to??v)===n));
 // 'ok'＝一覧・覚えた名前と一致（緑）、'iph'＝一覧にないがiPhoneで読んだ名前（黄・コピーできる）、'ng'＝赤
 const nameStatus=e=>nameOk(e.name)?'ok':(e.iph&&e.name?'iph':'ng');
-function nameEntries(){ return items.length>1 ? items.map((it,i)=>({i, name:it.name||'', raw:it.raw||'', reading:it.reading, iph:it.iph, noGift:it.noGift}))
-  : (shotImg ? [{i:0, name:shotName, raw:shotRaw, reading:shotReading, iph:shotIph, noGift:shotNoGift}] : []); }
+function nameEntries(){ return items.length>1 ? items.map((it,i)=>({i, name:it.name||'', raw:it.raw||'', reading:it.reading, iph:it.iph, noGift:it.noGift, skip:!!it.skip}))
+  : (shotImg ? [{i:0, name:shotName, raw:shotRaw, reading:shotReading, iph:shotIph, noGift:shotNoGift, skip:false}] : []); }
 function warnNoGift(){ const ng=nameEntries().filter(e=>e.noGift); if (ng.length) toast(`⚠ プレゼント禁止のアイテムがあります\n${ng.map(e=>`${e.i+1}. ${e.name||'（名前なし）'}`).join('\n')}`); }
 function setEntryName(i,v){ if (items.length>1){ items[i].name=v; items[i].iph=false; } else { shotName=v; shotIph=false; } renderNames(); }
 function renderNames(){
@@ -641,6 +644,10 @@ function renderNames(){
     d.innerHTML=`<span class="no">${e.i+1}</span><span class="t"></span><span class="st">${e.reading&&!e.name?'読取中':st==='ok'?'一覧と一致':st==='iph'?'iPhoneで読んだ':e.name?'一覧にない':'読めず'}</span>`;
     d.querySelector('.t').textContent=e.name||'（名前なし）'; d.onclick=()=>openFix(e.i);
     if (e.noGift){ const g=document.createElement('span'); g.className='st'; g.style.cssText='background:#ff5a6e;color:#fff'; g.textContent='🚫プレゼント禁止'; d.querySelector('.t').after(g); d.style.borderColor='#ff5a6e'; }
+    if (items.length>1){ const tx=document.createElement('button'); tx.type='button'; tx.className='tx'+(e.skip?' off':''); tx.textContent=e.skip?'文字に入れない':'文字に入れる';
+      tx.setAttribute('aria-label','このアイテムを文字・題名に入れるかを切り替える');
+      tx.onclick=ev=>{ ev.stopPropagation(); items[e.i].skip=!items[e.i].skip; renderNames(); };
+      d.appendChild(tx); if (e.skip) d.classList.add('skip'); }
     if (items.length>1){ const b=document.createElement('button'); b.type='button'; b.className='rm'; b.textContent='✕'; b.setAttribute('aria-label','このアイテムを外す');
       b.onclick=ev=>{ ev.stopPropagation(); if (b.dataset.sure){ removeItem(e.i); } else { b.dataset.sure=1; b.classList.add('sure'); b.textContent='外す？'; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.classList.remove('sure'); b.textContent='✕'; } },3000); } };
       d.appendChild(b); }
@@ -673,8 +680,8 @@ $('fixUse').onclick=()=>applyFix($('fixInput').value,true);
 $('fixAsIs').onclick=()=>{ const v=$('fixInput').value.trim(); if(!v) return; learned.add(v,v); applyFix(v,false); };
 $('fixClose').onclick=()=>{ $('fixSheet').hidden=true; };
 // コピーの前の確認：赤い名前があれば止めて、直す画面を開く
-function namesReady(){ const bad=nameEntries().find(e=>nameStatus(e)==='ng');
-  if(!bad){ const ng=nameEntries().filter(e=>e.noGift); if (ng.length && !confirm(`プレゼント禁止のアイテムが入っています。\n${ng.map(e=>`${e.i+1}. ${e.name}`).join('\n')}\n\nこのままコピーしますか？`)) return false; return true; }
+function namesReady(){ const bad=nameEntries().find(e=>!e.skip && nameStatus(e)==='ng');
+  if(!bad){ const ng=nameEntries().filter(e=>e.noGift && !e.skip); if (ng.length && !confirm(`プレゼント禁止のアイテムが入っています。\n${ng.map(e=>`${e.i+1}. ${e.name}`).join('\n')}\n\nこのままコピーしますか？`)) return false; return true; }
   toast(bad.reading?'まだ読み取り中です':'赤い名前を直してください（一覧にない名前）'); if(!bad.reading) openFix(bad.i); return false; }
 
 // ---- アプリの背景：公式サイトの今月の壁紙（wallpaper.json は GitHub Actions が毎月更新） ----
@@ -1041,7 +1048,7 @@ $('titleTotal').addEventListener('change',()=>{ try{ localStorage.setItem('promo
 ['txtStyle','titleOne','titleSep','txtHead','txtTotal','txtFoot'].forEach(id=>{ try{ const v=localStorage.getItem('promo_'+id); if(v!==null) $(id).value=v; }catch(e){}
   $(id).addEventListener('input',()=>{ try{ localStorage.setItem('promo_'+id,$(id).value); }catch(e){} }); });
 function listText(){
-  const list = items.length>1 ? items.map(it=>({name:it.name||'（名前を読み取れませんでした）', n:itemCount(it)}))
+  const list = items.length>1 ? items.filter(it=>!it.skip).map(it=>({name:it.name||'（名前を読み取れませんでした）', n:itemCount(it)}))
     : (shotImg ? [{name:shotName||'（名前を読み取れませんでした）', n:countValue()??0}] : []);
   const rows=list.filter(x=>x.n>0);
   if (!rows.length) return '';
@@ -1056,7 +1063,7 @@ function listText(){
   return parts.join('\n\n');
 }
 function titleText(){ // タイトル用：アイテム名×数だけ
-  const list = items.length>1 ? items.map(it=>({name:it.name||'', n:itemCount(it)})) : (shotImg ? [{name:shotName||'', n:countValue()??0}] : []);
+  const list = items.length>1 ? items.filter(it=>!it.skip).map(it=>({name:it.name||'', n:itemCount(it)})) : (shotImg ? [{name:shotName||'', n:countValue()??0}] : []);
   const rows=list.filter(x=>x.n>0); if(!rows.length) return '';
   const sep=$('titleSep').value==='sp' ? ' ' : '\n';
   const t=rows.map(x=>x.n===1&&$('titleOne').value==='hide' ? x.name : `${x.name}×${x.n}`).join(sep);
