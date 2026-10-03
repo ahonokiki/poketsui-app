@@ -303,7 +303,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='45'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='46'; // 変えたら上げる（古いページを読み直すための目印）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
 // アイテム画像の位置・サイズは常に固定（正方形）
@@ -579,7 +579,7 @@ const RAW_KEY='promo_rawIn';
 // 受け取った文字を名前に直して保存する（辞書を待たない）
 function processRaw(raw,via){
   const blocks=raw.replace(/\s+/g,'').split(/(?:%0A|%0D|%20)*(?:=|%3D){3,}(?:%0A|%0D|%20)*/i).map(b=>softDecode(b).trim()).filter(Boolean);
-  if(!blocks.length){ saveRecv({blocks:0,kept:0,len:raw.length,via}); toast(raw.length ? 'ショートカットのスクショから文字が読めませんでした。\nゲームのアイテム画面のスクショか確かめてください' : 'ショートカットから文字が届きませんでした。\nURLの「#t=」のすぐあとに「URLエンコード済みのテキスト」が入っているか確かめてください'); return; }
+  if(!blocks.length){ saveRecv({blocks:0,kept:0,len:raw.length,via}); toast(raw.length ? 'ショートカットのスクショから文字が読めませんでした。\nゲームのアイテム画面のスクショか確かめてください' : 'ショートカットから文字が届きませんでした。\nURLの「#b=」（または「#t=」）のすぐあとに、エンコードした文字が入っているか確かめてください'); return; }
   const list=blocks.map(parseBlock).filter(r=>r?.name);
   saveRecv({blocks:blocks.length,kept:list.length,len:raw.length,via,names:list.map(x=>x.name),dropped:blocks.filter(b=>!parseBlock(b)?.name).map(b=>b.replace(/\s+/g,' ').slice(0,15))});
   if (!list.length){ toast('ショートカットから受け取ったスクショに、アイテムの画面がありませんでした'); return; }
@@ -591,8 +591,13 @@ function processRaw(raw,via){
     if (!j?.list?.length) return; const again=blocks.map(parseBlock).filter(r=>r?.name); if (again.length!==j.list.length) return;
     try{ localStorage.setItem(PENDING_KEY,JSON.stringify({...j,list:again})); }catch(e){} },()=>{});
 }
+// Base64 で届いた文字を戻す（ショートカットの「Base64エンコード」。URLと間違われる「.」などが入らない）
+function b64ToText(x){ x=x.replace(/%2B/gi,'+').replace(/%2F/gi,'/').replace(/%3D/gi,'=').replace(/\s+|%0A|%0D|%20/gi,'').replace(/-/g,'+').replace(/_/g,'/');
+  while (x.length%4) x+='='; const bin=atob(x); return new TextDecoder('utf-8').decode(Uint8Array.from(bin,c=>c.charCodeAt(0))); }
 function takeHashText(){
-  const m=location.hash.match(/^#\s*t\s*(?:=|%3D)([\s\S]*)$/i); if(!m) return; const raw=m[1];
+  let raw=null; const mb=location.hash.match(/^#\s*b\s*(?:=|%3D)([\s\S]*)$/i);
+  if (mb){ try{ raw=encodeURIComponent(b64ToText(mb[1])); }catch(e){ raw=''; } }
+  else { const m=location.hash.match(/^#\s*t\s*(?:=|%3D)([\s\S]*)$/i); if(!m) return; raw=m[1]; }
   try{ localStorage.setItem(RAW_KEY,JSON.stringify({at:Date.now(),raw})); }catch(e){} // 先に保存（途中で読み直しになっても失わない）
   history.replaceState(null,'',location.pathname); // ?sc=1 なども外す（次のショートカットは別のURLになり、新しく読み込まれる）
   try{ processRaw(raw,'URL'); }catch(e){ saveRecv({err:String(e?.message||e),len:raw.length}); toast('ショートカットの文字を読み込めませんでした：'+(e?.message||e)); }
