@@ -297,7 +297,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='38'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='39'; // 変えたら上げる（古いページを読み直すための目印）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
 // アイテム画像の位置・サイズは常に固定（正方形）
@@ -484,7 +484,7 @@ async function analyzeShot(img){
   r.sig=numSig(data.text);
   return r;
 }
-let shotName='', shotRaw='', shotReading=false, shotIph=false, shotNoGift=false;
+let picking=false, shotName='', shotRaw='', shotReading=false, shotIph=false, shotNoGift=false;
 function setShot(i){ shotName=''; shotRaw=''; shotIph=false; shotNoGift=false; $('ownSnap').hidden=true; items=[]; renderItems(); shotImg=i; $('count').value=''; shotReading=true; renderNames(); readOwned(i); }
 async function readOwned(img){
   const seq=++ocrSeq; $('ownState').textContent='読取中…';
@@ -516,6 +516,8 @@ function numSig(text){ const t=(text||'').normalize('NFKC'), out=new Set();
   for (const m of t.matchAll(/(\d{4})\s*[年/.\-]\s*(\d{1,2})\s*[月/.\-]\s*(\d{1,2})/g)) out.add(`d${+m[1]}-${+m[2]}-${+m[3]}`); // リリース日
   for (const m of t.replace(/(\d),(\d{3})/g,'$1$2').matchAll(/\d{3,}/g)) if (!/^(19|20)\d\d$/.test(m[0])) out.add('n'+(+m[0])); // 3桁以上の数（年だけの数は除く）
   return [...out]; }
+// 受け取った中で1枚にしか出てこない数字だけを手がかりにする（同じガチャのリリース日など、共通の数字では決めない）
+function uniqSigs(pend){ const cnt=new Map(); pend.forEach(p=>new Set(p.sig||[]).forEach(x=>cnt.set(x,(cnt.get(x)||0)+1))); return s=>(s||[]).filter(x=>cnt.get(x)===1); }
 const sigScore=(a,b)=>{ if(!a?.length||!b?.length) return 0; const B=new Set(b); return a.filter(x=>B.has(x)).length; };
 const NOGIFT=/プレゼント\s*(禁止|不可|できません|できない|NG)|贈(れない|り物不可|与不可)|譲渡不可/;
 // ---- ショートカット（iPhoneの文字認識）から受け取った文字：URLの #t= に「=====」区切りで1枚ずつ入っている ----
@@ -561,7 +563,7 @@ const RAW_KEY='promo_rawIn';
 // 受け取った文字を名前に直して保存する（辞書を待たない）
 function processRaw(raw,via){
   const blocks=raw.replace(/\s+/g,'').split(/(?:%0A|%0D|%20)*(?:=|%3D){3,}(?:%0A|%0D|%20)*/i).map(b=>softDecode(b).trim()).filter(Boolean);
-  if(!blocks.length){ saveRecv({blocks:0,kept:0,len:raw.length,via}); toast('ショートカットから文字が届きませんでした。\n15分以内に撮ったスクショがあるか確かめてください'); return; }
+  if(!blocks.length){ saveRecv({blocks:0,kept:0,len:raw.length,via}); toast(raw.length ? 'ショートカットのスクショから文字が読めませんでした。\nゲームのアイテム画面のスクショか確かめてください' : 'ショートカットから文字が届きませんでした。\nURLの「#t=」のすぐあとに「URLエンコード済みのテキスト」が入っているか確かめてください'); return; }
   const list=blocks.map(parseBlock).filter(r=>r?.name);
   saveRecv({blocks:blocks.length,kept:list.length,len:raw.length,via,names:list.map(x=>x.name),dropped:blocks.filter(b=>!parseBlock(b)?.name).map(b=>b.replace(/\s+/g,' ').slice(0,15))});
   if (!list.length){ toast('ショートカットから受け取ったスクショに、アイテムの画面がありませんでした'); return; }
@@ -591,9 +593,10 @@ function renderPendNote(){ const el=$('pendNote'); let j=null; try{ j=JSON.parse
 setInterval(renderPendNote,30000); setTimeout(renderPendNote,0);
 function pendingList(){ try{ const j=JSON.parse(localStorage.getItem(PENDING_KEY)||'null'); return j && Date.now()-j.at<30*60e3 ? j.list : []; }catch(e){ return []; } }
 function clearPending(){ try{ localStorage.removeItem(PENDING_KEY); }catch(e){} renderPendNote(); }
-function nearestPending(raw,pend,sig){ const bySig=pend.map(p=>sigScore(sig,p.sig)), top=Math.max(...bySig);
-  if (top>0 && bySig.filter(x=>x===top).length===1) return pend[bySig.indexOf(top)]; // 数字が一致するものがあればそれ
-  const a=normName(raw); let best=pend[0], bd=Infinity; for (const p of pend){ const d=editCost(a,normName(p.name||'')); if (d<bd){ bd=d; best=p; } } return best; }
+function nearestPending(raw,pend,sig){ const u=uniqSigs(pend), bySig=pend.map(p=>sigScore(u(sig),u(p.sig))), top=Math.max(0,...bySig);
+  if (top>0 && bySig.filter(x=>x===top).length===1) return pend[bySig.indexOf(top)]; // その1枚にしかない数字が一致すればそれ
+  const cand=top>0 ? pend.filter((_,k)=>bySig[k]===top) : pend; // 数字で同点なら、その中から名前の近いもの
+  const a=normName(raw); let best=cand[0], bd=Infinity; for (const p of cand){ const d=editCost(a,normName(p.name||'')); if (d<bd){ bd=d; best=p; } } return best; }
 window.addEventListener('hashchange',takeHashText); takeHashText(); recoverRaw();
 // 前に開いていたページが戻ってきたとき（Safariの「戻る」やタブの復元）も受け取る
 window.addEventListener('pageshow',()=>{ takeHashText(); renderPendNote(); });
@@ -602,11 +605,11 @@ window.addEventListener('storage',e=>{ if (e.key===PENDING_KEY) renderPendNote()
 // ---- 新しい版の確認：古いページのままだとショートカットの文字を受け取れないので、開いたときに新しい版があれば読み直す ----
 (async()=>{ try{
   const r=await fetch(location.pathname+'?vc='+Date.now(),{cache:'no-store'}); if(!r.ok) return;
-  const v=((await r.text()).match(/const APP_VER='([^']+)'/)||[])[1]; if(!v || v===APP_VER) return;
+  const v=((await r.text()).match(/const APP_VER='([^']+)'/)||[])[1]; if(!v || !(+v > +APP_VER)) return; // 新しい版のときだけ
   let tried=null; try{ tried=sessionStorage.getItem('promo_reloadFor'); }catch(e){}
   if (tried===v) return; // 同じ版のために何度も読み直さない
   try{ sessionStorage.setItem('promo_reloadFor',v); }catch(e){}
-  if (!shotImg && items.length===0){ location.replace(location.pathname+'?v='+v); } // まだ画像を選んでいなければ自動で読み直す（受け取った名前は端末に保存済み）
+  if (!picking && !shotImg && items.length===0){ location.replace(location.pathname+'?v='+v); } // まだ画像を選んでいなければ自動で読み直す（受け取った名前は端末に保存済み）
   else toast('新しい版があります。画面を下に引っぱって読み直してください');
 }catch(e){} })();
 // ---- 読み取った名前の確認（辞書と完全一致＝緑、違う＝赤。赤が残っている間はコピーしない） ----
@@ -688,8 +691,10 @@ async function setItems(files){
     }catch(e){} it.reading=false; renderItems(); renderNames(); draw(); }
   if (pend.length && (pend.length!==items.length || items.length>=2)){ // 画面から読めた文字と受け取った名前を見比べて、いちばん近いものどうしを組にする
     // 数字が1つでも一致すれば強く組にする（一致した数が多いほど強い）。数字で決まらなければ名前の近さ
-    const cost=(i,j)=>{ const sc=sigScore(items[i].sig,pend[j].sig); if (sc>0) return -sc;
-      const a=normName(items[i].raw||''), b=normName(pend[j].name||''); return a&&b ? editCost(a,b)/Math.max(a.length,b.length) : 9; };
+    // 1枚にしかない数字が一致すれば強く組にする（同点は名前の近さで決める）。数字で決まらなければ名前の近さだけで、半分以上違えば組にしない
+    const u=uniqSigs(pend);
+    const cost=(i,j)=>{ const a=normName(items[i].raw||''), b=normName(pend[j].name||''), nc=a&&b ? editCost(a,b)/Math.max(a.length,b.length) : 9;
+      const sc=sigScore(u(items[i].sig),u(pend[j].sig)); return sc>0 ? -sc+Math.min(nc,1)*0.1 : nc; };
     const pairs=[]; items.forEach((_,i)=>pend.forEach((_,j)=>pairs.push([cost(i,j),i,j]))); pairs.sort((a,b)=>a[0]-b[0]);
     const usedI=new Set(), usedJ=new Set(), pick=[];
     for (const [c,i,j] of pairs){ if (c>.6 || usedI.has(i)||usedJ.has(j)) continue; usedI.add(i); usedJ.add(j); pick[i]=j; } // 半分以上違うものは組にしない
@@ -716,6 +721,7 @@ function renderItems(){
     d.querySelector('.p').onclick=()=>{ it.count=itemCount(it)+1; renderItems(); draw(); };
     box.appendChild(d); });
 }
+$('shot').addEventListener('click',()=>{ picking=true; }); // 写真を選んでいる最中は自動で読み直さない
 $('shot').addEventListener('change',()=>{ const fs=[...$('shot').files]; $('shot').value='';
   if (fs.length>1) setItems(fs); else if (fs[0]) fromFile(fs[0],setShot); });
 
