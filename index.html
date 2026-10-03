@@ -172,7 +172,7 @@
 </style>
 </head>
 <body>
-<header>ポケツイ画像加工アプリ
+<header>ポケツイ画像加工アプリ<small id="verLabel" style="position:absolute;right:56px;bottom:2px;font-size:9px;opacity:.75;font-weight:700;text-shadow:none"></small>
   <a class="gear left" id="openRank" href="ranking.html" aria-label="売れ筋ランキング"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.5 21H2V9h5.5v12zm7.25-18h-5.5v18h5.5V3zM22 11h-5.5v10H22V11z"/></svg></a>
   <button class="gear" id="openSet" type="button" aria-label="設定"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg></button></header>
 <main class="one">
@@ -297,7 +297,8 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='37'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='38'; // 変えたら上げる（古いページを読み直すための目印）
+document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
 // アイテム画像の位置・サイズは常に固定（正方形）
 const BOX = {x:127, y:128, size:1000};
@@ -391,7 +392,7 @@ const loadItemNames=()=>itemNames ??= Promise.all(['items.json','data/gametrade-
 loadItemNames();
 const normName=t=>t.normalize('NFKC').replace(/[\s・･「」『』【】（）()]/g,'').replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+96));
 // 保存形式：{正規化した読み取り: {from:読み取った文字, to:直した名前}}
-const learned={ all(){ try{ return JSON.parse(localStorage.getItem('promo_learned')||'{}'); }catch(e){ return {}; } },
+const learned={ all(){ try{ const m=JSON.parse(localStorage.getItem('promo_learned')||'{}'); return m&&typeof m==='object'?m:{}; }catch(e){ return {}; } },
   save(m){ try{ localStorage.setItem('promo_learned',JSON.stringify(m)); }catch(e){} },
   get(){ const m=this.all(), r={}; for (const k in m) r[k]=m[k]?.to ?? m[k]; return r; },
   add(raw,fixed){ const m=this.all(); m[normName(raw)]={from:raw,to:fixed}; this.save(m); },
@@ -521,15 +522,21 @@ const NOGIFT=/プレゼント\s*(禁止|不可|できません|できない|NG)|
 const PENDING_KEY='promo_pendingOcr';
 const JUNK=/リリース|欲しい|ショップ|タイプ|所持数|持数|コピー|ココリウム|ファッション|^[\d:：個]+$/;
 // iPhoneの読み取りはほぼ正確なので、名前の行はそのまま使う（一覧と完全一致・覚えた名前があればそちら）
-async function parseBlock(t){
+// 一覧の名前を NFKC でそろえた形から元の表記を引く（全角の！などを含む名前も一致させる）
+let dictNormMap=null, dictNormSize=-1;
+const dictNorm=()=>{ if (dictNormSize!==dictExact.size){ dictNormMap=new Map(); for (const n of dictExact) dictNormMap.set(n.normalize('NFKC'),n); dictNormSize=dictExact.size; } return dictNormMap; };
+// このアプリ自身の画面のスクショ（所持数などの文字が写る）は、アイテムの画面として使わない
+const APP_SCREEN=/ポケツイ画像加工アプリ|アイテム画像を選ぶ|画像を保存|ショートカットから\d*枚分/;
+// 辞書を待たずにすぐ読む（辞書がまだなら、iPhoneが読んだ行をそのまま使う）
+function parseBlock(t){
   const lines=t.split(/\n/).map(l=>l.trim()).filter(Boolean), flat=t.replace(/\s/g,'');
-  if (!/持数|リリース|欲しい|未作成/.test(flat)) return null; // ゲームのアイテム画面ではないスクショは使わない
-  const m=flat.match(/持数[^0-9]*(\d+)/)||flat.match(/(\d+)個/), owned=m?+m[1]:null;
-  await loadItemNames();
-  const noGift=NOGIFT.test(flat), sig=numSig(t);
-  const exact=lines.find(l=>dictExact.has(l.normalize('NFKC'))); if (exact) return {name:exact.normalize('NFKC'), owned, iph:true, noGift, sig};
-  const li=lines.findIndex(l=>/持数|所持/.test(l.replace(/\s/g,'')));
-  const okLine=l=>!JUNK.test(l) && !NOGIFT.test(l.replace(/\s/g,'')) && !/未作成|^[\d\s:：.,/年月日]+$/.test(l);
+  if (!/持数|リリース|欲しい|未作成/.test(flat) || APP_SCREEN.test(flat)) return null; // ゲームのアイテム画面ではないスクショは使わない
+  const m=flat.match(/所持数[^0-9]*(\d+)/)||flat.match(/(?<!複数所)持数[^0-9]*(\d+)/)||flat.match(/(\d+)個/), owned=m?+m[1]:null;
+  const noGift=NOGIFT.test(flat), sig=numSig(t), DN=dictNorm();
+  const ex=lines.map(l=>DN.get(l.normalize('NFKC'))).find(Boolean); if (ex) return {name:ex, owned, iph:true, noGift, sig};
+  // 名前の行：「所持数」の行のすぐ上（「複数所持しているアイテムです」のお知らせの行は所持数の行ではない）
+  const li=lines.findIndex(l=>/所持数|持数/.test(l.replace(/\s/g,'')) && !/複数所持/.test(l));
+  const okLine=l=>!JUNK.test(l) && !NOGIFT.test(l.replace(/\s/g,'')) && !/未作成|複数所持|^[\p{Nd}\s:：.,/年月日%個]+$/u.test(l) && /[\p{L}]/u.test(l) && !/[\p{Nd}]{3,}/u.test(l.replace(/\s/g,''));
   let hint=(li>0 ? lines.slice(0,li).reverse().find(okLine) : lines.filter(okLine).sort((a,b)=>b.length-a.length)[0])||'';
   hint=hint.normalize('NFKC').replace(/[\s©®□■◻︎⧉📋]+$/u,'').replace(/^[\s・]+/,'').trim();
   const M=learned.all(), k=normName(hint);
@@ -541,24 +548,42 @@ function saveRecv(o){ try{ localStorage.setItem(RECV_KEY,JSON.stringify({at:Date
 function renderRecv(){ const el=$('recvLog'); if(!el) return; let j=null; try{ j=JSON.parse(localStorage.getItem(RECV_KEY)||'null'); }catch(e){}
   if(!j){ el.textContent='まだショートカットから受け取っていません'; return; }
   const d=new Date(j.at); el.textContent=`最後に受け取った：${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}（版${j.ver}）\n`+
-    `スクショ${j.blocks??0}枚分・使った${j.kept??0}枚・文字数${j.len??0}`+(j.err?`\nエラー：${j.err}`:'')+(j.names?.length?`\n名前：${j.names.join(' / ')}`:''); }
-let hashBusy=false;
-async function takeHashText(){
-  const m=location.hash.match(/^#t=(.*)$/s); if(!m || hashBusy) return; hashBusy=true; let t=m[1]; try{ t=decodeURIComponent(t); }catch(e){}
-  history.replaceState(null,'',location.pathname+location.search);
-  try{
-    const blocks=t.split(/\s*={3,}\s*/).map(x=>x.trim()).filter(Boolean);
-    if(!blocks.length){ saveRecv({blocks:0,kept:0,len:t.length}); toast('ショートカットから文字が届きませんでした。\n15分以内に撮ったスクショがあるか確かめてください'); return; }
-    await timeLimit(loadItemNames(),6000).catch(()=>{}); // 辞書が読み込めなくても受け取りは止めない
-    const list=[]; for (const b of blocks){ const r=await parseBlock(b); if (r?.name) list.push(r); }
-    saveRecv({blocks:blocks.length,kept:list.length,len:t.length,names:list.map(x=>x.name)});
-    if (!list.length){ toast('ショートカットから受け取ったスクショに、アイテムの画面がありませんでした'); return; }
-    try{ localStorage.setItem(PENDING_KEY,JSON.stringify({at:Date.now(),list})); }catch(e){} renderPendNote();
-    const skipped=blocks.length-list.length;
-    toast(`ショートカットから${list.length}枚分の名前を受け取りました`+(skipped?`（アイテム以外のスクショ${skipped}枚は使いません）`:'')+`。\n同じスクショを「アイテム画像を選ぶ」で選んでください`);
-  }catch(e){ saveRecv({err:String(e?.message||e),len:t.length}); toast('ショートカットの文字を読み込めませんでした：'+(e?.message||e)); }
-  finally{ hashBusy=false; }
+    `スクショ${j.blocks??0}枚分・使った${j.kept??0}枚・文字数${j.len??0}`+(j.via?`（${j.via}）`:'')+(j.err?`\nエラー：${j.err}`:'')+(j.names?.length?`\n名前：${j.names.join(' / ')}`:'')+(j.dropped?.length?`\n使わなかった：${j.dropped.join(' / ')}`:'')+(lastErr()?`\n最近のエラー：${lastErr()}`:''); }
+// 予期しないエラーを記録しておく（設定の記録に出す）
+const lastErr=()=>{ try{ return localStorage.getItem('promo_lastErr')||''; }catch(e){ return ''; } };
+const noteErr=m=>{ try{ localStorage.setItem('promo_lastErr',new Date().toLocaleTimeString()+' '+String(m).slice(0,120)); }catch(e){} };
+window.addEventListener('error',e=>noteErr((e.message||'error')+(e.lineno?' 行'+e.lineno:'')));
+window.addEventListener('unhandledrejection',e=>noteErr('promise: '+(e.reason?.message||e.reason)));
+// URLの文字を戻す：壊れた %xx があっても、その部分だけ残して他は読む
+function softDecode(x){ return x.replace(/(?:%[0-9A-Fa-f]{2})+/g,run=>{ try{ return decodeURIComponent(run); }catch(e){
+  try{ return new TextDecoder('utf-8').decode(new Uint8Array(run.match(/%[0-9A-Fa-f]{2}/g).map(h=>parseInt(h.slice(1),16)))); }catch(_){ return run; } } }); }
+const RAW_KEY='promo_rawIn';
+// 受け取った文字を名前に直して保存する（辞書を待たない）
+function processRaw(raw,via){
+  const blocks=raw.replace(/\s+/g,'').split(/(?:%0A|%0D|%20)*(?:=|%3D){3,}(?:%0A|%0D|%20)*/i).map(b=>softDecode(b).trim()).filter(Boolean);
+  if(!blocks.length){ saveRecv({blocks:0,kept:0,len:raw.length,via}); toast('ショートカットから文字が届きませんでした。\n15分以内に撮ったスクショがあるか確かめてください'); return; }
+  const list=blocks.map(parseBlock).filter(r=>r?.name);
+  saveRecv({blocks:blocks.length,kept:list.length,len:raw.length,via,names:list.map(x=>x.name),dropped:blocks.filter(b=>!parseBlock(b)?.name).map(b=>b.replace(/\s+/g,' ').slice(0,15))});
+  if (!list.length){ toast('ショートカットから受け取ったスクショに、アイテムの画面がありませんでした'); return; }
+  try{ localStorage.setItem(PENDING_KEY,JSON.stringify({at:Date.now(),list})); }catch(e){} renderPendNote();
+  const skipped=blocks.length-list.length;
+  toast(`ショートカットから${list.length}枚分の名前を受け取りました`+(skipped?`（アイテム以外のスクショ${skipped}枚は使いません）`:'')+`。\n同じスクショを「アイテム画像を選ぶ」で選んでください`);
+  // 辞書がまだ読み込めていなければ、読み込めたあとで一覧の表記に合わせ直す（まだ画像に使っていない間だけ）
+  if (!dictExact.size) loadItemNames().then(()=>{ if(!dictExact.size) return; let j=null; try{ j=JSON.parse(localStorage.getItem(PENDING_KEY)||'null'); }catch(e){}
+    if (!j?.list?.length) return; const again=blocks.map(parseBlock).filter(r=>r?.name); if (again.length!==j.list.length) return;
+    try{ localStorage.setItem(PENDING_KEY,JSON.stringify({...j,list:again})); }catch(e){} },()=>{});
 }
+function takeHashText(){
+  const m=location.hash.match(/^#\s*t\s*(?:=|%3D)([\s\S]*)$/i); if(!m) return; const raw=m[1];
+  try{ localStorage.setItem(RAW_KEY,JSON.stringify({at:Date.now(),raw})); }catch(e){} // 先に保存（途中で読み直しになっても失わない）
+  history.replaceState(null,'',location.pathname); // ?sc=1 なども外す（次のショートカットは別のURLになり、新しく読み込まれる）
+  try{ processRaw(raw,'URL'); }catch(e){ saveRecv({err:String(e?.message||e),len:raw.length}); toast('ショートカットの文字を読み込めませんでした：'+(e?.message||e)); }
+  try{ localStorage.removeItem(RAW_KEY); }catch(e){}
+}
+// 受け取った直後に読み直しなどで処理が終わらなかった文字があれば、ここで処理する（10分以内のものだけ）
+function recoverRaw(){ if (location.hash) return; let j=null; try{ j=JSON.parse(localStorage.getItem(RAW_KEY)||'null'); }catch(e){}
+  try{ localStorage.removeItem(RAW_KEY); }catch(e){}
+  if (j?.raw && Date.now()-j.at<10*60e3) try{ processRaw(j.raw,'URL（読み直し後）'); }catch(e){} }
 // ショートカットから受け取った名前があるかを、画像を選ぶボタンの下に出しておく（受け取れているか目で分かるように）
 function renderPendNote(){ const el=$('pendNote'); let j=null; try{ j=JSON.parse(localStorage.getItem(PENDING_KEY)||'null'); }catch(e){}
   const ok=j && Date.now()-j.at<30*60e3 && j.list?.length;
@@ -569,9 +594,11 @@ function clearPending(){ try{ localStorage.removeItem(PENDING_KEY); }catch(e){} 
 function nearestPending(raw,pend,sig){ const bySig=pend.map(p=>sigScore(sig,p.sig)), top=Math.max(...bySig);
   if (top>0 && bySig.filter(x=>x===top).length===1) return pend[bySig.indexOf(top)]; // 数字が一致するものがあればそれ
   const a=normName(raw); let best=pend[0], bd=Infinity; for (const p of pend){ const d=editCost(a,normName(p.name||'')); if (d<bd){ bd=d; best=p; } } return best; }
-window.addEventListener('hashchange',takeHashText); takeHashText();
+window.addEventListener('hashchange',takeHashText); takeHashText(); recoverRaw();
 // 前に開いていたページが戻ってきたとき（Safariの「戻る」やタブの復元）も受け取る
 window.addEventListener('pageshow',()=>{ takeHashText(); renderPendNote(); });
+document.addEventListener('visibilitychange',()=>{ if (!document.hidden){ takeHashText(); renderPendNote(); } });
+window.addEventListener('storage',e=>{ if (e.key===PENDING_KEY) renderPendNote(); });
 // ---- 新しい版の確認：古いページのままだとショートカットの文字を受け取れないので、開いたときに新しい版があれば読み直す ----
 (async()=>{ try{
   const r=await fetch(location.pathname+'?vc='+Date.now(),{cache:'no-store'}); if(!r.ok) return;
