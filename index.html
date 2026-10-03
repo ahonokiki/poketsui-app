@@ -159,7 +159,8 @@
   #names{width:100%;display:flex;flex-direction:column;gap:4px}
   .nmRow{display:flex;align-items:center;gap:6px;background:#fff;border-radius:14px;padding:5px 8px;box-shadow:0 2px 0 #f6cfe2;font-size:13px;cursor:pointer;border:2px solid transparent}
   .nmRow .no{flex:none;width:18px;height:18px;border-radius:50%;background:var(--pink);color:#fff;font-size:11px;font-weight:900;line-height:18px;text-align:center}
-  .nmRow .t{flex:1;min-width:0;overflow-wrap:anywhere;font-weight:800}
+  .nmRow{flex-wrap:wrap}
+  .nmRow .t{flex:1 1 55%;min-width:55%;overflow-wrap:anywhere;font-weight:800}
   .nmRow .st{flex:none;font-size:11px;font-weight:900;border-radius:99px;padding:2px 8px}
   .nmRow.ok .st{background:#dff7e8;color:#1f9a57}.nmRow.ng{border-color:#ff8aa0;background:#fff4f6}.nmRow.ng .st{background:#ffd9e0;color:#d0304f}
   .nmRow.wait .st{background:#f3eef5;color:var(--sub)}
@@ -301,7 +302,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='43'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='44'; // 変えたら上げる（古いページを読み直すための目印）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
 // アイテム画像の位置・サイズは常に固定（正方形）
@@ -537,18 +538,24 @@ let dictNormMap=null, dictNormSize=-1;
 const dictNorm=()=>{ if (dictNormSize!==dictExact.size){ dictNormMap=new Map(); for (const n of dictExact) dictNormMap.set(n.normalize('NFKC'),n); dictNormSize=dictExact.size; } return dictNormMap; };
 // このアプリ自身の画面のスクショ（所持数などの文字が写る）は、アイテムの画面として使わない
 const APP_SCREEN=/ポケツイ画像加工アプリ|アイテム画像を選ぶ|画像を保存|ショートカットから\d*枚分/;
+// 名前の横のコピーのマーク（□）を iPhone が「ロ」「口」と読むことがあるので外す
+// （「〜の口」のような本当に「口」で終わる名前は、口の前が漢字・ひらがななので残る）
+function stripIcon(l){ let x=l.normalize('NFKC').replace(/[\s©®□■◻︎⧉📋]+$/u,'').trim();
+  if (/[ロ回]$/.test(x) && x.length>2) x=x.slice(0,-1).trim();
+  else if (/[\p{Script=Katakana}ーA-Za-z0-9)]口$/u.test(x)) x=x.slice(0,-1).trim();
+  return x; }
 // 辞書を待たずにすぐ読む（辞書がまだなら、iPhoneが読んだ行をそのまま使う）
 function parseBlock(t){
   const lines=t.split(/\n/).map(l=>l.trim()).filter(Boolean), flat=t.replace(/\s/g,'');
   if (!/持数|リリース|欲しい|未作成/.test(flat) || APP_SCREEN.test(flat)) return null; // ゲームのアイテム画面ではないスクショは使わない
   const m=flat.match(/所持数[^0-9]*(\d+)/)||flat.match(/(?<!複数所)持数[^0-9]*(\d+)/)||flat.match(/(\d+)個/), owned=m?+m[1]:null;
   const noGift=NOGIFT.test(flat), sig=numSig(t), DN=dictNorm();
-  const ex=lines.map(l=>DN.get(l.normalize('NFKC'))).find(Boolean); if (ex) return {name:ex, owned, iph:true, noGift, sig};
+  const ex=lines.map(l=>DN.get(l.normalize('NFKC'))||DN.get(stripIcon(l))).find(Boolean); if (ex) return {name:ex, owned, iph:true, noGift, sig};
   // 名前の行：「所持数」の行のすぐ上（「複数所持しているアイテムです」のお知らせの行は所持数の行ではない）
   const li=lines.findIndex(l=>/所持数|持数/.test(l.replace(/\s/g,'')) && !/複数所持/.test(l));
   const okLine=l=>!JUNK.test(l) && !NOGIFT.test(l.replace(/\s/g,'')) && !/未作成|複数所持|^[\p{Nd}\s:：.,/年月日%個]+$/u.test(l) && /[\p{L}]/u.test(l) && !/[\p{Nd}]{3,}/u.test(l.replace(/\s/g,''));
   let hint=(li>0 ? lines.slice(0,li).reverse().find(okLine) : lines.filter(okLine).sort((a,b)=>b.length-a.length)[0])||'';
-  hint=hint.normalize('NFKC').replace(/[\s©®□■◻︎⧉📋]+$/u,'').replace(/^[\s・]+/,'').trim();
+  hint=stripIcon(hint).replace(/^[\s・]+/,'').trim();
   const M=learned.all(), k=normName(hint);
   return {name:(M[k]?.to ?? M[k]) || hint, owned, iph:true, noGift, sig};
 }
@@ -730,7 +737,9 @@ async function setItems(files){
     let moved=0; items.forEach((it,i)=>{ const j=pick[i];
       if (j==null){ it.iph=false; it.name=it.ocrName||it.name; it.noGift=!!it.ocrNoGift; return; }
       const p=pend[j]; if (it.name!==p.name) moved++; it.name=p.name; it.iph=true; it.noGift=!!(p.noGift||it.ocrNoGift); if (p.owned) it.owned=p.owned; });
-    if (pend.length!==items.length) toast(`ショートカットの${pend.length}枚分のうち、${usedJ.size}枚を選んだ画像に当てはめました`);
+    const miss=items.map((_,i)=>i).filter(i=>pick[i]==null).map(i=>i+1);
+    if (miss.length) toast(`${miss.join('・')}番は、ショートカットで読んだ中にありませんでした。\nスクショを撮ったあとに、もう一度ショートカットを動かしてください`);
+    else if (pend.length!==items.length) toast(`ショートカットの${pend.length}枚分のうち、${usedJ.size}枚を選んだ画像に当てはめました`);
     else if (moved) toast('画像と名前の対応を直しました');
     renderItems(); renderNames(); draw();
   }
