@@ -304,7 +304,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='47'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='48'; // 変えたら上げる（古いページを読み直すための目印）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
 // アイテム画像の位置・サイズは常に固定（正方形）
@@ -691,7 +691,8 @@ async function openFix(i){
     b.firstChild.textContent=n; b.lastChild.textContent=d<=0.5?'ほぼ一致':d<=1.5?'近い':''; b.onclick=()=>applyFix(n,true); box.appendChild(b); });
 }
 function applyFix(v,learn){ v=v.trim(); if(!v) return; const e=nameEntries()[fixIdx]; if(!e) return;
-  if (learn && (e.raw||e.name) && v!==(e.raw||e.name)) learned.add(e.raw||e.name,v); else if (learn) learned.add(v,v);
+  if (learn){ const ks=[e.raw, e.iph?e.name:''].filter(k=>k&&k!==v); // iPhoneで読んだ名前も覚える（次に同じ読みが届いたら直した名前にする）
+    if (ks.length) ks.forEach(k=>learned.add(k,v)); else learned.add(v,v); }
   setEntryName(fixIdx,v); $('fixSheet').hidden=true; toast(nameOk(v)?'直しました':'直しました（一覧にない名前です）'); }
 $('fixUse').onclick=()=>applyFix($('fixInput').value,true);
 $('fixAsIs').onclick=()=>{ const v=$('fixInput').value.trim(); if(!v) return; learned.add(v,v); applyFix(v,false); };
@@ -1104,7 +1105,7 @@ $('copyTxt').onclick=()=>{ const t=listText(); if(!t){ toast('アイテム画像
 let txtShown='';
 function learnFromEdit(before,after){
   if (before===after) return 0;
-  const targets = items.length>1 ? items : (shotImg ? [{get name(){return shotName}, set name(v){shotName=v}, get raw(){return shotRaw}}] : []);
+  const targets = items.length>1 ? items : (shotImg ? [{get name(){return shotName}, set name(v){shotName=v}, get raw(){return shotRaw}, get iph(){return shotIph}}] : []);
   // 直す前と後の文字を1文字ずつ対応させる（個数や他の行を直していても、名前の部分だけ取り出せるように）
   const A=[...before], B=[...after], n=A.length, m=B.length;
   if (n*m>4e6) return 0;
@@ -1121,7 +1122,7 @@ function learnFromEdit(before,after){
     const s0=toIdx(chars.slice(0,k)), e0=s0+toIdx(t.name); pos=k+t.name.length;
     const v=B.slice(startOf(s0),endOf(e0)).join('').trim().replace(/\s*[×xX]\s*\d+\s*$/,''); // 名前のすぐ後ろに足した「×3」は外す
     if (!v || v===t.name || /\n|[×xX]\s*\d/.test(v) || v.length>40) continue; // 名前以外まで含んでしまったら覚えない
-    learned.add(t.raw||t.name, v);
+    learned.add(t.raw||t.name, v); if (t.iph && t.raw && t.raw!==t.name) learned.add(t.name, v);
     for (const u of targets) if (u!==t && u.name===t.name) u.name=v;   // 同じ名前のアイテムはまとめて直す
     t.name=v; learnedN++;
   }
