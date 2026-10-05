@@ -163,6 +163,7 @@
   .nmRow .t{flex:1 1 55%;min-width:55%;overflow-wrap:anywhere;font-weight:800}
   .nmRow .st{flex:none;font-size:11px;font-weight:900;border-radius:99px;padding:2px 8px;white-space:nowrap}
   .nmRow .tx{white-space:nowrap}
+  .nmRow .cp{flex:none;border:0;border-radius:99px;padding:6px 10px;font:inherit;font-size:11px;font-weight:900;cursor:pointer;background:#efe9ff;color:#7f63c9;white-space:nowrap}
   .nmRow.ok .st{background:#dff7e8;color:#1f9a57}.nmRow.ng{border-color:#ff8aa0;background:#fff4f6}.nmRow.ng .st{background:#ffd9e0;color:#d0304f}
   .nmRow.wait .st{background:#f3eef5;color:var(--sub)}
   .nmRow.iph{border-color:#ffd66b;background:#fffbea}.nmRow.iph .st{background:#fff0b8;color:#a87400}
@@ -303,7 +304,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='46'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='47'; // 変えたら上げる（古いページを読み直すための目印）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
 // アイテム画像の位置・サイズは常に固定（正方形）
@@ -657,6 +658,9 @@ function renderNames(){
     d.innerHTML=`<span class="no">${e.i+1}</span><span class="t"></span><span class="st">${e.reading&&!e.name?'読取中':st==='ok'?'一覧と一致':st==='iph'?'iPhoneで読んだ':e.name?'一覧にない':'読めず'}</span>`;
     d.querySelector('.t').textContent=e.name||'（名前なし）'; d.onclick=()=>openFix(e.i);
     if (e.noGift){ const g=document.createElement('span'); g.className='st ng-gift'; g.style.cssText='background:#ff5a6e;color:#fff'; g.textContent='🚫プレゼント禁止'; d.querySelector('.t').after(g); d.style.borderColor='#ff5a6e'; }
+    if (e.name){ const cp=document.createElement('button'); cp.type='button'; cp.className='cp'; cp.textContent='📋コピー';
+      cp.onclick=async ev=>{ ev.stopPropagation(); toast(await copyText(e.name) ? `「${e.name}」をコピーしました` : 'コピーできませんでした'); };
+      d.appendChild(cp); }
     if (items.length>1){ const tx=document.createElement('button'); tx.type='button'; tx.className='tx'+(e.skip?' off':''); tx.textContent=e.skip?'文字に入れない':'文字に入れる';
       tx.setAttribute('aria-label','このアイテムを文字・題名に入れるかを切り替える');
       tx.onclick=ev=>{ ev.stopPropagation(); items[e.i].skip=!items[e.i].skip; renderNames(); };
