@@ -60,6 +60,7 @@
 <body>
 <header><a href="./" aria-label="アプリに戻る">‹</a>売れ筋ランキング</header>
 <main>
+  <section class="card" id="opening" hidden style="text-align:center;font-weight:900">🔓 覚えている合言葉で開いています…</section>
   <section class="card" id="lock">
     <h2>🔒 合言葉を入れてください</h2>
     <form id="unlock">
@@ -189,8 +190,9 @@ async function unlock(pass,quiet){
   try{
     DATA=await openData(pass);
     try{ if($('remember').checked) localStorage.setItem('rk_pass',pass); }catch(e){}
-    $('lock').hidden=true; $('view').hidden=false; render();
+    $('lock').hidden=true; $('opening').hidden=true; $('view').hidden=false; render();
   }catch(e){
+    $('opening').hidden=true; $('lock').hidden=false;
     if(!quiet){ $('err').hidden=false;
       $('err').textContent = e.message==='wrong' ? '合言葉が違います' : e.message==='nodata' ? 'まだ集計データがありません。毎日の自動集計が1回動くと見られるようになります' : '開けませんでした（'+e.message+'）'; }
   }finally{ $('go').disabled=false; $('go').textContent='開く'; }
@@ -201,7 +203,8 @@ $('sortBy').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; sort
 $('kind').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; kind=b.dataset.k; try{ localStorage.setItem('rk_kind',kind); }catch(_){} render(); };
 $('q').addEventListener('input',()=>DATA&&render());
 $('forget').onclick=()=>{ try{ localStorage.removeItem('rk_pass'); }catch(e){} location.reload(); };
-try{ const p=localStorage.getItem('rk_pass'); if(p) unlock(p,true); }catch(e){}
+// 覚えている合言葉があれば、合言葉の入力欄は出さずに開く（開くのに数秒かかるので、その間も入力欄を見せない）
+try{ const p=localStorage.getItem('rk_pass'); if(p){ $('lock').hidden=true; $('opening').hidden=false; unlock(p,true); } }catch(e){}
 </script>
 </body>
 </html>
