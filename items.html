@@ -58,7 +58,7 @@
   <p class="note">
     読み取った名前は、この一覧と「覚えた名前」の中からいちばん近い名前に自動で直されます。<br>
     一覧は <a href="https://bon-cafe.jp/category/pokecolotwin/" target="_blank" rel="noopener">リヴリー・ポケコロゲームクラブ</a> のガチャ別アイテム一覧と、ゲームトレードの出品の題名で2回以上見かけた名前（🛒）から毎日作っています。
-    どちらにも載っていないアイテムは、名前をタップして「一覧にないけどOK」にするか、文字起こしで直して「もう一度コピー」すると覚えます。
+    どちらにも載っていないアイテムは、名前をタップして「この名前で決定」を押すか、文字起こしで直して「もう一度コピー」すると覚えます（✏️ 覚えた名前）。
   </p>
 </main>
 <script>
@@ -67,7 +67,9 @@ const norm=t=>t.normalize('NFKC').toLowerCase().replace(/\s/g,'').replace(/[ぁ-
 let all=[], kind='', shown=0;
 const PAGE=300;
 function learnedItems(){ try{ const m=JSON.parse(localStorage.getItem('promo_learned')||'{}');
-  return Object.entries(m).map(([k,v])=>({n:v?.to??v, from:v?.from??k, g:'覚えた名前'})); }catch(e){ return []; } }
+  // 自分で決めた名前（一覧にない名前を「この名前で決定」したもの：読み取り＝直した名前）は、名前だけ出す
+  return Object.entries(m).filter(([k,v])=>typeof (v?.to??v)==='string' && (v?.to??v)).map(([k,v])=>{ const n=v?.to??v, f=v?.from??k, same=typeof f!=='string' || norm(f)===norm(n);
+    return {n, from:same?'':f, k:'learned', g:same?'決めた名前':'覚えた直し方', lab:true}; }); }catch(e){ return []; } }
 function esc(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function hl(s,q){ if(!q) return esc(s); const n=norm(s), i=n.indexOf(q);
   // 正規化で長さが変わらないときだけ印を付ける
@@ -75,7 +77,8 @@ function hl(s,q){ if(!q) return esc(s); const n=norm(s), i=n.indexOf(q);
 function filtered(){
   const q=norm($('q').value);
   const src = kind==='learned' ? learnedItems() : all.filter(x=>!kind || x.k===kind);
-  return {q, rows: q ? src.filter(x=>norm(x.n).includes(q) || (x.g && norm(x.g).includes(q)) || (x.from && norm(x.from).includes(q))) : src};
+  // まとまりの名前は、ガチャの名前のときだけ探す（「出品で見た名前」のような説明の見出しで探すと、「の」「アイ」でそのまとまりが全部出てしまう）
+  return {q, rows: q ? src.filter(x=>norm(x.n).includes(q) || (x.g && !x.lab && norm(x.g).includes(q)) || (x.from && norm(x.from).includes(q))) : src};
 }
 function render(reset){
   const {q,rows}=filtered(); if (reset) shown=0; shown+=PAGE;
@@ -87,8 +90,8 @@ function render(reset){
   for (const x of rows.slice(0,shown)){ const g=x.g||'その他'; if(!groups.has(g)) groups.set(g,[]); groups.get(g).push(x); }
   const keys=[...groups.keys()].sort((a,b)=>a==='その他'?1:b==='その他'?-1:a.localeCompare(b,'ja'));
   for (const g of keys){ const d=document.createElement('section'); d.className='group';
-    d.innerHTML=`<h2>${hl(g,q)}<small>${groups.get(g).length}</small></h2><ul>`+groups.get(g).map(x=>
-      `<li><span class="k">${x.k==='ココリウム'?'🏠':x.k==='ファッション'?'👗':x.k==='gt'?'🛒':x.from?'✏️':''}</span><span>${x.from?`<s style="color:#b39ab3">${esc(x.from)}</s> → `:''}${hl(x.n,q)}</span>${x.r?`<b class="r ${x.r==='スーパーレア'?'sr':x.r==='レア'?'rr':''}">${x.r==='スーパーレア'?'SR':x.r==='レア'?'R':'N'}</b>`:''}</li>`).join('')+'</ul>';
+    d.innerHTML=`<h2>${hl(g,groups.get(g)[0].lab ? '' : q)}<small>${groups.get(g).length}</small></h2><ul>`+groups.get(g).map(x=>
+      `<li><span class="k">${x.k==='ココリウム'?'🏠':x.k==='ファッション'?'👗':x.k==='gt'?'🛒':x.k==='more'?'📋':x.k==='learned'||x.from?'✏️':''}</span><span>${x.from?`<s style="color:#b39ab3">${esc(x.from)}</s> → `:''}${hl(x.n,q)}</span>${x.r?`<b class="r ${x.r==='スーパーレア'?'sr':x.r==='レア'?'rr':''}">${x.r==='スーパーレア'?'SR':x.r==='レア'?'R':'N'}</b>`:''}</li>`).join('')+'</ul>';
     box.appendChild(d); }
   $('more').hidden = shown>=rows.length;
 }
@@ -98,7 +101,7 @@ $('tabs').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; kind=b
   [...$('tabs').children].forEach(x=>x.classList.toggle('on',x===b)); render(true); };
 Promise.all([fetch('items.json',{cache:'no-cache'}).then(r=>r.json()), fetch('data/gametrade-names.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).catch(()=>({}))]).then(([j,g])=>{
   const base = j.items || (j.names||[]).map(n=>({n})), have=new Set(base.map(x=>x.n));
-  all = base.concat((g.names||[]).filter(n=>!have.has(n)).map(n=>({n, k:'gt', g:'出品で見た名前'})));
+  all = base.concat((g.names||[]).filter(n=>!have.has(n)).map(n=>({n, k:'gt', g:'出品で見た名前', lab:true})));
   render(true);
   if (j.updated) $('meta').textContent+=`（${j.updated} 更新）`;
 }).catch(()=>{ $('meta').textContent='一覧を読み込めませんでした'; });
