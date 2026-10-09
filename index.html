@@ -318,7 +318,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='51'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='52'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -341,7 +341,7 @@ if (!FONTS[store.get('font')] || store.get('fontDefault')!=='10'){ store.set('fo
   const v = store.get(id); if (v!==null) $(id).value = v;
   $(id).addEventListener('input',()=>{ store.set(id,$(id).value); draw(); });
 });
-$('owned').addEventListener('input',()=>{ $('count').value=''; draw(); }); // 所持数を変えたら「所持数−1」に戻す
+$('owned').addEventListener('input',()=>{ $('count').value=''; shotOwnTyped=true; draw(); }); // 所持数を変えたら「所持数−1」に戻す
 $('minus').onclick=()=>{ $('count').value=Math.max(0,(countValue()??1)-1); draw(); };
 $('plus').onclick=()=>{ $('count').value=(countValue()??0)+1; draw(); };
 const JFONTS=[["Mochiy Pop One", "400"], ["M PLUS Rounded 1c", "900"], ["Zen Maru Gothic", "900"], ["Kiwi Maru", "500"], ["Hachi Maru Pop", "400"], ["Dela Gothic One", "400"], ["Potta One", "400"], ["Rampart One", "400"], ["Yusei Magic", "400"], ["Kosugi Maru", "400"], ["Cherry Bomb One", "400"], ["Mochiy Pop P One", "400"], ["RocknRoll One", "400"], ["Reggae One", "400"], ["Stick", "400"], ["DotGothic16", "400"]];
@@ -598,7 +598,8 @@ async function analyzeShot(img){
 // 読み取った名前を一覧・覚えた名前に合わせ、組にするときに比べる「いちばん近い一覧の名前」も出しておく
 async function nameDone(r){ if (r.name){ r.raw=r.name; r.name=await nearestItemName(r.name); r.known=await knownNear(r.raw); } return r; }
 let picking=false, shotName='', shotRaw='', shotReading=false, shotIph=false, shotNoGift=false, shotFixed=false, shotGuess=false; // shotGuess：画像が読めず、受け取った名前を仮に入れた（赤にして確かめてもらう）
-function setShot(i){ shotName=''; shotRaw=''; shotIph=false; shotNoGift=false; shotFixed=false; shotGuess=false; fixSeen.clear(); $('ownSnap').hidden=true; items=[]; renderItems(); shotImg=i; $('owned').value=''; $('count').value=''; shotReading=true; renderNames(); readOwned(i); }
+let shotOcr=null, shotOwnTyped=false; // shotOcr：画像から読んだ所持数・プレゼント禁止（名前を選び直したときに戻す）。shotOwnTyped：所持数を手で入れた（自動で書き換えない）
+function setShot(i){ shotName=''; shotRaw=''; shotIph=false; shotNoGift=false; shotFixed=false; shotGuess=false; shotOcr=null; shotOwnTyped=false; fixSeen.clear(); $('ownSnap').hidden=true; items=[]; renderItems(); shotImg=i; $('owned').value=''; $('count').value=''; shotReading=true; renderNames(); readOwned(i); }
 // 1枚のとき：読み取りが終わってから、受け取った名前（または前の記録）と同じ画面かを確かめて当てはめる
 // （先に受け取りの名前を入れておくと、選んだのが別のスクショだったときに、その別アイテムの名前・所持数になってしまう）
 async function readOwned(img){
@@ -615,16 +616,24 @@ async function readOwned(img){
     if (proven(c||h)) relearn([r.name,r.raw],p.name);
     const own=c ? pickOwned(m,p,proven(c)) : h ? histOwned(m,h) : (r.owned||null);
     if (!shotFixed){ shotName=(p ? fullName(p,r.raw) : r.name)||''; shotIph=!!p; shotGuess=false; } // 手で直した名前はそのまま
-    shotRaw=r.raw||''; shotNoGift=!!(p?.noGift||r.noGift);
-    if (own){ $('owned').value=own; $('count').value=''; $('ownState').textContent='自動'; } else $('ownState').textContent='読取×';
+    shotRaw=r.raw||''; shotNoGift=!!(p?.noGift||r.noGift); shotOcr={owned:r.owned||null, sure:!!r.ownedSure, noGift:!!r.noGift};
+    // 読み取り中に手で決めた名前が、組になった受け取り・前の記録と別のアイテム（組にならなかったときも）：所持数・プレゼント禁止はその名前のもの（読み終わってから選んだときと同じ）
+    const mine=shotFixed && !(p && sameItem(p.name,shotName)) ? ownFor(shotName,shotOcr) : null, own2=mine ? mine.own : own; if (mine) shotNoGift=mine.ng;
+    // 読み取り中に手で入れた所持数は書き換えない
+    if (shotOwnTyped) $('ownState').textContent=''; else if (own2){ $('owned').value=own2; $('count').value=''; $('ownState').textContent='自動'; } else $('ownState').textContent='読取×';
     shotReading=false; renderNames(); draw();
-    if (pend.length && !p) toast('1番は、ショートカットで読んだ中にありませんでした。画像から読んだ名前と所持数を使います（名前がちがうときは、名前をタップして直せます）');
+    if (pend.length && !p) toast(shotFixed ? 'このスクショは、ショートカットで読んだ中にありませんでした' : r.name ? 'このスクショは、ショートカットで読んだ中にありませんでした。画像から読んだ名前と所持数を使います（名前がちがうときは、名前をタップして直せます）'
+      : '画像から名前を読めませんでした。名前をタップして入れてください（ショートカットの名前が候補に出ます）');
     warnNoGift();
-  }catch(e){ if(seq!==ocrSeq) return; $('ownState').textContent='読取×';
+  }catch(e){ if(seq!==ocrSeq) return; $('ownState').textContent=shotOwnTyped ? '' : '読取×';
     // 画像が読めなかった（文字認識が動かない・時間切れ）：受け取りがちょうど1枚分（まだ使っていない）なら、その名前・所持数を入れておく（確かめてもらう）
+    // （読み取り中に手で決めた名前が、その受け取りと別のアイテムのときは、受け取りの所持数・プレゼント禁止を入れない）
     const pi=pendingInfo(), p=pi.list.length===1 && !pi.used ? pi.list[0] : null;
-    if (p){ if (!shotFixed){ shotName=p.name; shotIph=true; shotGuess=true; } shotNoGift=!!p.noGift; if (p.owned && !$('owned').value){ $('owned').value=p.owned; $('count').value=''; $('ownState').textContent='自動'; }
-      markPendingUsed(); toast('画像を読めなかったので、ショートカットの名前を入れました。合っているか確かめてください'); }
+    if (p && !(shotFixed && !sameItem(p.name,shotName))){ if (!shotFixed){ shotName=p.name; shotIph=true; shotGuess=true; } shotNoGift=!!p.noGift; if (p.owned && !$('owned').value){ $('owned').value=p.owned; $('count').value=''; $('ownState').textContent='自動'; } }
+    if (p) markPendingUsed();
+    if (shotFixed){ if (p) toast('画像を読めませんでした（決めた名前はそのままです）'); }
+    else if (p) toast('画像を読めなかったので、ショートカットの名前を入れました。合っているか確かめてください');
+    else if (pi.list.length) toast('画像から名前を読めませんでした。名前をタップして入れてください（ショートカットの名前が候補に出ます）');
     shotReading=false; renderNames(); draw(); }
 }
 // プレゼント禁止のアイテム（画面に「プレゼント禁止」「プレゼント不可」などの表示がある）
@@ -691,15 +700,17 @@ function parseBlock(t){
   // 名前の行がある所：リリース日（読めなければ「欲しい」の数）の行と、「所持数」の行の間（「複数所持しているアイテムです」のお知らせの行は所持数の行ではない）
   // （画面の上の「SET」「©'26 SANRIO」のような、後ろの一覧の字は名前にしない。リリース日の行の後ろ・所持数の行の前にくっついた名前も入れる）
   const fl=l=>l.replace(/\s/g,''), li=lines.findIndex(l=>/所持数|持数/.test(fl(l)) && !/複数所持/.test(l));
-  const ri=lines.findIndex(l=>/リリース日/.test(fl(l))), wi=lines.findIndex(l=>/欲しい」?の数/.test(fl(l))), from=ri>=0 ? ri : wi;
-  const after=ri>=0 ? lines[ri].replace(/^.*リリース\s*日[^\d]{0,3}\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日?/,'').trim() : '', before=li>from ? lines[li].replace(/\s*(所持数|持数).*$/,'').trim() : '';
+  const ri=lines.findIndex(l=>/リリ.?ス日/.test(fl(l))), wi=lines.findIndex(l=>/欲しい」?の数/.test(fl(l))), from=ri>=0 ? ri : wi;
+  const after=ri>=0 ? lines[ri].replace(/^.*リリ.?ス\s*日[^\d]{0,3}\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日?/,'').trim() : '', before=li>from ? lines[li].replace(/\s*(所持数|持数).*$/,'').trim() : '';
   const win=from<0 ? [] : [after, ...lines.slice(from+1, li>from ? li : from+2), before].filter(Boolean);
   const exact=l=>DN.get(l.normalize('NFKC'))||DN.get(stripIcon(l))||DN.get(tidyName(stripIcon(l)))||DN.get(kanaDash(tidyName(stripIcon(l))));
   // 長い名前は画面で2行になり、iPhoneの読み取りも2行に分かれるので、となりの2行をつなげたものも一覧と比べる（1行ずつより先に）
   const two=win.slice(0,-1).map((l,i)=>joinWrap(l,win[i+1]));
   const ex=two.map(exact).find(Boolean) || win.map(exact).find(Boolean) || lines.map(exact).find(Boolean); if (ex) return {name:ex, owned, iph:true, noGift, sig};
   // 名前らしい行（数だけの行・日付・「欲しい」「所持数」などの欄の字・ギフト不可やカードの外のお知らせ（試着・〜でもらえるアイテム）は除く）
-  const nameLike=l=>{ const x=fl(l); return [...x].length>=2 && /\p{L}/u.test(x) && !/リリース|欲しい|所持数|持数|未作成|複数所持/.test(x) && !NOGIFT.test(x) && !POKE_FRAME.test(x) && !/^[\p{Nd}:：.,/年月日%個×]+$/u.test(x); };
+  // （リリース日の字が少し違って読めた行・日付や3桁以上の数のある行も名前にしない）
+  const nameLike=l=>{ const x=fl(l); return [...x].length>=2 && /\p{L}/u.test(x) && !/リリース|リリ.?ス日|欲しい|所持数|持数|未作成|複数所持/.test(x) && !NOGIFT.test(x) && !POKE_FRAME.test(x) && !/^[\p{Nd}:：.,/年月日%個×]+$/u.test(x)
+    && !/\d{4}年|\d{1,2}月\d{1,2}日/.test(x) && !/[\p{Nd}]{3,}/u.test(x); };
   // 名前の行がない（iPhoneが名前の行を読み落とした）ときは、ほかの行（画面の上の「SET」など）を名前にしないで使わない
   const nm=win.filter(nameLike); if (!nm.length) return null;
   let hint=nm.length>1 ? nm.reduce((a,b)=>joinWrap(a,b)) : nm[0]; // 2行に分かれた長い名前はつなげる
@@ -823,7 +834,7 @@ function processRaw(raw,via,now=Date.now()){
     // 前に受け取った名前（30分以内）はそのまま使えることも書く（何が使われるか分かるように）
     toast((old.length && !use.length ? `直近${win}分に撮ったスクショはありませんでした`+(oldList.length ? `。\n前に撮ったスクショ${oldList.length}枚の名前は覚えました（そのスクショを選ぶと黄色で出ます）` : `（${old.length}枚は${win}分より前）`)
       : `ショートカットから受け取ったスクショに、アイテムの画面がありませんでした${why}`)+(pi.list.length?`\n（前に受け取った${pi.list.length}枚分は、あと${left}分使えます）`:'')+atHint); return; }
-  const at0=Date.now(), stored=pendWrite({at:at0,list}); recv.mem=!stored; saveRecv(recv); renderPendNote(); histAdd(list);
+  const at0=Date.now(), stored=pendWrite({at:at0,list,ver:APP_VER}); recv.mem=!stored; saveRecv(recv); renderPendNote(); histAdd(list);
   toast(useText(list,why,timed)+`\n同じスクショを「アイテム画像を選ぶ」で選んでください`+(stored?'':'\n（端末の保存がいっぱいです。この画面を開いている間だけ使えます）')+atHint);
   again(at0);
 }
@@ -863,14 +874,14 @@ function pendWrite(j){ const s=JSON.stringify(j);
   try{ localStorage.removeItem(PENDING_KEY); }catch(e){} memPend=j; return false; } // 前の受け取りが残って使われないように消しておく
 // ショートカットから受け取った名前があるかを、画像を選ぶボタンの下に出しておく（受け取れているか目で分かるように）
 function renderPendNote(){ const el=$('pendNote'), j=pendRead();
-  const ok=j && Date.now()-j.at<30*60e3 && j.list?.length;
+  const ok=j?.ver && Date.now()-j.at<30*60e3 && j.list?.length;
   el.hidden=!ok; if (ok){ const min=Math.max(0,Math.round((Date.now()-j.at)/60e3));
     // 当てはめるのは「撮ったあとに背面タップした」スクショだけ（ショートカットのあとに撮ったスクショは入っていない）
     el.textContent= j.used ? `📱 ショートカットの名前（${j.list.length}枚分・${min}分前）は、あと${Math.max(0,30-min)}分使えます。撮ったあとに背面タップしたスクショだけ当てはめます`
       : `📱 ショートカットから${j.list.length}枚分の名前を受け取っています（${min}分前）。画像を選ぶと当てはめます`; } }
 setInterval(renderPendNote,30000); setTimeout(renderPendNote,0);
 // 受け取った名前は30分のあいだ何度でも使える（画像を選び直しても当てはめる）。2回目からは、画面の数字か名前が合うものだけに使う
-function pendingInfo(){ const j=pendRead(); return j && Date.now()-j.at<30*60e3 && j.list?.length ? {list:j.list, used:!!j.used} : {list:[],used:false}; }
+function pendingInfo(){ const j=pendRead(); return j?.ver && Date.now()-j.at<30*60e3 && j.list?.length ? {list:j.list, used:!!j.used} : {list:[],used:false}; }
 function pendingList(){ return pendingInfo().list; }
 // iPhoneで読んだ名前を残しておく（古いスクショを選んだときも、同じ画面の数字と名前の近さで探して使う）。名前と数字だけなので軽い
 const HIST_KEY='promo_iphHist', HIST_MAX=3000;
@@ -941,7 +952,8 @@ const pairVeto=(c,old)=>!!c.xc || (!old && (c.clash || c.ownClash)) || c.rival |
 // 前の版の記録で、画像にない数があるもの（写真に保存した2つ並びの完成画像を読んだ記録のことがある：名前・所持数は1つ目のアイテムのもの）を使ってよいか：名前の違いが読み違いらしいときだけ
 const legacyOk=c=>!c.legacy || c.extra===0 || ((c.like || c.kj) && !c.hue && !c.vr);
 const oneNum=(c,old)=>{ if (c.xc || c.hue) return false;
-  if (old) return !c.part && !c.ownClash && !c.rival && c.nc<=(c.big?.35:.15) && (c.big || c.like || c.kj) && (!c.legacy || (c.extra===0 && (c.nc<=.15 || c.like)) || (c.extra===1 && legacyOk(c)));
+  // （前の版の記録で画像にない数がないもの：4桁以上の数とリリース日が合えば、漢字1字の読み違い（宝鐘→玉鐘）もよい）
+  if (old) return !c.part && !c.ownClash && !c.rival && c.nc<=(c.big?.35:.15) && (c.big || c.like || c.kj) && (!c.legacy || (c.extra===0 && (c.nc<=.15 || c.like || (c.kj && c.big && c.nd>0 && !c.vr))) || (c.extra===1 && legacyOk(c)));
   if (c.nc===9) return !c.ownClash && c.big && (c.ds || c.ownSame);
   return c.big ? c.nc<=.6 && (!c.ownClash || c.nc<=.15) : !c.rival && !c.part && !c.ownClash && c.nc<=.2 && (c.like || c.kj); };
 // 名前だけで決めるときの近さ：受け取りで、画像と受け取りの両方に同じ欄の数字があって食い違わないときは .15。数字の食い違いを確かめられないとき
@@ -955,7 +967,9 @@ const samePair=(c,old)=>!c.xc && ((c.nn>=2 && (!old || ((c.nc<=.6 || c.nc===9) &
 // 3桁の数1つだけで決めた候補よりも、名前がほとんど同じ別の候補を信じる
 const weakNum=c=>c.nn===1 && !c.big;
 // 候補の中からいちばん合うものを選ぶ。名前だけで決めるときに、同じくらい近い別の名前があれば決めない（null）
-function bestPair(cs,old){ const ok=cs.filter(c=>samePair(c,old)).sort((x,y)=>(y.nn-x.nn)||(y.nd-x.nd)||(x.nc-y.nc)); let b=ok[0]; if (!b) return null;
+// （前の記録で同じくらい合うものが2つ以上あるとき（同じアイテムの別の日の記録）は、2つ並びかもしれない前の版の記録より1枚の記録、古い記録より新しい記録を使う）
+const mixRec=c=>c.legacy && c.extra>0 ? 1 : 0;
+function bestPair(cs,old){ const ok=cs.filter(c=>samePair(c,old)).sort((x,y)=>(y.nn-x.nn)||(y.nd-x.nd)||(x.nc-y.nc)||(old ? (mixRec(x)-mixRec(y))||((y.p.at||0)-(x.p.at||0)) : 0)); let b=ok[0]; if (!b) return null;
   const other=c=>normName(c.p.name||'')!==normName(b.p.name||'');
   if (weakNum(b) && cs.some(c=>other(c) && c.nc<=.05)){ b=ok.find(c=>other(c) && c.nc<=.05); if (!b) return null; }
   if (ok.some(c=>other(c) && c.nn===b.nn && c.nd===b.nd && Math.abs(c.nc-b.nc)<.05)) return null;
@@ -980,15 +994,26 @@ const proven=c=>!!c && (c.big || c.nn>=2) && !c.ownClash && !c.xc && !(c.legacy 
 function relearn(names,to){ if (!to) return; const M=learned.all();
   for (const k of names){ if (!k) continue; const e=M[normName(k)], v=e?.to ?? e, from=e?.from ?? k;
     if (typeof v==='string' && typeof from==='string' && v!==to && normName(v)===normName(from) && !dictExact.has(v) && slip(v,to)) learned.add(from,to); } }
+// ★の行（レア度の★）の読み違いらしい短い語：★☆*や見分けの決まりにある字だけか、女/大/★/* を含み、かなが2字続かない4文字まで（「/女」のような色・種類の後ろは別）
+const starish=w=>{ const x=String(w||'').normalize('NFKC').replace(/\s/g,''), n=[...x].length;
+  return n>0 && n<=4 && !/^\//.test(x) && (/^[★☆✩✪✫✬✭✮✯✰⭐️*・.·女大食ナ十安ネ太犬丈文火木本メ×xX✕?!]+$/u.test(x) || (/[女大★☆✩*]/.test(x) && !/[ぁ-ゖァ-ヺー]{2}/.test(x))); };
 // iPhoneの読み取りで長い名前の2行目が落ちた（「…ウエハース」まで）ときは、画像から読んだ一覧の名前（「…ウエハースソファ」）を使う
 // （画像から読んだ名前が一覧と同じで、iPhoneの名前（8文字以上・一覧にない）で始まって、それより長いときだけ）
+// 空白・小さい字・濁点だけの違い（「…セット アップ」「だあく…」）や、後ろに★の行の読み違い（「…ボトムス 女」）が付いただけのときも、画像から読んだ一覧の名前にする
 const fullName=(p,raw)=>{ const n=p?.name||'', d=raw && dictNorm().get(String(raw).normalize('NFKC')); if (!d || !n || dictExact.has(n)) return n;
-  const a=normName(d), b=normName(n); return b.length>=8 && a.length>b.length && a.startsWith(b) ? d : n; };
+  const a=normName(d), b=normName(n); return (b.length>=8 && a.length>b.length && a.startsWith(b)) || a===b || slip(n,d) || (a.length>=8 && b.startsWith(a) && starish(b.slice(a.length))) ? d : n; };
 // 所持数：数字で同じ画面と確かめられたときはiPhoneの数。そうでなければ、選んだ画像の「所持数」の枠から確かに読めた数を先に使う
 const pickOwned=(m,p,proven)=>(proven ? (p?.owned||m.owned) : ((m.ownedSure&&m.owned) || p?.owned || m.owned)) || null;
 // 前の記録の所持数は古い（売ったり増えたりする）ので、画像から確かに読めた数をいつも先に使う。c：前の記録との合い方（pairInfo）
 // 前の版の記録で画像にない数があるもの（2つ並びの完成画像を読んだ記録かもしれない）の所持数は、別のアイテムの数のことがあるので使わない
 const histOwned=(m,c)=>{ const h=c?.p, mix=!!c?.legacy && c.extra>0; return ((m.ownedSure&&m.owned) || (proven(c)&&h?.owned) || m.owned || (!mix && h?.owned)) || null; };
+// 前の版のページが保存した受け取り（版の印がない）は使わない（名前の読み方も⚙の時間も前の版のまま）。新しい版が出た直後は、前の版のページが受け取ってから
+// この版に読み直すことがあるので、受け取ったばかり（まだ画像に使っていない）なら、もう一度ショートカットを使ってもらう（前の版が同じ受け取りから入れた前の記録も消す）
+// 新しい版に読み直したとき（?v=）・前の版の受け取りを捨てたときは、ショートカットが開くページ（?sc=1）がブラウザに前の版のまま残っていることがあるので、
+// 取り直しておく（「もう一度ショートカット」で、また前の版が開かないように）
+try{ const j=pendRead(), old=!!j && !j.ver; if (old){ const again=!location.hash && !j.used && j.list?.length && Date.now()-j.at<30*60e3; if (again) histDrop(j.list); clearPending();
+  if (again) toast('アプリが新しい版になりました。さっきのスクショを当てはめるには、もう一度ショートカット（背面タップ）を使ってください'); }
+  if (old || /[?&]v=\d/.test(location.search)) fetch(location.pathname+'?sc=1',{cache:'reload'}).catch(()=>{}); }catch(e){}
 window.addEventListener('hashchange',takeHashText); takeHashText(); recoverRaw();
 // 前に開いていたページが戻ってきたとき（Safariの「戻る」やタブの復元）も受け取る
 window.addEventListener('pageshow',()=>{ takeHashText(); renderPendNote(); });
@@ -1037,9 +1062,10 @@ function renderNames(){
   // （撮った順に仮に入れた名前＝別のアイテムの名前が欄に残って、そのまま決めてしまわないように）
   // 読み取り中に開いた画面は、読み終わったら（名前が同じでも・読めなくても）言葉を入れ直す（「読み終わると入れ直します」のまま待たせない）。欄を書き直していたら、言葉だけ変える
   if (!$('fixSheet').hidden){ const e=nameEntries()[fixIdx], done=!!e && fixWasReading && !e.reading;
-    if (e && !fixTyped && ($('fixInput').value!==e.name || done)) openFix(fixIdx, e.name ? `名前を読み取りました：${e.name}\n合っていれば「この名前で決定」。ちがうときは上の欄を直すか、下の候補から選んでください`
-      : done ? '名前が読めませんでした。名前を入れて「この名前で決定」を押してください' : '');
-    else if (e && done){ fixWasReading=false; fixNote(e.name ? `読み取りが終わりました：${e.name}\n入れた名前で決めるときは「この名前で決定」を押してください` : '読み取りが終わりました（名前は読めませんでした）。入れた名前で決めるときは「この名前で決定」を押してください'); } }
+    // 撮った順に仮に入れた名前・読めなかった名前は「読み取りました」と言わない（開いたときと同じ言葉にする）
+    if (e && !fixTyped && ($('fixInput').value!==e.name || done)) openFix(fixIdx, e.name && !e.guess ? `名前を読み取りました：${e.name}\n合っていれば「この名前で決定」。ちがうときは上の欄を直すか、下の候補から選んでください` : '');
+    else if (e && done){ fixWasReading=false; fixNote(e.name && !e.guess ? `読み取りが終わりました：${e.name}\n入れた名前で決めるときは「この名前で決定」を押してください`
+      : `読み取りが終わりました（${e.name ? `画像は読めず、仮の名前：${e.name}` : '名前は読めませんでした'}）。入れた名前で決めるときは「この名前で決定」を押してください`); } }
 }
 // 複数アイテムから1つ外す。1つだけ残ったら、その画像を1個の表示に切り替える
 function removeItem(i){
@@ -1047,7 +1073,7 @@ function removeItem(i){
   fixSeen.clear(); // 番号がずれるので、確かめた記録もやり直す
   // 読み取り・当てはめの途中だったときは、残った1枚を1枚のときと同じように読み直す（「読取中」のままコピーできなくならないように。手で決めた名前はそのまま）
   const again=items.length===1 && (itemsBusy===ocrSeq || !!items[0].reading || !!items[0].prov);
-  if (items.length===1){ const it=items[0]; items=[]; shotImg=it.img; shotName=it.name||''; shotRaw=it.raw||''; shotReading=again; shotIph=!!it.iph && !again; shotNoGift=!!it.noGift; shotFixed=!!it.fixed; shotGuess=!!it.guess && !again;
+  if (items.length===1){ const it=items[0]; items=[]; shotImg=it.img; shotName=it.name||''; shotRaw=it.raw||''; shotReading=again; shotIph=!!it.iph && !again; shotNoGift=!!it.noGift; shotFixed=!!it.fixed; shotGuess=!!it.guess && !again; shotOcr={owned:it.ocrOwned||null, sure:!!it.ownedSure, noGift:!!it.ocrNoGift}; shotOwnTyped=false;
     $('owned').value=it.owned||''; $('count').value=it.count ?? ''; $('ownSnap').src=it.snap||''; $('ownSnap').hidden=!it.snap; $('ownState').textContent=it.owned?'自動':'読取×';
     const W=it.img.width, sb=showOwned()&&it.ownedBottom ? it.ownedBottom : (it.nameBottom ?? it.cardBottom); if (sb) $('ct').value=Math.max(0,+(((sb-W)/W)*100).toFixed(1)); }
   renderItems(); renderNames(); draw(); toast(`${i+1}番を外しました`);
@@ -1067,21 +1093,26 @@ async function openFix(i,msg){
     : e.raw&&e.raw!==e.name ? `画像から読んだ文字：${e.raw}` : '合っていれば「この名前で決定」。ちがうときは上の欄を直すか、下の候補から選んでください'));
   $('fixSheet').hidden=false; $('fixSheet').querySelector('.sheetIn').scrollTop=0; fitSheet(); $('fixCands').innerHTML='<div class="note">候補をさがしています…</div>';
   const names=await loadItemNames(); if (fixIdx!==i || $('fixSheet').hidden) return;
-  const q=normName(e.raw||e.name||''), box=$('fixCands');
-  if(!q){ // 名前が読めなかった（文字認識が動かなかった等）：今回iPhoneで読んだ名前と、前に読んだ名前（新しい順・6つまで）を候補に出す
-    // 今回の名前は全部出し、ほかの行で使っていない名前を先に（撮った順の同じ番目の名前がいちばん先。それ以外は新しい順）
-    const pend=pendingList(), used=new Set(nameEntries().filter(x=>x.i!==i && x.name).map(x=>x.name)), same=items.length>1 && pend.length===items.length;
-    const pn=pend.map((p,k)=>({n:p.name, k, s:(used.has(p.name)?2:0)-(same && k===i ? 1 : 0)})).sort((a,b)=>a.s-b.s || b.k-a.k).map(x=>x.n);
-    const ns=[...new Set([...pn, ...histAll().slice(-6).map(h=>h.name).reverse()])].filter(Boolean); box.innerHTML='';
-    ns.forEach(n=>{ const b=document.createElement('button'); b.type='button'; b.className='cand'; b.innerHTML='<span></span><small>iPhoneで読んだ</small>'; b.firstChild.textContent=n; b.onclick=()=>applyFix(n,true); box.appendChild(b); });
-    if (!ns.length) box.innerHTML='<div class="note">候補はありません。上の欄に名前を入れて「この名前で決定」を押してください</div>'; return; }
+  const q=normName(e.raw||e.name||''), box=$('fixCands'), seen=new Set([e.name]); box.innerHTML='';
+  // 前にiPhoneで読んだ名前（前の版が写真に保存した完成画像を読んだ「計7点」のような名前は出さない）
+  const hist=histAll().filter(h=>!/^(?:計\d+点|[×x]\s*\d+)$/i.test(String(h.name).normalize('NFKC').trim()));
   const scored=[], near=n=>{ const b=normName(n||''); return b && Math.abs(b.length-q.length)<=6 ? editCost(q,b) : null; };
   for (const n of [...names,...itemMore]){ const d=near(n); if (d!=null) scored.push([d,n]); }
   for (const p of pendingList()){ const d=near(p.name); if (d!=null) scored.push([d-0.5,p.name]); } // 今回iPhoneで読んだ名前を先に
-  for (const h of histAll()){ const d=near(h.name); if (d!=null) scored.push([d-0.25,h.name]); } // 前にiPhoneで読んだ名前も
-  scored.sort((a,b)=>a[0]-b[0]); box.innerHTML=''; const seen=new Set([e.name]);
+  for (const h of hist){ const d=near(h.name); if (d!=null) scored.push([d-0.25,h.name]); } // 前にiPhoneで読んだ名前も
+  scored.sort((a,b)=>a[0]-b[0]);
+  // 画像から名前が読めなかった（名前なし・撮った順に仮に入れた名前・候補から選んだ名前）：今回iPhoneで読んだ名前と、前に読んだ名前（新しい順・6つまで）を先に出す（今の名前は出さない）
+  // （赤の行で、画像から読んだ名前が短い（「ア」「所持数」）か、受け取りの名前にも一覧にも近いものがない（画面の別の行の字）ときも）
+  const pend=pendingList(), weak=!normName(e.raw||'') || (!e.reading && pend.length && nameStatus(e)==='ng' && (q.length<5 || (!(scored[0]?.[0]<=1.5) && pend.every(p=>nameDist(q,p.name)>.5))));
+  if (weak){
+    // 今回の名前は全部出し、ほかの行で使っていない名前を先に（撮った順の同じ番目の名前がいちばん先。それ以外は新しい順）
+    const used=new Set(nameEntries().filter(x=>x.i!==i && x.name).map(x=>x.name)), same=items.length>1 && pend.length===items.length;
+    const pn=pend.map((p,k)=>({n:p.name, k, s:(used.has(p.name)?2:0)-(same && k===i ? 1 : 0)})).sort((a,b)=>a.s-b.s || b.k-a.k).map(x=>x.n);
+    [...pn, ...hist.slice(-6).map(h=>h.name).reverse()].filter(n=>n && !seen.has(n) && seen.add(n)).forEach(n=>{ const b=document.createElement('button'); b.type='button'; b.className='cand'; b.innerHTML='<span></span><small>iPhoneで読んだ</small>'; b.firstChild.textContent=n; b.onclick=()=>applyFix(n,true); box.appendChild(b); });
+    if (!q){ if (!box.children.length) box.innerHTML='<div class="note">候補はありません。上の欄に名前を入れて「この名前で決定」を押してください</div>'; return; } }
+  const top=box.children.length;
   scored.filter(([,n])=>!seen.has(n)&&seen.add(n)).slice(0,8).forEach(([d,n],k)=>{ const b=document.createElement('button'); b.type='button';
-    b.className='cand'+(k===0&&d<=1.5?' best':''); b.innerHTML='<span></span><small></small>'; // 近い候補だけ目立たせる（上の欄のほうが正しいことが多い）
+    b.className='cand'+(k===0&&d<=1.5&&!top?' best':''); b.innerHTML='<span></span><small></small>'; // 近い候補だけ目立たせる（上の欄のほうが正しいことが多い）
     b.firstChild.textContent=n; b.lastChild.textContent=d<=0.5?'ほぼ一致':d<=1.5?'近い':''; b.onclick=()=>applyFix(n,true); box.appendChild(b); });
   if (!box.children.length) box.innerHTML='<div class="note">近い候補はありません</div>';
 }
@@ -1095,12 +1126,30 @@ function applyFix(v,pick){ v=(v||'').trim(); if (!v){ fixNote('名前を入れ�
   let saved=true; [learnable(e.raw,v) ? e.raw : '', e.iph && slip(e.name,v) ? e.name : ''].filter(Boolean).forEach(k=>{ saved=learned.add(k,v)&&saved; });
   if (!dictExact.has(v)) saved=learned.add(v,v)&&saved; okNames.add(v); // 一覧にない名前は「決めた名前」として覚える。保存できなくても、開いている間は緑
   const then=fixThen, idx=fixIdx, late=closeFix(); setEntryName(idx,v);
-  // 名前が読めなかった画像で、今回iPhoneで読んだ名前を候補から選んだとき：所持数が読めていなければ、その名前の所持数も入れる（×0 のままにしない）
-  const pp=pick && !normName(e.raw||e.name||'') ? pendingList().find(x=>x.name===v) : null;
-  if (pp){ if (items.length>1){ const it=items[idx]; if (it){ if (it.count==null && !it.owned && pp.owned) it.owned=pp.owned; if (pp.noGift) it.noGift=true; } renderItems(); renderNames(); }
-    else { if (!$('owned').value && pp.owned){ $('owned').value=pp.owned; $('count').value=''; $('ownState').textContent='自動'; } if (pp.noGift){ shotNoGift=true; renderNames(); } } draw(); }
+  // 名前を変えたとき：所持数・プレゼント禁止も、その名前で受け取った（なければ前に読んだ）ものに入れ直す。どちらもなければ画像から読んだものに戻す（前の名前のものを残さない）
+  // （前の名前が手で決めた名前・仮の名前のときは、小さい字・濁点くらいの違いのときだけ同じアイテムとみる。同じシリーズの別アイテムを選び直したときに前の名前の数を残さない）
+  if (v!==e.name) refillOwn(idx,e.name,v,e.guess||e.fixed);
   toast((!saved ? '決めました（保存がいっぱいなので今回だけ）' : dictExact.has(v) ? '決めました' : '決めました（一覧にない名前として覚えました）')+(late?'\n'+late:''));
   if (then) then(); } // 「題名」「文字」から開いたときは、そのままコピーを続ける（同じタップの中なのでコピーできる）
+// 名前 v の所持数・プレゼント禁止（o：画像から読んだもの）。所持数：画像の「所持数」の枠から確かに読めた数 → その名前で受け取った数 → 画像から読んだ数 → その名前の前の記録の数（前の記録は古いので後）
+// プレゼント禁止：その名前の受け取り・前の記録か、画像の表示にあるとき。前の記録は1枚の画面の記録だけ（前の版の記録で数が3つ以上あるもの＝2つ並びの完成画像かもしれないものは使わない）
+const ownFor=(v,o)=>{ const pp=pendingList().find(x=>x.name===v), hh=pp ? null : histAll().filter(h=>h.name===v && oneScreen(h) && !((h.sig||[]).some(x=>x[0]==='n') && (h.sig||[]).filter(x=>x[0]!=='d').length>2)).pop();
+  return {pp, hh, own:(o.sure&&o.owned) || pp?.owned || o.owned || hh?.owned || null, ng:!!(pp?.noGift || hh?.noGift || o.noGift)}; };
+// 同じアイテムの名前と言えるか（前の名前の読み違いを直しただけ）。strict：小さい字・濁点くらいの違いだけ（そうでなければ、近い名前で、名前の中の数字が同じで、色・種類・1字の英字の入れ替えでないときも）
+const sameItem=(a,b,strict)=>!!normName(a||'') && (normName(a)===normName(b||'') || slip(a,b) || (!strict && nearName(a,b) && digitsOf(a)===digitsOf(b) && !hueSwap(a,b) && !variantSwap(a,b) && !letterSwap(a,b)));
+// 名前を変えた行の所持数・プレゼント禁止を入れ直す（i：行、old：前の名前、v：決めた名前）
+// 所持数：画像の「所持数」の枠から確かに読めた数 → その名前で受け取った数 → 画像から読んだ数 → その名前の前の記録の数（前の記録は古いので後）。手で変えた×数・手で入れた所持数はそのまま
+// プレゼント禁止：その名前の受け取り・前の記録か、画像の表示にあるときだけ
+// 受け取りも前の記録もない名前にしたときは、前の名前にも受け取り・前の記録がない（今の所持数は画像から読んだもの）か、前の名前の読み違いを直しただけ（同じアイテム）なら、何も変えない
+// （撮った順に仮に入れた名前は、小さい字・濁点くらいの違いのときだけ同じアイテムとみる）
+function refillOwn(i,old,v,guess){ const it=items.length>1 ? items[i] : null; if (items.length>1 && !it) return;
+  const o=it ? {owned:it.ocrOwned||null, sure:!!it.ownedSure, noGift:!!it.ocrNoGift} : (shotOcr||{owned:null, sure:false, noGift:false});
+  const {pp,hh,own,ng}=ownFor(v,o);
+  const was=!!old && (pendingList().some(x=>x.name===old) || histAll().some(h=>h.name===old));
+  if (!pp && !hh && (!was || sameItem(old,v,guess))) return;
+  if (it){ it.owned=own; it.noGift=ng; renderItems(); }
+  else { if (!shotOwnTyped){ $('owned').value=own||''; $('ownState').textContent=own?'自動':'読取×'; } shotNoGift=ng; }
+  renderNames(); draw(); }
 // 閉じる。開いている間に届いたお知らせを返す（閉じたあとに出す）
 function closeFix(){ $('fixInput').blur(); $('fixSheet').hidden=true; fixThen=null; fitSheet(); const t=fixLate; fixLate=null; return t; }
 // ✕・外の暗い所で閉じたとき：上の欄に書き直した名前があれば、捨てずに決めるか聞く（決めたと思って閉じても失わないように。書き直していなければ聞かない）
@@ -1197,18 +1246,21 @@ async function setItems(files){
   const blank=i=>!M[i].raw && !M[i].sig.some(x=>x[0]!=='d');
   // どの画像も読めなかったときだけ、残った名前を撮った順に仮に当てはめる（枚数が同じ・1回目だけ。赤の「仮の名前」にして、コピーの前に確かめてもらう）
   // （読めた画像があるときは、読めなかった画像に残りの名前を付けない。選んだ順が撮った順と違ったり、受け取りにないスクショだったりすると別アイテムの名前になる）
-  const rest=pend.map((_,j)=>j).filter(j=>!usedJ.has(j));
-  if (pend.length===items.length && !pinfo.used && items.every((_,i)=>blank(i))) items.forEach((_,i)=>{ if (pick[i]!=null || !rest.length) return;
+  // （読み取り中に手で決めた名前の行には当てはめず、その名前も残りの名前から外す）
+  const rest=pend.map((_,j)=>j).filter(j=>!usedJ.has(j) && !items.some(it=>it.fixed && it.name===pend[j].name));
+  if (pend.length===items.length && !pinfo.used && items.every((_,i)=>blank(i))) items.forEach((_,i)=>{ if (pick[i]!=null || !rest.length || items[i].fixed) return;
     if (!pairVeto(C[i][rest[0]])){ pick[i]=rest.shift(); how[i]='order'; } });
   let moved=0;
   items.forEach((it,i)=>{ const j=pick[i]; it.prov=false; it.fromHist=false; it.guess=false;
+    // 読み取り中に手で決めた名前が、組になった受け取りと別のアイテム（組にならなかったときも）：所持数・プレゼント禁止はその名前のもの（読み終わってから選んだときと同じ）
+    if (it.fixed && (j==null || !sameItem(pend[j].name,it.name))){ const f=ownFor(it.name,{owned:it.ocrOwned||null, sure:!!it.ownedSure, noGift:!!it.ocrNoGift}); it.owned=f.own; it.noGift=f.ng; return; }
     if (j==null){ if (!it.fixed){ it.iph=false; it.name=it.ocrName||''; } it.noGift=!!it.ocrNoGift; it.owned=it.ocrOwned; useHist(it,M[i]); return; } // 撮った順で仮に入れた名前・所持数は残さない
     const p=pend[j], pn=fullName(p,it.raw); if (!it.fixed){ if (it.name!==pn) moved++; it.name=pn; it.iph=true; it.guess=how[i]==='order'; } it.noGift=!!(p.noGift||it.ocrNoGift);
     if (how[i]==='match' && proven(C[i][j])) relearn([it.ocrName,it.raw],p.name);
     it.owned=pickOwned(M[i],p,how[i]==='match' && proven(C[i][j])); }); // 数字で同じ画面と確かめられたときだけ受け取りの所持数を先に使う
   // お知らせ：仮に入れた名前・読めなかった画像・受け取りになかった画像。前の記録の名前（黄）も当てはめた数に入れる
   if (pend.length){ const no=f=>items.map((it,i)=>f(it,i) ? i+1 : 0).filter(Boolean), nh=items.filter(it=>it.fromHist).length,
-      guess=no((it,i)=>how[i]==='order'), fail=no((it,i)=>pick[i]==null && !it.fromHist && blank(i)), miss=no((it,i)=>pick[i]==null && !it.fromHist && !blank(i));
+      guess=no((it,i)=>how[i]==='order'), fail=no((it,i)=>pick[i]==null && !it.fromHist && !it.fixed && blank(i)), miss=no((it,i)=>pick[i]==null && !it.fromHist && !it.fixed && !blank(i));
     const msg=[guess.length ? '画像を読めなかったので、撮った順にショートカットの名前を仮に入れました。合っているか確かめてください（名前をタップして直せます）' : '',
       fail.length ? `${fail.join('・')}番は画像を読めませんでした。名前をタップして入れてください（ショートカットの名前が候補に出ます）` : '',
       miss.length ? `${miss.join('・')}番は、ショートカットで読んだ中にありませんでした。画像から読んだ名前と所持数を使います（名前がちがうときは、名前をタップして直せます）` : ''].filter(Boolean).join('\n');
@@ -1610,7 +1662,10 @@ $('txtCopy').onclick=async()=>{ const v=$('txtBox').value, n=learnFromEdit(txtSh
   const msg=(await copyText(v)?'コピーしました':'コピーできませんでした。下の文字を長押ししてコピーしてください')+(n?`（${n}個の名前を覚えました）`:''); $('txtMsg').textContent=msg;
   try{ $('txtMsg').animate([{opacity:.15},{opacity:1}],{duration:450}); }catch(e){} }; // 同じ言葉のままでも、押したことが分かるように一瞬薄くする
 $('copyTitle').onclick=()=>{ const t=titleText(); if (copyBlocked(t) || !namesReady(()=>$('copyTitle').click())) return; showCopy(titleText(),'題名'); };
-$('txtClose').onclick=()=>{ $('txtBox').blur(); $('txtSheet').hidden=true; fitSheet(); const t=$('toast'); if (t){ t.style.top=''; t.style.bottom=''; } }; // 出ているお知らせは下の位置に戻す
+// 文字を直したまま ✕ で閉じたときは、直した文字をコピーするか聞く（直したつもりで閉じて、直す前の文字を貼らないように）
+$('txtClose').onclick=()=>{ $('txtBox').blur(); const cp=$('txtBox').value!==txtShown && confirm('直した文字をコピーしますか？') ? $('txtCopy').onclick() : null;
+  $('txtSheet').hidden=true; fitSheet(); const t=$('toast'); if (t){ t.style.top=''; t.style.bottom=''; } // 出ているお知らせは下の位置に戻す
+  if (cp) cp.then(()=>toast($('txtMsg').textContent.replace('下の文字を長押ししてコピーしてください','「文字」をもう一度押してコピーしてください'))); }; // 閉じたあとなので「下の文字」とは言わない
 $('outClose').onclick=()=>{ $('out').hidden=true; };
 draw();
 Promise.all(Object.values(FONTS).map(f=>document.fonts.load(f,"×0123456789").catch(()=>{}))).then(draw);
