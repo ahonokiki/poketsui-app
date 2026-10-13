@@ -318,7 +318,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='53'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='54'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -803,7 +803,9 @@ function processRaw(raw,via,now=Date.now()){
     if (s.at!=null){ if (!suspect || Math.abs(now-s.at)>2*60e3) return;
       const d=new Date(s.at), am=d.getHours()*60+d.getMinutes(), hs=s.c.h<=12 ? [s.c.h%12, s.c.h%12+12] : [s.c.h]; // 9:14 は 21:14 のことも
       if (hs.some(h=>{ const x=Math.abs(am-(h*60+s.c.mi))%1440; return Math.min(x,1440-x)<=2; })) return; }
-    s.at=clockTime(s.c,now,h12); s.by='clock'; });
+    // 作成日のあるスクショは、画面の時計（読み違えかもしれない）で決めた時間より前・先の時刻になるなら作成日のまま（撮ったばかりのスクショを外さない）
+    const ct=clockTime(s.c,now,h12); if (s.at!=null && (now-ct>(win+1)*60e3 || ct>now+3*60e3)) return;
+    s.at=ct; s.by='clock'; });
   // 決めた時間（直近○分）より前に撮ったものは使わない（時刻の分からないものは使う）
   const lim=(win+1)*60e3, isOld=s=>s.at!=null && now-s.at>lim, old=shots.filter(isOld), use=shots.filter(s=>!isOld(s));
   // それより前に撮ったアイテムの画面も、名前と数字だけ前の記録に残す（受け取りには入れない。あとでそのスクショを選ぶと、iPhoneで読んだ名前が黄色で出る）
@@ -823,7 +825,8 @@ function processRaw(raw,via,now=Date.now()){
     atLines:shots.filter(s=>s.hd).length,noTime:shots.filter(s=>s.nt).length,noAt:shots.filter(s=>s.ne).length,badFmt:shots.filter(s=>s.nf).length,oldKept:oldList.length,
     span:old.length ? Math.round((now-Math.min(...old.map(s=>s.at)))/60e3) : 0}; // span：いちばん前に撮ったスクショが何分前か
   // 「@@作成日」の行のない古いショートカット：前の日の同じ時刻ごろのスクショは外せないので、足し方を知らせる
-  const atHint=byClock && !recv.atLines ? '\n（ショートカットに「@@作成日」を足すと、前の日のスクショも分けられます）' : '';
+  const atHint=(byClock && !recv.atLines ? '\n（ショートカットに「@@作成日」を足すと、前の日のスクショも分けられます）' : '')
+    +(dl.length>=3 && up>down ? '\n（ショートカットの「写真を検索」の並び順が「古い順」です。「新しい順」にしないと、たくさん撮ったとき最後のスクショが届きません）' : '');
   // 辞書がまだ読み込めていなければ、読み込めたあとで一覧の表記に合わせ直す（受け取りは、まだ画像に使っていない間だけ。辞書で読めて増えたときも入れ直す）
   const again=at0=>{ if (dictExact.size) return; loadItemNames().then(()=>{ if(!dictExact.size) return;
     if (oldList.length){ const a=buildPending(oldSorted,true).list; histDrop(oldList); histAdd(a); } // 前のスクショの記録も、一覧の書き方で入れ直す
