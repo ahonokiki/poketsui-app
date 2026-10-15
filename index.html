@@ -375,29 +375,42 @@ function colorPicker(id){
 }
 colorPicker('numColor'); colorPicker('totalColor');
 
-// 人から送られてきた画像：まわりの帯や枠（iPad・別の機種で表示したスクショの黒い帯、写真の枠など）を切り落とし、ゲームの画面だけにする
-// 帯と見るのは、端から上から下までほぼ同じ色（98%）の列が画像の幅の0.5%以上続き、そこで画面にはっきり変わる（2つ内側の列は8割未満）ときだけ
-// 黒っぽい帯は片側だけでも切る。明るい色の帯は、左右の両側に同じ色・同じくらいの幅であるときだけ（端が白っぽいだけの自分のスクショは切らない）。上下は、左右を切ったときに同じ色の行なら切る
+// 人から送られてきた画像：まわりの帯や枠（iPad・別の機種で表示したスクショの黒い帯、写真の枠、暗い写真ビューアの余白など）を切り落とし、ゲームの画面だけにする
+// 帯と見るのは、端からほぼ同じ色（98%）の列が画像の幅の0.5%以上続き、そこで画面にはっきり変わる（2つ内側の列は8割未満）ときだけ
+// 列は、端の色が続く上下の範囲だけで見る（写真ビューアの上下のツールバー（字・ボタン）は除く）。その範囲が画像の高さの6割未満なら帯ではない
+// 上下は、左右を切ったときに同じ色の行なら切る（ツールバーがあれば、その内側から）
+// 黒っぽい帯は片側だけでも切る。明るい色の帯は、左右の両側に同じ色・同じくらいの幅であるとき。片側だけの明るい帯は、帯の中が一様で、切った画像で画面の位置がもっともらしい（detectLayout の ok）ときだけ
 // そのあと、ゲームの画面の左右の端が分かるとき（detectLayout の x0・x1：ピグパは見出しの下の線の両端）は、その外も切る（白い帯・白い枠）
 // 画面が画像の幅いっぱいと分かる画像（detectLayout の full）は何もしない。切った画像で画面の位置が前よりはっきり分からなければ、切らない（元の画像を使う）
+// （ただし、はっきりした黒い帯を切って画面の位置がもっともらしくなったときは、前と同じくらいでも切ったほうを使う。帯の境目のにじみで full にならないことがある）
 function trimBars(img){
   const W=img.width, H=img.height; if (!W || !H || img.cut) return img; // cut：もう切った画像
-  const lay0=detectLayout(img), sc=l=>!l ? 0 : l.full ? 2 : 1; if (lay0?.full) return img;
+  const lay0=detectLayout(img), sc=l=>!l ? 0 : l.full ? 3 : l.ok ? 2 : 1; if (lay0?.full) return img;
   const c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,0,0);
-  const part=(d,ref)=>{ let n=0, all=0; const st=Math.max(1,Math.floor(d.length/4/300))*4; for (let i=0;i<d.length;i+=st){ all++; if (Math.abs(d[i]-ref[0])<20 && Math.abs(d[i+1]-ref[1])<20 && Math.abs(d[i+2]-ref[2])<20) n++; } return n/all; };
-  const side=at=>{ const ref=[...g.getImageData(at(0),H>>1,1,1).data].slice(0,3), colP=x=>part(g.getImageData(x,0,1,H).data,ref); let n=0;
+  const near=(d,i,ref)=>Math.abs(d[i]-ref[0])<20 && Math.abs(d[i+1]-ref[1])<20 && Math.abs(d[i+2]-ref[2])<20;
+  const part=(d,ref)=>{ let n=0, all=0; const st=Math.max(1,Math.floor(d.length/4/300))*4; for (let i=0;i<d.length;i+=st){ all++; if (near(d,i,ref)) n++; } return n/all; };
+  const side=at=>{ const ref=[...g.getImageData(at(0),H>>1,1,1).data].slice(0,3), e=g.getImageData(at(0),0,1,H).data; let y0=H>>1, y1=H>>1;
+    while (y0>0 && near(e,(y0-1)*4,ref)) y0--; while (y1<H-1 && near(e,(y1+1)*4,ref)) y1++;
+    if (y1-y0+1<H*.6) return {n:0};
+    const colP=x=>part(g.getImageData(x,y0,1,y1-y0+1).data,ref); let n=0;
     while (n<W*.3 && colP(at(n))>=.98) n++;
-    return n>=Math.max(2,W*.005) && colP(at(n+2))<.8 ? {n,ref,dark:.3*ref[0]+.59*ref[1]+.11*ref[2]<60} : {n:0}; };
+    return n>=Math.max(2,W*.005) && colP(at(n+2))<.8 ? {n,ref,y0,y1,dark:.3*ref[0]+.59*ref[1]+.11*ref[2]<60} : {n:0}; };
   let L=side(n=>n), R=side(n=>W-1-n);
-  if (!(L.n && R.n && Math.abs(L.n-R.n)<=Math.max(3,Math.max(L.n,R.n)*.2) && L.ref.every((v,i)=>Math.abs(v-R.ref[i])<20))){ if (!L.dark) L={n:0}; if (!R.dark) R={n:0}; }
+  const pair=L.n && R.n && Math.abs(L.n-R.n)<=Math.max(3,Math.max(L.n,R.n)*.2) && L.ref.every((v,i)=>Math.abs(v-R.ref[i])<20);
+  // 片側だけの明るい帯は、帯の中が一様（線・字が1つも横切らない）なときだけ。もう片側に黒っぽい帯があるときは使わない（画面の白い余白を帯と見ない）
+  const pure=(s,at)=>{ for (let k=0;k<s.n-2;k++){ const d=g.getImageData(at(k),s.y0,1,s.y1-s.y0+1).data; for (let i=0;i<d.length;i+=4) if (!near(d,i,s.ref)) return false; } return true; };
+  if (!pair){ if (L.n && !L.dark && (R.n && R.dark || !pure(L,n=>n))) L={n:0}; if (R.n && !R.dark && (L.n && L.dark || !pure(R,n=>W-1-n))) R={n:0}; }
+  const light=!pair && (L.n && !L.dark || R.n && !R.dark), strong=(L.n || R.n) && (!L.n || L.dark) && (!R.n || R.dark); // light：片側だけの明るい帯。strong：黒っぽい帯だけ
   let o=img, cut=[0,0];
-  if (L.n || R.n){ const w=W-L.n-R.n, ref=(L.n?L:R).ref, rowP=y=>part(g.getImageData(L.n,y,w,1).data,ref), end=at=>{ let n=0; while (n<H*.3 && rowP(at(n))>=.98) n++; return n; };
-    const T=end(n=>n), B=end(n=>H-1-n); o=document.createElement('canvas'); o.width=w; o.height=H-T-B; o.getContext('2d').drawImage(img,L.n,T,w,o.height,0,0,w,o.height); cut=[L.n,T]; }
+  if (L.n || R.n){ const s=L.n?L:R, w=W-L.n-R.n, rowP=y=>part(g.getImageData(L.n,y,w,1).data,s.ref), end=(y,d)=>{ let n=0; while (n<H*.3 && rowP(y+d*n)>=.98) n++; return n; };
+    const T=s.y0+end(s.y0,1), B=H-1-s.y1+end(s.y1,-1); o=document.createElement('canvas'); o.width=w; o.height=H-T-B; o.getContext('2d').drawImage(img,L.n,T,w,o.height,0,0,w,o.height); cut=[L.n,T]; }
   c.width=c.height=0;
   const lay=detectLayout(o);
   if (lay?.x1>lay?.x0){ const w=lay.x1-lay.x0+1, h=o.height, p=document.createElement('canvas'); p.width=w; p.height=h; p.getContext('2d').drawImage(o,lay.x0,0,w,h,0,0,w,h); if (o!==img) o.width=o.height=0; o=p; cut[0]+=lay.x0; }
   if (o===img) return img;
-  if (lay0 && sc(detectLayout(o))<=sc(lay0)){ o.width=o.height=0; return img; } // 切っても良くならない：帯ではなかった
+  const s1=sc(detectLayout(o)), s0=sc(lay0);
+  // 画面の位置が分からない画像は、黒っぽい帯を切ったときか、切ったら分かったときだけ
+  if (light && s1<2 || (lay0 ? s1<=s0 && !(strong && s1>=2 && s1>=s0) : !s1 && !strong)){ o.width=o.height=0; return img; } // 切っても良くならない：帯ではなかった
   o.cut=cut; // cut：切り落とした左・上の幅（確かめる用）
   return o; }
 function fromFile(f, cb){ const i=new Image(); i.onload=()=>{cb(i);draw();}; i.src=URL.createObjectURL(f); }
@@ -434,7 +447,7 @@ function detectLayout(img){
   // 小窓の上端〜ピンク欄の下端はどの画面でも幅の0.8265倍。それより長いときは、送った人が左右を切った画像なので、元の幅（Wf）で名前の行の下端を決める
   // full：ゲームの画面が画像の幅いっぱい（比がほぼ1。左右に帯があると1より小さい）：trimBars は何も切らない
   const rt=(pinkBottom-sheetTop)/W/.8265, Wf=W*(rt>1.015 ? Math.min(1.12,rt) : 1);
-  return {top:sheetTop, pinkBottom, cardBottom:pinkBottom+Wf*.2, full:Math.abs(rt-1)<.008};
+  return {top:sheetTop, pinkBottom, cardBottom:pinkBottom+Wf*.2, full:Math.abs(rt-1)<.008, ok:Math.abs(rt-1)<.015}; // ok：比が1に近い（trimBars が比べる）
   })();
   c.width=c.height=0;
   return img._lay=lay;
@@ -645,22 +658,30 @@ async function analyzeShot(img){
   // 同じ桁数で違う数なら、画面全体の読みのまま（この所の読み違いで正しい数を消さない。ただし別のしきい値でも同じに読めたら、どちらも使わない）。
   // 画面全体のほうが桁が多く末尾も違うときも、どちらが正しいか分からないので、どちらも使わない（ない数は安全、違う数は組み違いのもと）
   // （縮小された画像では字のふちが白くなりきらないので、白さのしきい値は低め。読めなければ少し高くしてもう一度）
-  let hv=null, hmode='', hs=[], got=false; if (lay) for (const thr of [150,170]){ try{ const x0=W*.675, y0=lay.pinkBottom+W*.002, w=W*.12, h=W*.048, z=Math.max(1,96/h), nc=document.createElement('canvas'); nc.width=Math.round(w*z); nc.height=Math.round(h*z);
+  // rdH：「欲しい」の所を、白さのしきい値 thr・拡大の倍率 zs（ふつうは高さ96pxに。1.5なら1.5倍）で読む。数字だけと読めたときだけ（頭の字が「Z」「ア」になったときは、欠けた数を使わない）
+  const rdH=async(thr,zs)=>{ const x0=W*.675, y0=lay.pinkBottom+W*.002, w=W*.12, h=W*.048, z=Math.max(1,96/h)*zs, nc=document.createElement('canvas'); nc.width=Math.round(w*z); nc.height=Math.round(h*z);
     const ng=nc.getContext('2d',{willReadFrequently:true}); ng.imageSmoothingQuality='high'; ng.drawImage(img,x0,y0,w,h,0,0,nc.width,nc.height);
     const id=ng.getImageData(0,0,nc.width,nc.height), d=id.data; for (let i=0;i<d.length;i+=4){ const v=Math.min(d[i],d[i+1],d[i+2])>thr ? 0 : 255; d[i]=d[i+1]=d[i+2]=v; } ng.putImageData(id,0,0);
-    await ocrWorker.setParameters({tessedit_pageseg_mode:'7'}); const t2=(await timeLimit(ocrWorker.recognize(nc),20000)).data.text.replace(/\s/g,'').replace(/(\d),(\d{3})/g,'$1$2'), m2=t2.match(/^(\d{3,6})$/); // 数字だけと読めたときだけ（頭の字が「Z」「ア」になったときは、欠けた数を使わない）
-    if (!m2) continue; got=true; const v=String(+m2[1]), drop=()=>{ r.sig=r.sig.filter(x=>x[0]!=='h' || !hs.includes(x.slice(1))); };
-    if (hv!=null){ if (v===hv){ if (hmode==='drop') drop(); } else if (hmode==='push') hmode='no'; break; } // 2回目（確かめる読み）。同じ桁で違う数を確かめて同じに読めたら、どちらが正しいか分からないので、どちらも使わない
-    const yr=r.sig.filter(x=>x[0]==='d').map(x=>x.slice(1,5)); r.sig=r.sig.filter(x=>x[0]!=='h' || !yr.includes(x.slice(1)));
-    hs=r.sig.filter(x=>x[0]==='h').map(x=>x.slice(1)).filter(a=>Math.abs(a.length-v.length)<=1);
-    if (!hs.length){ if (W<600){ hv=v; hmode='push'; continue; } r.sig.push('h'+v); } // 小さい画像（幅600未満）は、もう1つのしきい値で違う数に読めたら使わない
+    await ocrWorker.setParameters({tessedit_pageseg_mode:'7'}); const t2=(await timeLimit(ocrWorker.recognize(nc),20000)).data.text.replace(/\s/g,'').replace(/(\d),(\d{3})/g,'$1$2'), m2=t2.match(/^(\d{3,6})$/);
+    return m2 ? String(+m2[1]) : null; };
+  const noYear=()=>{ const yr=r.sig.filter(x=>x[0]==='d').map(x=>x.slice(1,5)); r.sig=r.sig.filter(x=>x[0]!=='h' || !yr.includes(x.slice(1))); };
+  let hv=null, hmode='', hs=[]; if (lay && W>=600) for (const thr of [150,170]){ try{ const v=await rdH(thr,1);
+    if (v==null) continue; const drop=()=>{ r.sig=r.sig.filter(x=>x[0]!=='h' || !hs.includes(x.slice(1))); };
+    if (hv!=null){ if (v===hv && hmode==='drop') drop(); break; } // 2回目（確かめる読み）。同じ桁で違う数を確かめて同じに読めたら、どちらが正しいか分からないので、どちらも使わない
+    noYear(); hs=r.sig.filter(x=>x[0]==='h').map(x=>x.slice(1)).filter(a=>Math.abs(a.length-v.length)<=1);
+    if (!hs.length) r.sig.push('h'+v);
     else if (hs.includes(v)){}
     else if (hs.every(a=>a.length<v.length || a.length>v.length && a.endsWith(v))){ drop(); r.sig.push('h'+v); }
-    else if (hs.every(a=>a.length>v.length) || W<600) drop(); // 小さい画像（幅600未満）は画面全体の読みも読み違いが多いので、違えばどちらも使わない
+    else if (hs.every(a=>a.length>v.length)) drop();
     else { hv=v; hmode='drop'; continue; } // 同じ桁で違う数：画面全体の読みのまま。もう一度別のしきい値で読んで確かめる
     break; }catch(e){} }
-  if (hmode==='push') r.sig.push('h'+hv);
-  if (W<600 && !got) r.sig=r.sig.filter(x=>x[0]!=='h'); // 小さい画像で「欲しい」の所が読めなかったとき：画面全体の読みの数だけでは使わない（欠けた・多い桁の読みが多い）
+  // 小さい画像（幅600未満：縮小・再圧縮されて送られてきた画像）：読み違い（桁が欠ける・増える・1字違う）が多いので、2つの別々の読みがぴったり同じ数のときだけ使う
+  // （この所の読みが画面全体の読みと同じか、しきい値も倍率も変えて（160・1.5倍）もう一度読んで同じ）。そうでなければ「欲しい」の数は使わない（ない数は安全、違う数は組み違いのもと）
+  else if (lay){ let v=null; for (const thr of [150,170]){ try{ v=await rdH(thr,1); }catch(e){} if (v!=null) break; }
+    noYear(); let keep=null;
+    if (v!=null){ if (r.sig.includes('h'+v)) keep=v; else { let v2=null; try{ v2=await rdH(160,1.5); }catch(e){} if (v2===v) keep=v; } }
+    r.sig=r.sig.filter(x=>x[0]!=='h'); if (keep) r.sig.push('h'+keep); }
+  else if (W<600) r.sig=r.sig.filter(x=>x[0]!=='h'); // 小さい画像で画面の位置が分からないとき：画面全体の読みの数だけでは使わない
   try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'3'}); }catch(e){}
   return await nameDone(r);
 }
@@ -804,10 +825,10 @@ function renderRecv(){ const el=$('recvLog'); if(!el) return; let j=null; try{ j
     // （使ったものがあるのに、どれも時刻が分からないときは「どれも使いませんでした」としない）
     (j.win==null ? '' : (j.byDate||j.byClock) ? `\n撮った時刻：`+(j.range ? j.range+(j.undated?`・ほかに時刻の分からないもの${j.undated}枚`:'') : j.kept ? `使った${j.kept}枚は分かりませんでした` : j.rangeAll ? j.rangeAll+'（どれも使いませんでした）' : '—')+`（直近${j.win}分を使う。時刻は${how}）`
       : j.blocks ? `\n撮った時刻：分かりませんでした（ショートカットに「@@作成日」の行を足すと、直近${j.win}分より前のスクショを外せます）` : '')+
-    (j.win!=null && j.byClock && !j.atLines ? '\n（「@@作成日」の行が届いていません。ショートカットの作り方の手順4を確かめてください）' : '')+
-    (j.noAt ? `\n（「@@」の後ろに作成日が入っていません。手順4の「テキスト」で、@@ のすぐ後ろに「繰り返し項目」の「作成日」を入れてください）` : '')+
-    (j.noTime ? `\n（作成日に時刻が入っていません。手順4で「作成日」をタップし、「時刻を含める」をオンにしてください）` : '')+
-    (j.badFmt ? `\n（作成日の形が読めませんでした。手順4で「作成日」をタップし、日付の形式を「ISO 8601」にしてください）` : '')+
+    (j.win!=null && j.byClock && !j.atLines ? '\n（「@@作成日」の行が届いていません。ショートカットの作り方の「1. のくり返しの中の『テキスト』」を確かめてください）' : '')+
+    (j.noAt ? `\n（「@@」の後ろに作成日が入っていません。「1. のくり返しの中の『テキスト』」で、@@ のすぐ後ろに「繰り返し項目」の「作成日」を入れてください）` : '')+
+    (j.noTime ? `\n（作成日に時刻が入っていません。「1. のくり返しの中の『テキスト』」で「作成日」をタップし、「時刻を含める」をオンにしてください）` : '')+
+    (j.badFmt ? `\n（作成日の形が読めませんでした。「1. のくり返しの中の『テキスト』」で「作成日」をタップし、日付の形式を「ISO 8601」にしてください）` : '')+
     (j.oldKept ? `\n${j.win??''}分より前のスクショ ${j.oldKept}枚は、名前だけ覚えました（あとで選ぶと黄色で出ます）` : '')+
     // ⚙の時間の2倍より前のスクショまで届いた：ショートカットの期間が長い（前の作り方の1日・1週間など）。iPhoneは毎回その全部を読むので遅くなる
     (j.oldKept && j.span>2*(j.win||60) ? `\n（ショートカットの「写真を検索」の期間が⚙の${j.win??60}分より長いようです。おすすめは「過去1時間」で、⚙は60分です）` : '')+
