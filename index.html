@@ -155,6 +155,11 @@
   /* 複数アイテム */
   #multi{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:2px 0 4px}
   body.isMulti .nums{display:none}
+  .safe{width:100%;font-size:11.5px;color:var(--sub);background:#fff;border-radius:14px;padding:6px 10px;box-shadow:0 2px 0 #f6cfe2}
+  .safe summary{font-weight:800;color:#3c8a5f;cursor:pointer}.safe ul{margin:6px 0 2px;padding-left:18px;line-height:1.55}
+  .defBar{width:100%;display:flex;gap:4px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:11px;color:var(--sub);font-weight:800}
+  .defBar button{border:0;border-radius:99px;padding:4px 9px;font:inherit;font-size:11px;font-weight:900;background:#f3eef5;color:#8a7a8e;cursor:pointer}
+  .defBar button.on{background:var(--pink);color:#fff}
   .chip{display:flex;align-items:center;justify-content:space-between;gap:3px;min-width:0;background:#fff;border-radius:99px;padding:3px 6px 3px 3px;box-shadow:0 2px 0 #f6cfe2}
   .chip .no{width:18px;height:18px;border-radius:50%;background:var(--pink);color:#fff;font-size:11px;font-weight:900;line-height:18px;text-align:center}
   .chip img{width:30px;height:30px;object-fit:cover;object-position:50% 30%;border-radius:8px}
@@ -204,6 +209,15 @@
 
 <div class="ctrl">
   <label class="pill lav pick">📷 アイテム画像を選ぶ<input type="file" id="shot" accept="image/*" multiple hidden></label>
+  <details class="safe"><summary>🔒 読み取りはすべてこのiPhoneの中で行い、写真はどこにも送信していません</summary>
+    <ul>
+      <li>選んだ写真の文字（アイテム名・所持数）は、このiPhoneのSafariの中で読み取ります。読み取りの仕組みはアプリを開いたときにiPhoneに読み込まれ、そのあとはiPhoneの中だけで動きます。</li>
+      <li>写真そのものは、インターネット（サーバー・GitHubなど）に送信も保存もしません。読み取った名前と数の文字だけを使って、画像と文字を作ります。</li>
+      <li>ショートカットを使うときも、iPhoneの「テキストを抽出」で読んだ文字だけがアプリに渡ります（写真は渡しません）。</li>
+      <li>アプリがインターネットから受け取るのは、アプリ本体・読み取りの仕組み・アイテム名の一覧・壁紙だけです。</li>
+      <li>できた画像は「画像を保存」を押したときだけ、このiPhoneに保存されます。</li>
+      <li>※ 設定の「全端末で共有（GitHub）」に鍵を入れて背景を共有したときだけ、その背景画像を送ります（アイテムの写真は送りません）。</li>
+    </ul></details>
   <div class="nums">
     <label class="own">所持数<small id="ownState"></small><input type="number" id="owned" min="1" inputmode="numeric" placeholder="−"></label>
     <div class="step"><button type="button" id="minus" aria-label="1減らす">−</button>
@@ -211,6 +225,7 @@
     <input type="hidden" id="count">
   </div>
   <img id="ownSnap" alt="元画像の所持数" hidden>
+  <div class="defBar" role="group" aria-label="×数をまとめて変える"><span>×数をまとめて：</span><button type="button" data-m="own">所持数−1</button><button type="button" data-m="one">全部×1</button><button type="button" data-m="none">全部表示なし</button></div>
   <div id="pendNote" class="note" style="width:100%;text-align:center;font-weight:800;margin:0" hidden></div>
   <div id="multi"></div>
   <div id="names"></div>
@@ -335,7 +350,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='66'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='67'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -1488,7 +1503,7 @@ function renderItems(){
   if (items.length<2){ box.innerHTML=''; return; }
   box.innerHTML='';
   items.forEach((it,n)=>{ const d=document.createElement('div'); d.className='chip';
-    d.innerHTML=`<span class="no">${n+1}</span>${it.snap?`<img class="snap" src="${it.snap}" alt="元画像の所持数">`:(it.reading?'<img src="'+it.src+'" alt="">':'<span class="nosnap">所持数なし</span>')}<button type="button" class="m">−</button><b>${it.reading?'…':itemCount(it)==null?'表示なし':'×'+itemCount(it)}</b><button type="button" class="p">＋</button>`;
+    d.innerHTML=`<span class="no">${n+1}</span>${it.snap?`<img class="snap" src="${it.snap}" alt="元画像の所持数">`:(it.reading?'<img src="'+it.src+'" alt="">':'<span class="nosnap">所持数なし</span>')}<button type="button" class="m">−</button><b>${it.reading?'…':itemCount(it)==null?'<small style="font-size:11px">なし</small>':'×'+itemCount(it)}</b><button type="button" class="p">＋</button>`;
     d.querySelector('.m').onclick=()=>{ it.count=Math.max(0,(itemCount(it)??1)-1); renderItems(); draw(); };
     d.querySelector('.p').onclick=()=>{ it.count=(itemCount(it)??0)+1; renderItems(); draw(); };
     box.appendChild(d); });
@@ -1820,7 +1835,12 @@ $('dl').onclick=()=>{ const name='poketsui-'+Date.now()+'.png';
 try{ const v=localStorage.getItem('promo_titleTotal'); if(v!==null) $('titleTotal').checked=v==='1'; }catch(e){}
 $('titleTotal').addEventListener('change',()=>{ try{ localStorage.setItem('promo_titleTotal',$('titleTotal').checked?'1':'0'); }catch(e){} });
 try{ $('defCount').value=defCnt(); }catch(e){}
-$('defCount').addEventListener('change',()=>{ try{ localStorage.setItem('promo_defCount',$('defCount').value); }catch(e){} renderItems(); renderNames(); draw(); });
+// ×数の最初の数を変える（設定と、選ぶボタンの下の小さいボタンは同じ）。小さいボタンは、＋−で直した数も全部その数に戻す
+function setDefCnt(m,reset){ try{ localStorage.setItem('promo_defCount',m); }catch(e){} $('defCount').value=m;
+  if (reset){ items.forEach(it=>{ it.count=null; }); $('count').value=''; }
+  document.querySelectorAll('.defBar button').forEach(b=>b.classList.toggle('on',b.dataset.m===m)); renderItems(); renderNames(); draw(); }
+$('defCount').addEventListener('change',()=>setDefCnt($('defCount').value,false));
+document.querySelectorAll('.defBar button').forEach(b=>{ b.classList.toggle('on',b.dataset.m===defCnt()); b.onclick=()=>{ setDefCnt(b.dataset.m,true); toast(b.dataset.m==='own'?'×数を「所持数−1」にしました':b.dataset.m==='one'?'×数を全部1にしました':'×数を全部「表示なし」にしました'); }; });
 ['txtStyle','titleOne','titleSep','txtHead','txtTotal','txtFoot'].forEach(id=>{ try{ const v=localStorage.getItem('promo_'+id); if(v!==null) $(id).value=v; }catch(e){}
   $(id).addEventListener('input',()=>{ try{ localStorage.setItem('promo_'+id,$(id).value); }catch(e){} }); });
 function listText(){
