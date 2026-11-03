@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>読み取り試験</title>
+<style>
+  :root{--ink:#5a4a5e;--sub:#9a8a9e;--pink:#ff6fae}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff0f6;color:var(--ink);font-family:"Hiragino Maru Gothic ProN","M PLUS Rounded 1c",sans-serif;line-height:1.6}
+  header{background:linear-gradient(135deg,#9d86d8,#c38fd8 55%,#f59ac8);color:#fff;text-align:center;padding:14px 16px;font-weight:900;font-size:18px;border-radius:0 0 22px 22px}
+  main{max-width:560px;margin:0 auto;padding:12px 16px 40px}
+  .card{background:#fff;border-radius:18px;padding:12px 14px;margin:12px 0;box-shadow:0 4px 14px #e7a3c833}
+  .note{font-size:12px;color:var(--sub)}
+  label.pick,button{display:flex;align-items:center;justify-content:center;width:100%;border:0;border-radius:99px;padding:13px;font:inherit;font-weight:900;font-size:16px;color:#fff;cursor:pointer;margin:8px 0}
+  label.pick{background:linear-gradient(180deg,#c3b0f0,#a98be0);box-shadow:0 4px 0 #8a6bd0}
+  button{background:linear-gradient(135deg,#ff7aa0,#ff9cc8);box-shadow:0 4px 0 #e0579a}
+  button:disabled,label.pick.off{opacity:.5;pointer-events:none}
+  #status{font-weight:800;text-align:center}
+  .row{border-top:1px dashed #f6d6e6;padding:8px 0}
+  .row img{max-width:100%;border:1px solid #eee;border-radius:6px;display:block;margin:4px 0}
+  .nm{font-size:18px;font-weight:900;color:#3d3046;word-break:break-all}
+  .meta{font-size:12px;color:var(--sub)}
+  .err{color:#c0392b;font-weight:800}
+</style>
+</head>
+<body>
+<header>読み取り試験（新しい読み取り）</header>
+<main>
+  <section class="card">
+    ポケツイのアイテム画面の写真を選ぶと、新しい読み取りで名前と所持数を読みます。<b>加工アプリには何も保存しません。</b>
+    <div class="note">はじめての1回は、読み取りのデータ（約28MB）を読み込むので少し時間がかかります。Wi-Fiのときがおすすめです。</div>
+    <div id="status">準備中…</div>
+    <label class="pick off" id="pickL">📷 写真を選ぶ（何枚でも）<input type="file" id="pick" accept="image/*" multiple hidden></label>
+  </section>
+  <section class="card" id="out" hidden></section>
+  <section class="card" id="done" hidden>
+    <div id="sum"></div>
+    <button type="button" id="copy">📋 結果をコピー（ここに貼って送ってください）</button>
+    <div class="note">名前がまちがっていたものは、正しい名前も一緒に送ってもらえると助かります。</div>
+  </section>
+</main>
+<iframe id="app" src="./?t=ocrtest" style="display:none"></iframe>
+<script src="ocr/pp/ort.min.js"></script>
+<script>
+const $=id=>document.getElementById(id), st=t=>$('status').textContent=t;
+let sess=null, D=null, IDX=null, BOOST=null, A=null, loadMs=0; const log=[];
+// 加工アプリの「切り抜き」の仕組み（バーを外す・画面の位置を見つける）をそのまま使う
+const appReady=new Promise(res=>{ $('app').onload=()=>{ const w=$('app').contentWindow; const t0=Date.now();
+  const iv=setInterval(()=>{ if (w.detectLayout && w.trimBars){ clearInterval(iv); res(w); } else if (Date.now()-t0>20000){ clearInterval(iv); res(null); } },200); }; });
+async function init(){
+  const t0=performance.now();
+  try{
+    ort.env.wasm.wasmPaths=new URL('ocr/pp/',location.href).href; ort.env.wasm.numThreads=1;
+    st('読み取りのデータを読み込み中…（はじめは数十秒かかることがあります）');
+    D=await (await fetch('ocr/pp/dict.json')).json(); IDX=new Map(D.map((c,i)=>[c,i+1]));
+    BOOST=new Set(['♡','♥','☆','★','♪','♫','・','〜','～'].map(c=>IDX.get(c)).filter(Boolean));
+    sess=await ort.InferenceSession.create('ocr/pp/rec.onnx',{executionProviders:['wasm']});
+    A=await appReady; if (!A) throw new Error('加工アプリの部品が読み込めませんでした');
+    loadMs=Math.round(performance.now()-t0);
+    st(`準備できました（${(loadMs/1000).toFixed(1)}秒）`); $('pickL').classList.remove('off');
+  }catch(e){ st('準備に失敗しました：'+(e.message||e)); log.push('準備エラー：'+(e.message||e)); $('done').hidden=false; }
+}
+// 名前の行・所持数の行：ピンクの部分のすぐ下にある、濃い字の行（上から1行目が名前、2行目が所持数）
+function textRows(img,lay){ const W=img.width,H=img.height,c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,0,0);
+  const d=g.getImageData(0,0,W,H).data, dark=(x,y)=>{ const i=(y*W+x)*4; return d[i]<100&&d[i+1]<100&&d[i+2]<100; };
+  const y0=Math.round(lay.pinkBottom), y1=Math.min(H-1,Math.round(lay.pinkBottom+W*.3)), runs=[]; let s=-1;
+  for (let y=y0;y<y1;y++){ let n=0; for (let x=Math.round(W*.05);x<W*.95;x++) if (dark(x,y)) n++; if (n>2&&s<0) s=y; if (n<=2&&s>=0){ runs.push([s,y]); s=-1; } }
+  return runs.filter(([a,b])=>b-a>=W*.012).slice(0,2).map(([a,b])=>{ let xa=W,xb=0; for (let y=a;y<b;y++) for (let x=Math.round(W*.03);x<W*.97;x++) if (dark(x,y)){ if(x<xa)xa=x; if(x>xb)xb=x; } return {x:xa,y:a,w:xb-xa+1,h:b-a}; }); }
+async function readLine(img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad), y0=Math.max(0,box.y-pad), w=Math.min(img.width-x0,box.w+pad*2), h=Math.min(img.height-y0,box.h+pad*2);
+  const H=48, Wd=Math.min(1600,Math.max(16,Math.round(w*H/h))), c=document.createElement('canvas'); c.width=Wd; c.height=H; const g=c.getContext('2d'); g.drawImage(img,x0,y0,w,h,0,0,Wd,H);
+  const px=g.getImageData(0,0,Wd,H).data, f=new Float32Array(3*H*Wd);
+  for (let i=0;i<H*Wd;i++){ f[i]=(px[i*4+2]/255-.5)/.5; f[H*Wd+i]=(px[i*4+1]/255-.5)/.5; f[2*H*Wd+i]=(px[i*4]/255-.5)/.5; }
+  const o=(await sess.run({[sess.inputNames[0]]:new ort.Tensor('float32',f,[1,3,H,Wd])}))[sess.outputNames[0]], [,T,C]=o.dims, P=o.data;
+  let s='', prev=-1; for (let t=0;t<T;t++){ let m=0,mi=0; for (let j=0;j<C;j++){ const v=P[t*C+j]*(BOOST.has(j)?8:1); if(v>m){m=v;mi=j;} } if (mi!==prev&&mi!==0) s+= mi<=D.length?D[mi-1]:' '; prev=mi; }
+  return {text:s.replace(/[「」□■ロ口\s]+$/u,'').trim(), crop:c.toDataURL()}; }
+const loadImg=f=>new Promise((res,rej)=>{ const u=URL.createObjectURL(f), im=new Image(); im.onload=()=>res(im); im.onerror=()=>rej(new Error('写真を開けませんでした')); im.src=u; });
+$('pick').addEventListener('change',async e=>{ const fs=[...e.target.files]; e.target.value=''; if(!fs.length) return;
+  $('out').hidden=false; $('done').hidden=true; $('pickL').classList.add('off');
+  let n=0, tot=0;
+  for (const f of fs){ n++; st(`読み取り中… ${n}/${fs.length}`); const row=document.createElement('div'); row.className='row'; $('out').appendChild(row);
+    try{ const t0=performance.now(); const img=A.trimBars(await loadImg(f)); const lay=A.detectLayout(img); if (!lay) throw new Error('アイテムの画面が見つかりませんでした');
+      const rows=textRows(img,lay); if (!rows.length) throw new Error('名前の行が見つかりませんでした');
+      const nm=await readLine(img,rows[0]); let own=''; if (rows[1]){ const r2=await readLine(img,rows[1]); const m=r2.text.match(/所持数\D{0,3}(\d{1,3})/); if (m) own=m[1]; }
+      const ms=Math.round(performance.now()-t0); tot+=ms;
+      row.innerHTML=`<div class="nm"></div><div class="meta"></div><img alt="">`; row.querySelector('.nm').textContent=nm.text||'（読めませんでした）';
+      row.querySelector('.meta').textContent=`${n}枚目・${own?`所持数 ${own}個・`:''}${(ms/1000).toFixed(2)}秒`; row.querySelector('img').src=nm.crop;
+      log.push(`${n}. ${nm.text}${own?` ／所持数${own}`:''} （${ms}ms）`);
+    }catch(err){ row.innerHTML='<div class="err"></div>'; row.querySelector('.err').textContent=`${n}枚目：${err.message||err}`; log.push(`${n}. エラー：${err.message||err}`); }
+  }
+  st(`終わりました（${fs.length}枚）`); $('pickL').classList.remove('off');
+  $('sum').textContent=`${fs.length}枚・1枚平均 ${(tot/Math.max(1,fs.length)/1000).toFixed(2)}秒・準備 ${(loadMs/1000).toFixed(1)}秒`; $('done').hidden=false; });
+$('copy').onclick=async()=>{ const t=`読み取り試験の結果\n準備 ${(loadMs/1000).toFixed(1)}秒\n${navigator.userAgent}\n`+log.join('\n');
+  try{ await navigator.clipboard.writeText(t); alert('コピーしました'); }catch(e){ prompt('長押しでコピーしてください',t); } };
+init();
+</script>
+</body>
+</html>
