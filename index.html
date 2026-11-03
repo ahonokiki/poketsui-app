@@ -141,7 +141,7 @@
   #toast{white-space:pre-line;position:fixed;left:16px;right:16px;margin:0 auto;width:fit-content;max-width:520px;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateY(20px);z-index:30;
     background:#5a3a6aee;color:#fff;font-weight:800;font-size:13px;padding:10px 16px;border-radius:18px;opacity:0;transition:.25s;pointer-events:none;text-align:center}
   #toast.show{opacity:1;transform:translateY(0)}
-  .row[hidden]{display:none} /* .row の display:flex で hidden が効かなくならないように */
+  .row[hidden],.pill[hidden]{display:none} /* .row の display:flex で hidden が効かなくならないように */
   /* 下から出る画面（名前を直す など）を開いている間は、お知らせを上に出す（ボタンに重ねない） */
   body:has(.sheet:not([hidden])) #toast{bottom:auto;top:calc(12px + env(safe-area-inset-top))}
   /* 名前を直す画面：入力欄のすぐ下に「決定」。候補は「ちがうとき」用に下へ */
@@ -319,7 +319,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='57'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='58'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -827,7 +827,7 @@ function parseBlock(t){ t=prepText(t);
 const RECV_KEY='promo_lastRecv', UNREAD_KEY='promo_unread';
 // 読めなかったアイテム画面の文字をコピー（LINEなどで送ってもらい、読めなかったわけを調べる）
 document.addEventListener('click',async e=>{ if (e.target?.id!=='unreadCopy') return; let j=null; try{ j=JSON.parse(localStorage.getItem(UNREAD_KEY)||'null'); }catch(_){}
-  if (!j?.t?.length) return; const t=`ポケツイ画像加工アプリ（版${j.ver}）で読めなかった画面の文字 ${j.t.length}枚\n`+j.t.map((x,i)=>`--- ${i+1} ---\n${x}`).join('\n');
+  if (!j?.t?.length){ toast('読めなかったアイテムの画面はありません'); $('unreadCopy').hidden=true; return; } const t=`ポケツイ画像加工アプリ（版${j.ver}）で読めなかった画面の文字 ${j.t.length}枚\n`+j.t.map((x,i)=>`--- ${i+1} ---\n${x}`).join('\n');
   toast(await copyText(t) ? 'コピーしました。LINEなどに貼り付けて送ってください' : 'コピーできませんでした'); });
 function saveRecv(o){ try{ localStorage.setItem(RECV_KEY,JSON.stringify({at:Date.now(),ver:APP_VER,...o})); }catch(e){} renderRecv(); }
 function renderRecv(){ const el=$('recvLog'); if(!el) return; try{ $('unreadCopy').hidden=!localStorage.getItem(UNREAD_KEY); }catch(e){} let j=null; try{ j=JSON.parse(localStorage.getItem(RECV_KEY)||'null'); }catch(e){}
