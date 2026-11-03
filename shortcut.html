@@ -37,8 +37,40 @@
     <div class="note">読み取りはiPhoneに入っている文字認識（写真の文字を長押しで選べるのと同じもの）で、アプリ内の読み取りよりずっと正確です。</div>
   </section>
 
+  <section class="card" style="border:3px solid #ff9cc8">
+    <h2>★ おすすめ：写真から「共有」で読む（かんたん版）</h2>
+    写真アプリでアイテムのスクショを選び、共有ボタンから「ポケツイで読む」を押すだけ。iPhoneが文字を読み、このアプリが名前の入った状態で開きます。
+    <b>自分のスクショ・パソコンで撮った画面・送られてきた画像</b>のどれでも、選んだ写真を全部読みます（撮った時間は関係ありません）。
+    <div class="note">写真を探す・時間で分ける・自動で動かす設定がないので、iPhoneの設定やアップデートで壊れにくい作りです。下の「1.」の作り方（写真を探す版）は作らなくてかまいません。</div>
+    <h2 style="margin-top:10px">作り方（一度だけ）</h2>
+    「ショートカット」アプリで右上の「＋」→ 名前を「<b>ポケツイで読む</b>」にして、次の順に足します。
+    <ol>
+      <li><span class="act">ⓘ（下のまん中）→「共有シートに表示」をオン<small>いちばん上に「共有シートからの入力を受け取る」が出たら、「イメージ」だけにする（「すべてのタイプ」の所をタップして、イメージ以外を外す）</small></span></li>
+      <li><span class="act">繰り返す（各項目）<small>「<b>ショートカットの入力</b>」の各項目を繰り返す</small></span></li>
+      <li><span class="act">イメージからテキストを抽出<small>「繰り返し項目」から（繰り返しの中）</small></span></li>
+      <li><span class="act">テキスト<small>1行目：<code>@@</code> のすぐ後ろに「繰り返し項目」→「作成日」（日付の形式「ISO 8601」・時刻を含める オン）<br>2行目：「抽出されたテキスト」（繰り返しの中・これが繰り返しの最後）</small></span></li>
+      <li><span class="act">（繰り返しの終了）</span></li>
+      <li><span class="act">テキストを結合<small>「<b>繰り返しの結果</b>」を「カスタム」<code>=====</code>（イコール5つ）で結合。「繰り返しの結果」はグレーのくるくるアイコンで、名前が違って出ることもあります</small></span></li>
+      <li><span class="act">Base64エンコード<small>「結合されたテキスト」を。「行区切り」は「なし」</small></span></li>
+      <li><span class="act">テキストを置き換える<small>「Base64エンコード」の <code>/</code> を <code>_</code> に</small></span></li>
+      <li><span class="act">テキストを置き換える<small>ひとつ上の結果の <code>+</code> を <code>-</code> に（記号はすべて半角）</small></span></li>
+      <li><span class="act">URLを開く<small>下のURLのあとに、2つ目の「テキストを置き換える」の結果（「アップデートされたテキスト」）をつなげる</small></span>
+        <span class="url" id="u2">https://ahonokiki.github.io/poketsui-app/?v=2#s=</span>
+        <button class="copy" type="button" id="cp2">このURLをコピー</button>
+        <div class="note">最後が <b>#s=</b> です（写真を探す版の #b= とは違います）。URLは1行で、途中に改行や空白を入れないでください。</div></li>
+    </ol>
+    <div class="note"><b>「変数に追加」は使いません。</b>繰り返しの最後を「変数に追加」にすると、前の写真の分まで毎回まとめて送ってしまいます。</div>
+    <h2 style="margin-top:10px">毎回の使い方</h2>
+    <ol>
+      <li>写真アプリで、アイテムのスクショを選ぶ（左上の「選択」で何枚でも）</li>
+      <li>共有ボタン →「<b>ポケツイで読む</b>」（はじめは下のほうにあります。「アクションを編集」で上に出せます）</li>
+      <li>アプリが開いて「共有した写真 ○枚の名前を受け取りました」と出たら、「アイテム画像を選ぶ」で同じ写真を選ぶ</li>
+    </ol>
+    <div class="note">はじめて使うときに「写真へのアクセス」や「ahonokiki.github.io を開く」の確認が出たら、「常に許可」を選びます。</div>
+  </section>
+
   <section class="card">
-    <h2>1. ショートカットを作る（一度だけ）</h2>
+    <h2>1. （写真を探す版）ショートカットを作る（一度だけ）</h2>
     「ショートカット」アプリを開き、右上の「＋」で新しいショートカットを作って、次のアクションを上から順に足します。アクションは下の検索欄に名前を入れると出てきます。
     <div class="note">ボタンや項目の名前は、iOSの版によって少し違うことがあります（例：「作成日」が「撮影日」、「次の過去の期間内」が「直近」、「新しい順」が「最新のものから」など）。近い名前のものを選んでください。</div>
     <ol>
@@ -150,7 +182,7 @@
   </section>
 </main>
 <script>
-document.getElementById('cp').onclick=async()=>{ const t=document.getElementById('u').textContent.trim();
+for (const [b,u] of [['cp','u'],['cp2','u2']]) document.getElementById(b).onclick=async()=>{ const t=document.getElementById(u).textContent.trim();
   try{ await navigator.clipboard.writeText(t); alert('コピーしました'); }catch(e){ prompt('長押しでコピーしてください',t); } };
 </script>
 </body>

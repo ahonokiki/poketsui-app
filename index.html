@@ -320,7 +320,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='59'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='60'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -899,7 +899,7 @@ function useText(list,why,timed){ const dated=list.filter(x=>x.at!=null), range=
   if (!timed) return `ショートカットから${list.length}枚分の名前を受け取りました${why}。\n（撮った時刻が分からないので、時間では選んでいません）`;
   return (dated.length ? `${range}に撮ったスクショ ${dated.length}枚`+(nd?`と、撮った時刻の分からないスクショ ${nd}枚`:'') : `撮った時刻の分からないスクショ ${nd}枚`)+`を使います${why}`; }
 // 受け取った文字を名前に直して保存する（辞書を待たない）。now：受け取った時刻（読み直し後に処理するときは受け取ったときの時刻）
-function processRaw(raw,via,now=Date.now()){
+function processRaw(raw,via,now=Date.now(),share=false){
   const blocks=raw.replace(/\s+/g,'').split(/(?:%0A|%0D|%20)*(?:=|%3D){3,}(?:%0A|%0D|%20)*/i).map(b=>softDecode(b).trim()).filter(Boolean);
   if(!blocks.length){ saveRecv({blocks:0,kept:0,len:raw.length,via}); toast(raw.length ? 'ショートカットのスクショから文字が読めませんでした。\nゲームのアイテム画面のスクショか確かめてください' : 'ショートカットから文字が届きませんでした。\nURLの「#b=」（または「#t=」）のすぐあとに、エンコードした文字が入っているか確かめてください'); return; }
   // 撮った時刻：「@@作成日」の行（新しいショートカット。全角の＠＠でもよい）→ なければ画面の時計
@@ -923,7 +923,8 @@ function processRaw(raw,via,now=Date.now()){
     const ct=clockTime(s.c,now,h12); if (s.at!=null && (now-ct>(win+1)*60e3 || ct>now+3*60e3)) return;
     s.at=ct; s.by='clock'; });
   // 決めた時間（直近○分）より前に撮ったものは使わない（時刻の分からないものは使う）
-  const lim=(win+1)*60e3, isOld=s=>s.at!=null && now-s.at>lim, old=shots.filter(isOld), use=shots.filter(s=>!isOld(s));
+  // 共有から：自分で選んだ写真なので、前の日の画像・送られてきた画像も全部使う
+  const lim=(win+1)*60e3, isOld=s=>!share && s.at!=null && now-s.at>lim, old=shots.filter(isOld), use=shots.filter(s=>!isOld(s));
   // それより前に撮ったアイテムの画面も、名前と数字だけ前の記録に残す（受け取りには入れない。あとでそのスクショを選ぶと、iPhoneで読んだ名前が黄色で出る）
   const oldSorted=old.slice().sort((a,b)=>a.at-b.at), ob=buildPending(oldSorted), oldList=ob.list; histAdd(oldList);
   // 撮った順（古い順）に並べる。新しい順に届いても、同じ時刻なら届いた順の逆にする。時刻の分からないものは元の位置のまま
@@ -941,7 +942,7 @@ function processRaw(raw,via,now=Date.now()){
     atLines:shots.filter(s=>s.hd).length,noTime:shots.filter(s=>s.nt).length,noAt:shots.filter(s=>s.ne).length,badFmt:shots.filter(s=>s.nf).length,oldKept:oldList.length,
     span:old.length ? Math.round((now-Math.min(...old.map(s=>s.at)))/60e3) : 0}; // span：いちばん前に撮ったスクショが何分前か
   // 「@@作成日」の行のない古いショートカット：前の日の同じ時刻ごろのスクショは外せないので、足し方を知らせる
-  const atHint=(byClock && !recv.atLines ? '\n（ショートカットに「@@作成日」を足すと、前の日のスクショも分けられます）' : '')
+  const atHint=share ? '' : (byClock && !recv.atLines ? '\n（ショートカットに「@@作成日」を足すと、前の日のスクショも分けられます）' : '')
     +(dl.length>=3 && up>down ? '\n（ショートカットの「写真を検索」の並び順が「古い順」です。「新しい順」にしないと、たくさん撮ったとき最後のスクショが届きません）' : '');
   // 辞書がまだ読み込めていなければ、読み込めたあとで一覧の表記に合わせ直す（受け取りは、まだ画像に使っていない間だけ。辞書で読めて増えたときも入れ直す）
   const again=at0=>{ if (dictExact.size) return; loadItemNames().then(()=>{ if(!dictExact.size) return;
@@ -955,7 +956,7 @@ function processRaw(raw,via,now=Date.now()){
     toast((old.length && !use.length ? `直近${win}分に撮ったスクショはありませんでした`+(oldList.length ? `。\n前に撮ったスクショ${oldList.length}枚の名前は覚えました（そのスクショを選ぶと黄色で出ます）` : `（${old.length}枚は${win}分より前）`)
       : `ショートカットから受け取ったスクショに、アイテムの画面がありませんでした${why}`)+(pi.list.length?`\n（前に受け取った${pi.list.length}枚分は、あと${left}分使えます）`:'')+atHint); return; }
   const at0=Date.now(), stored=pendWrite({at:at0,list,ver:APP_VER}); recv.mem=!stored; saveRecv(recv); renderPendNote(); histAdd(list);
-  toast(useText(list,why,timed)+`\n同じスクショを「アイテム画像を選ぶ」で選んでください`+(stored?'':'\n（端末の保存がいっぱいです。この画面を開いている間だけ使えます）')+atHint);
+  toast((share ? `共有した写真 ${list.length}枚の名前を受け取りました${why}` : useText(list,why,timed))+`\n同じスクショを「アイテム画像を選ぶ」で選んでください`+(stored?'':'\n（端末の保存がいっぱいです。この画面を開いている間だけ使えます）')+atHint);
   again(at0); setTimeout(()=>useRetry(list),0);
 }
 // この端末の時刻の表示が12時間表示か（分からなければ12時間表示かもしれないとする）
@@ -965,21 +966,23 @@ function b64ToText(x){ x=x.replace(/%2B/gi,'+').replace(/%2F/gi,'/').replace(/%3
   // 途中で切れて届いた（長さが4の倍数にならない）ときも、切れる前までは読む
   let bin; try{ while (x.length%4) x+='='; bin=atob(x); }catch(e){ x=x.replace(/=+$/,''); x=x.slice(0,x.length-x.length%4); bin=atob(x); } return new TextDecoder('utf-8').decode(Uint8Array.from(bin,c=>c.charCodeAt(0))); }
 function takeHashText(){
-  let raw=null; const mb=location.hash.match(/^#\s*b\s*(?:=|%3D)([\s\S]*)$/i);
+  // #s=：写真の共有から（選んだ写真を全部使う）。#b=：写真を探すショートカットから（直近○分だけ使う）
+  let raw=null; const mb=location.hash.match(/^#\s*([bs])\s*(?:=|%3D)([\s\S]*)$/i), share=!!mb && mb[1].toLowerCase()==='s';
+  if (mb) mb[1]=mb[2];
   if (mb){ try{ raw=encodeURIComponent(b64ToText(mb[1])); }catch(e){ raw=''; } }
   else { const m=location.hash.match(/^#\s*t\s*(?:=|%3D)([\s\S]*)$/i); if(!m) return; raw=m[1]; }
   // 最後に受け取った文字（調べる用。この端末だけに残す）：URLの長さ・Base64の長さと、読み直した文字
   try{ const b=mb?mb[1]:'', dec=raw==null?'':(()=>{ try{ return decodeURIComponent(raw); }catch(_){ return raw; } })();
     localStorage.setItem(LASTRAW_KEY,JSON.stringify({at:Date.now(),ver:APP_VER,hash:location.href.length,b64:b.length,b64mod:b.replace(/\s|%0A|%0D|%20/gi,'').length%4,bad:/[^A-Za-z0-9+/=_%-]/.test(b.replace(/\s/g,'')),t:dec.slice(0,30000)})); }catch(e){}
-  try{ localStorage.setItem(RAW_KEY,JSON.stringify({at:Date.now(),raw})); }catch(e){} // 先に保存（途中で読み直しになっても失わない）
+  try{ localStorage.setItem(RAW_KEY,JSON.stringify({at:Date.now(),raw,share})); }catch(e){} // 先に保存（途中で読み直しになっても失わない）
   history.replaceState(null,'',location.pathname); // ?sc=1 なども外す（次のショートカットは別のURLになり、新しく読み込まれる）
-  try{ processRaw(raw,'URL'); }catch(e){ saveRecv({err:String(e?.message||e),len:raw.length}); toast('ショートカットの文字を読み込めませんでした：'+(e?.message||e)); }
+  try{ processRaw(raw,share?'共有':'URL',Date.now(),share); }catch(e){ saveRecv({err:String(e?.message||e),len:raw.length}); toast('ショートカットの文字を読み込めませんでした：'+(e?.message||e)); }
   try{ localStorage.removeItem(RAW_KEY); }catch(e){}
 }
 // 受け取った直後に読み直しなどで処理が終わらなかった文字があれば、ここで処理する（10分以内のものだけ）
 function recoverRaw(){ if (location.hash) return; let j=null; try{ j=JSON.parse(localStorage.getItem(RAW_KEY)||'null'); }catch(e){}
   try{ localStorage.removeItem(RAW_KEY); }catch(e){}
-  if (j?.raw && Date.now()-j.at<10*60e3) try{ processRaw(j.raw,'URL（読み直し後）',j.at); }catch(e){} }
+  if (j?.raw && Date.now()-j.at<10*60e3) try{ processRaw(j.raw,(j.share?'共有':'URL')+'（読み直し後）',j.at,!!j.share); }catch(e){} }
 // 前の版の作り方（おすすめは15分）で⚙を15分にしていたときは、一度だけ60分にする（ショートカットの期間をおすすめの1時間にしても、
 // ⚙が15分のままだと16〜60分前のスクショが当てはまらないので。ショートカットが15分のままでも、60分にして困ることはない）
 // 前の版で受け取ったことがある端末だけ（この版で選んだ15分はそのまま）
