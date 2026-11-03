@@ -320,7 +320,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='60'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='61'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -599,6 +599,36 @@ function ocrLike(a,b){ const ins=c=>lightIns(c)?.25:1, n=a.length, m=b.length, D
     else if (i>0 && D[i][j]===D[i-1][j]+ins(a[i-1])){ if (ins(a[i-1])>=1 && (heavy(a[i-1],true) || ++hard>1)) return false; i--; }
     else { if (ins(b[j-1])>=1 && (heavy(b[j-1],false) || ++hard>1)) return false; j--; } }
   return true; }
+// ---- 新しい読み取り（PP-OCRv5 の文字認識・16.5MB）：名前と所持数の行だけを読む。読み込めない・落ちたときは今までの読み取り（Tesseract）のまま ----
+// iOS 26.2 以降の Safari で新しい版の onnxruntime-web がメモリを使い切る不具合があるので、1.20.1 の wasm（1スレッド）を使う
+let ppReady=null, ppOff=false;
+function ppInit(){ if (ppOff) return Promise.resolve(null);
+  return ppReady ??= (async()=>{ const base=new URL('ocr/pp/',location.href).href;
+    if (!window.ort) await new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=base+'ort.min.js'; sc.onload=res; sc.onerror=()=>rej(new Error('ort')); document.head.appendChild(sc); });
+    ort.env.wasm.wasmPaths=base; ort.env.wasm.numThreads=1;
+    const D=await (await fetch(base+'dict.json')).json(), IDX=new Map(D.map((c,i)=>[c,i+1]));
+    const sess=await ort.InferenceSession.create(base+'rec.onnx',{executionProviders:['wasm']});
+    // 名前によく出る記号（♡☆♪・など）は、読み取りの自信が少し低くても落とさない
+    return {sess, D, boost:new Set(['♡','♥','☆','★','♪','♫','・','〜','～'].map(c=>IDX.get(c)).filter(Boolean))}; })()
+    .catch(e=>{ ppOff=true; ppReady=null; try{ noteErr('新しい読み取り：'+(e?.message||e)); }catch(_){} return null; }); }
+// ピンクの部分のすぐ下の濃い字の行（1行目＝名前、2行目＝所持数）。♪のはしのような細い線は行にしない
+function ppRows(img,lay){ const W=img.width,H=img.height,c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,0,0);
+  const d=g.getImageData(0,0,W,H).data, dark=(x,y)=>{ const i=(y*W+x)*4; return d[i]<100&&d[i+1]<100&&d[i+2]<100; };
+  const y0=Math.round(lay.pinkBottom), y1=Math.min(H-1,Math.round(lay.pinkBottom+W*.3)), runs=[]; let s0=-1;
+  for (let y=y0;y<y1;y++){ let n=0; for (let x=Math.round(W*.05);x<W*.95;x++) if (dark(x,y)) n++; if (n>2&&s0<0) s0=y; if (n<=2&&s0>=0){ runs.push([s0,y]); s0=-1; } }
+  return runs.filter(([a,b])=>b-a>=W*.012).slice(0,2).map(([a,b])=>{ let xa=W,xb=0; for (let y=a;y<b;y++) for (let x=Math.round(W*.03);x<W*.97;x++) if (dark(x,y)){ if(x<xa)xa=x; if(x>xb)xb=x; } return {x:xa,y:a,w:xb-xa+1,h:b-a}; }); }
+async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad), y0=Math.max(0,box.y-pad), w=Math.min(img.width-x0,box.w+pad*2), h=Math.min(img.height-y0,box.h+pad*2);
+  const H=48, Wd=Math.min(1600,Math.max(16,Math.round(w*H/h))), c=document.createElement('canvas'); c.width=Wd; c.height=H; const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,x0,y0,w,h,0,0,Wd,H);
+  const px=g.getImageData(0,0,Wd,H).data, f=new Float32Array(3*H*Wd);
+  for (let i=0;i<H*Wd;i++){ f[i]=(px[i*4+2]/255-.5)/.5; f[H*Wd+i]=(px[i*4+1]/255-.5)/.5; f[2*H*Wd+i]=(px[i*4]/255-.5)/.5; }
+  const o=(await pp.sess.run({[pp.sess.inputNames[0]]:new ort.Tensor('float32',f,[1,3,H,Wd])}))[pp.sess.outputNames[0]], [,T,C]=o.dims, P=o.data;
+  let t='', prev=-1; for (let k=0;k<T;k++){ let m=0,mi=0; for (let j=0;j<C;j++){ const v=P[k*C+j]*(pp.boost.has(j)?8:1); if(v>m){m=v;mi=j;} } if (mi!==prev&&mi!==0) t+= mi<=pp.D.length?pp.D[mi-1]:' '; prev=mi; }
+  return t.replace(/[「」□■ロ口\s]+$/u,'').trim(); } // 名前の横のコピーのマークは外す
+async function ppRead(img){ const lay=detectLayout(img); if (!lay) return null; const pp=await timeLimit(ppInit(),90000).catch(()=>null); if (!pp) return null;
+  const rows=ppRows(img,lay); if (!rows.length) return null;
+  const name=await timeLimit(ppLine(pp,img,rows[0]),20000); let owned=null;
+  if (rows[1]) try{ const m=(await timeLimit(ppLine(pp,img,rows[1]),20000)).match(/所持数\D{0,3}(\d{1,3})/); if (m) owned=+m[1]; }catch(e){}
+  return /\p{L}/u.test(name) && !/リリ.?ス日|所持数|欲しい/.test(name) ? {name, owned} : {name:'', owned}; }
 async function analyzeShot(img){
   const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.012, cardBottom:lay.cardBottom, nameBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
   if (!window.Tesseract) return r0;
@@ -685,10 +715,16 @@ async function analyzeShot(img){
     r.sig=r.sig.filter(x=>x[0]!=='h'); if (keep) r.sig.push('h'+keep); }
   else if (W<600) r.sig=r.sig.filter(x=>x[0]!=='h'); // 小さい画像で画面の位置が分からないとき：画面全体の読みの数だけでは使わない
   try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'3'}); }catch(e){}
+  // 新しい読み取りで名前が読めたら、そちらを使う（所持数は今までの読み取りで読めなかったときだけ）
+  try{ const p=await ppRead(img); if (p?.name){ r.name=p.name; r.pp=true; } if (p?.owned!=null && !r.ownedSure){ r.owned=p.owned; r.ownedSure=true; } }catch(e){}
   return await nameDone(r);
 }
 // 読み取った名前を一覧・覚えた名前に合わせ、組にするときに比べる「いちばん近い一覧の名前」も出しておく
-async function nameDone(r){ if (r.name){ r.raw=r.name; r.name=await nearestItemName(r.name); r.known=await knownNear(r.raw); } return r; }
+async function nameDone(r){ if (r.name){ r.raw=r.name;
+  // 新しい読み取りの名前はほぼ正確なので、一覧と同じ名前・前に直した名前のときだけ置き換える（「BR」を一覧にある「BE」に直してしまわない）
+  if (r.pp){ await loadItemNames(); r.name=dictNorm().get(r.name.normalize('NFKC')) || learnedTo(r.name) || r.name; }
+  else r.name=await nearestItemName(r.name);
+  r.known=await knownNear(r.raw); } return r; }
 let picking=false, shotName='', shotRaw='', shotReading=false, shotIph=false, shotNoGift=false, shotFixed=false, shotGuess=false; // shotGuess：画像が読めず、受け取った名前を仮に入れた（赤にして確かめてもらう）
 let shotOcr=null, shotOwnTyped=false; // shotOcr：画像から読んだ所持数・プレゼント禁止（名前を選び直したときに戻す）。shotOwnTyped：所持数を手で入れた（自動で書き換えない）
 function setShot(i){ i=trimBars(i); shotName=''; shotRaw=''; shotIph=false; shotNoGift=false; shotFixed=false; shotGuess=false; shotOcr=null; shotOwnTyped=false; fixSeen.clear(); $('ownSnap').hidden=true; items=[]; renderItems(); shotImg=i; $('owned').value=''; $('count').value=''; shotReading=true; renderNames(); readOwned(i); }
