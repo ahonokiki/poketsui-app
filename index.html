@@ -259,6 +259,7 @@
     <div class="row" style="margin-top:10px"><label>受け取るスクショ：直近 <select id="shotWin" style="width:auto;display:inline-block;padding:6px 10px"><option value="15">15</option><option value="30">30</option><option value="60">60</option><option value="120">120</option></select> 分</label></div>
     <div class="note">この時間に撮ったスクショの名前を、画像を選んだときに当てはめます。これより前に撮ったスクショは、名前だけ覚えておき、あとでそのスクショを選ぶと黄色で出します（撮った時刻が分かるときだけ）。ショートカットの「写真を検索」の期間（おすすめ：1時間）と同じにしてください（はじめは60分）。</div>
     <div class="note" id="recvLog" style="white-space:pre-line;margin-top:8px"></div>
+    <button class="pill wide" id="rawCopy" type="button" hidden style="margin-top:8px">📋 最後に受け取った文字をコピー</button>
     <button class="pill wide" id="unreadCopy" type="button" hidden style="margin-top:8px">📋 読めなかったアイテム画面の文字をコピー</button>
     <div class="note" id="appVer" style="text-align:right"></div>
   </div></section>
@@ -319,7 +320,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='58'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='59'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -824,13 +825,17 @@ function parseBlock(t){ t=prepText(t);
   const lt=learnedTo(hint); return {name:lt && slip(hint,lt) ? lt : hint, owned, iph:true, noGift, sig};
 }
 // 受け取った記録（設定の「ショートカット連携」に表示。うまくいかないときに画面で原因が分かるように）
-const RECV_KEY='promo_lastRecv', UNREAD_KEY='promo_unread';
+const RECV_KEY='promo_lastRecv', UNREAD_KEY='promo_unread', LASTRAW_KEY='promo_lastRaw';
+document.addEventListener('click',async e=>{ if (e.target?.id!=='rawCopy') return; let j=null; try{ j=JSON.parse(localStorage.getItem(LASTRAW_KEY)||'null'); }catch(_){}
+  if (!j){ toast('まだショートカットから受け取っていません'); return; }
+  const t=`ポケツイ画像加工アプリ（版${j.ver}）が最後に受け取った文字\nURLの長さ${j.hash}・Base64の長さ${j.b64}（余り${j.b64mod}${j.bad?'・ほかの字あり':''}）\n`+j.t;
+  toast(await copyText(t) ? 'コピーしました。LINEなどに貼り付けて送ってください' : 'コピーできませんでした'); });
 // 読めなかったアイテム画面の文字をコピー（LINEなどで送ってもらい、読めなかったわけを調べる）
 document.addEventListener('click',async e=>{ if (e.target?.id!=='unreadCopy') return; let j=null; try{ j=JSON.parse(localStorage.getItem(UNREAD_KEY)||'null'); }catch(_){}
   if (!j?.t?.length){ toast('読めなかったアイテムの画面はありません'); $('unreadCopy').hidden=true; return; } const t=`ポケツイ画像加工アプリ（版${j.ver}）で読めなかった画面の文字 ${j.t.length}枚\n`+j.t.map((x,i)=>`--- ${i+1} ---\n${x}`).join('\n');
   toast(await copyText(t) ? 'コピーしました。LINEなどに貼り付けて送ってください' : 'コピーできませんでした'); });
 function saveRecv(o){ try{ localStorage.setItem(RECV_KEY,JSON.stringify({at:Date.now(),ver:APP_VER,...o})); }catch(e){} renderRecv(); }
-function renderRecv(){ const el=$('recvLog'); if(!el) return; try{ $('unreadCopy').hidden=!localStorage.getItem(UNREAD_KEY); }catch(e){} let j=null; try{ j=JSON.parse(localStorage.getItem(RECV_KEY)||'null'); }catch(e){}
+function renderRecv(){ const el=$('recvLog'); if(!el) return; try{ $('unreadCopy').hidden=!localStorage.getItem(UNREAD_KEY); $('rawCopy').hidden=!localStorage.getItem(LASTRAW_KEY); }catch(e){} let j=null; try{ j=JSON.parse(localStorage.getItem(RECV_KEY)||'null'); }catch(e){}
   if(!j){ el.textContent='まだショートカットから受け取っていません'; return; }
   const d=new Date(j.at), skip=[j.junk?`アイテム以外 ${j.junk}枚`:'', j.same?`同じ画面 ${j.same}枚`:''].filter(Boolean), why=(j.why||[]).filter(w=>!/^アイテム以外\d+$/.test(w));
   const how=[j.byDate?`作成日${j.byDate}枚`:'',j.byClock?`画面の時計${j.byClock}枚`:''].filter(Boolean).join('・');
@@ -957,11 +962,15 @@ function processRaw(raw,via,now=Date.now()){
 const hour12=()=>{ try{ const o=new Intl.DateTimeFormat(undefined,{hour:'numeric'}).resolvedOptions(); return o.hourCycle ? /h1[12]/.test(o.hourCycle) : o.hour12!==false; }catch(e){ return true; } };
 // Base64 で届いた文字を戻す（ショートカットの「Base64エンコード」。URLと間違われる「.」などが入らない）
 function b64ToText(x){ x=x.replace(/%2B/gi,'+').replace(/%2F/gi,'/').replace(/%3D/gi,'=').replace(/\s+|%0A|%0D|%20/gi,'').replace(/-/g,'+').replace(/_/g,'/');
-  while (x.length%4) x+='='; const bin=atob(x); return new TextDecoder('utf-8').decode(Uint8Array.from(bin,c=>c.charCodeAt(0))); }
+  // 途中で切れて届いた（長さが4の倍数にならない）ときも、切れる前までは読む
+  let bin; try{ while (x.length%4) x+='='; bin=atob(x); }catch(e){ x=x.replace(/=+$/,''); x=x.slice(0,x.length-x.length%4); bin=atob(x); } return new TextDecoder('utf-8').decode(Uint8Array.from(bin,c=>c.charCodeAt(0))); }
 function takeHashText(){
   let raw=null; const mb=location.hash.match(/^#\s*b\s*(?:=|%3D)([\s\S]*)$/i);
   if (mb){ try{ raw=encodeURIComponent(b64ToText(mb[1])); }catch(e){ raw=''; } }
   else { const m=location.hash.match(/^#\s*t\s*(?:=|%3D)([\s\S]*)$/i); if(!m) return; raw=m[1]; }
+  // 最後に受け取った文字（調べる用。この端末だけに残す）：URLの長さ・Base64の長さと、読み直した文字
+  try{ const b=mb?mb[1]:'', dec=raw==null?'':(()=>{ try{ return decodeURIComponent(raw); }catch(_){ return raw; } })();
+    localStorage.setItem(LASTRAW_KEY,JSON.stringify({at:Date.now(),ver:APP_VER,hash:location.href.length,b64:b.length,b64mod:b.replace(/\s|%0A|%0D|%20/gi,'').length%4,bad:/[^A-Za-z0-9+/=_%-]/.test(b.replace(/\s/g,'')),t:dec.slice(0,30000)})); }catch(e){}
   try{ localStorage.setItem(RAW_KEY,JSON.stringify({at:Date.now(),raw})); }catch(e){} // 先に保存（途中で読み直しになっても失わない）
   history.replaceState(null,'',location.pathname); // ?sc=1 なども外す（次のショートカットは別のURLになり、新しく読み込まれる）
   try{ processRaw(raw,'URL'); }catch(e){ saveRecv({err:String(e?.message||e),len:raw.length}); toast('ショートカットの文字を読み込めませんでした：'+(e?.message||e)); }
