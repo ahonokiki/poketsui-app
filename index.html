@@ -240,6 +240,15 @@
     <a class="pill wide" href="items.html" style="margin-top:8px;text-decoration:none;display:flex">📖 アイテム名一覧を見る</a>
   </div></section>
 
+  <section class="card"><h2>×数の最初の数</h2><div class="in">
+    <div class="row"><select id="defCount">
+      <option value="own">所持数−1（今まで通り）</option>
+      <option value="one">全部 ×1</option>
+      <option value="none">全部 表示なし</option>
+    </select></div>
+    <div class="note">アイテムを選んだときの×数です。そのあと＋−で1つずつ直せます。「表示なし」は画像に数を出さず、文字は名前だけ（1個として数えます）</div>
+  </div></section>
+
   <section class="card"><h2>文字起こしの書式</h2><div class="in">
     <div class="row"><select id="txtStyle">
       <option value="num">1. 名前×2（×1は省略）</option>
@@ -326,7 +335,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='65'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='66'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -1362,7 +1371,7 @@ const guessMsg=pre=>`${pre}画像を読めなかったので、${items.length>1?
 const noNameMsg=(pre,copy)=>`${pre}名前が読めませんでした。`+(pendingList().length || histAll().length ? '下の候補（iPhoneで読んだ名前）から選ぶか、' : '')+'名前を入れて「この名前で決定」を押してください'+(copy && items.length>1 ? '（いらないときは、一覧の「文字に入れる」を押して外せます）' : '');
 // コピーの前の確認：まだ見てもらっていない赤い名前があれば、直す画面を1回だけ開く。一度閉じた赤い名前は、確かめてそのままコピーできる（何度も同じ画面に戻さない）
 // ×0 の行（所持数が読めなかった・0にした）は題名・文字に入らないので、名前の確認はしない（入らない行のために止めない）
-const cntOf=e=>items.length>1 ? itemCount(items[e.i]) : (countValue()??0);
+const cntOf=e=>nOf(items.length>1 ? itemCount(items[e.i]) : countValue());
 function namesReady(again){ const all=nameEntries().filter(e=>!e.skip);
   if (all.some(e=>e.reading)){ toast('まだ読み取り中です。少し待ってからもう一度押してください'); return false; }
   const es=all.filter(e=>cntOf(e)>0), reds=es.filter(e=>nameStatus(e)==='ng');
@@ -1378,7 +1387,7 @@ function namesReady(again){ const all=nameEntries().filter(e=>!e.skip);
     if (!confirm(`赤い名前があります。このままコピーしますか？\n\n${reds.map(e=>`${e.i+1}. ${e.name}`+(e.guess ? (items.length>1 ? '（仮：撮った順に入れた名前）' : '（仮：ショートカットの名前）') : '')).join('\n')}`)){
       fixThen=again||null; openFix(reds[0].i,'直したら「この名前で決定」を押してください（そのままコピーを続けます）'); return false; } }
   // 所持数が読めず ×0 のままの行は、題名・文字に入らないことを1回だけ知らせる（＋で数を入れられる）
-  const zero=items.length>1 ? all.filter(e=>items[e.i].count==null && !items[e.i].owned && !fixSeen.has('z'+e.i)) : [];
+  const zero=items.length>1 && defCnt()==='own' ? all.filter(e=>items[e.i].count==null && !items[e.i].owned && !fixSeen.has('z'+e.i)) : [];
   if (zero.length){ zero.forEach(e=>fixSeen.add('z'+e.i));
     if (!confirm(`${zero.map(e=>e.i+1).join('・')}番の所持数が読めませんでした（×0の行は題名・文字に入りません）。\nこのままコピーしますか？（入れるときは「キャンセル」を押して、＋で数を入れてください）`)) return false; }
   const ng=es.filter(e=>e.noGift); if (ng.length && !confirm(`プレゼント禁止のアイテムが入っています。\n${ng.map(e=>`${e.i+1}. ${e.name}`).join('\n')}\n\nこのままコピーしますか？`)) return false;
@@ -1397,7 +1406,10 @@ fetch('wallpaper.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{
 
 // ---- 複数アイテム（2〜12個）：選んだ順に並べる ----
 let items=[], itemsBusy=0; // itemsBusy：複数の読み取り・当てはめの途中（外したときに、残った1枚を読み直すため）
-const itemCount=it=>it.count!=null ? it.count : Math.max(0,(it.owned||1)-1);
+// ×数の最初の数（設定）：own＝所持数−1（今まで通り）、one＝全部1、none＝全部 表示なし（null：画像に数を出さず、文字は名前だけ）。＋−で直した数はそのまま
+const defCnt=()=>{ try{ return localStorage.getItem('promo_defCount')||'own'; }catch(e){ return 'own'; } };
+const itemCount=it=>it.count!=null ? it.count : defCnt()==='one' ? 1 : defCnt()==='none' ? null : Math.max(0,(it.owned||1)-1);
+const nOf=c=>c ?? (defCnt()==='none' ? 1 : 0); // 表示なしは、文字・合計では1個
 async function setItems(files){
   const seq=++ocrSeq; shotImg=null; fixSeen.clear();
   // 読み込み中にまた選び直されたら、古いほうは途中でやめる（混ざらないように自分用の入れ物に入れる）
@@ -1476,9 +1488,9 @@ function renderItems(){
   if (items.length<2){ box.innerHTML=''; return; }
   box.innerHTML='';
   items.forEach((it,n)=>{ const d=document.createElement('div'); d.className='chip';
-    d.innerHTML=`<span class="no">${n+1}</span>${it.snap?`<img class="snap" src="${it.snap}" alt="元画像の所持数">`:(it.reading?'<img src="'+it.src+'" alt="">':'<span class="nosnap">所持数なし</span>')}<button type="button" class="m">−</button><b>${it.reading?'…':'×'+itemCount(it)}</b><button type="button" class="p">＋</button>`;
-    d.querySelector('.m').onclick=()=>{ it.count=Math.max(0,itemCount(it)-1); renderItems(); draw(); };
-    d.querySelector('.p').onclick=()=>{ it.count=itemCount(it)+1; renderItems(); draw(); };
+    d.innerHTML=`<span class="no">${n+1}</span>${it.snap?`<img class="snap" src="${it.snap}" alt="元画像の所持数">`:(it.reading?'<img src="'+it.src+'" alt="">':'<span class="nosnap">所持数なし</span>')}<button type="button" class="m">−</button><b>${it.reading?'…':itemCount(it)==null?'表示なし':'×'+itemCount(it)}</b><button type="button" class="p">＋</button>`;
+    d.querySelector('.m').onclick=()=>{ it.count=Math.max(0,(itemCount(it)??1)-1); renderItems(); draw(); };
+    d.querySelector('.p').onclick=()=>{ it.count=(itemCount(it)??0)+1; renderItems(); draw(); };
     box.appendChild(d); });
 }
 $('shot').addEventListener('click',()=>{ picking=true; }); // 写真を選んでいる最中は自動で読み直さない
@@ -1656,6 +1668,8 @@ function hsl(r,g,b){ r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(
 
 function rr(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
 function countValue(){
+  // 設定が「全部1」「全部 表示なし」なら、×数を直していないときはその数
+  if ($('count').value==='' && defCnt()!=='own'){ const v=defCnt()==='one' ? 1 : null; $('countView').textContent=v ?? '−'; return v; }
   // 所持数も×数も未入力なら、×数字は出さない
   if ($('owned').value==='' && $('count').value===''){ $('countView').textContent='−'; return null; }
   const auto=Math.max(0,($('owned').value|0)-1);
@@ -1770,9 +1784,9 @@ function drawMulti(edge){
   });
   if (!$('showCount').checked) return;
   const ht=Math.max(60,cw*.24); // 各カードの×数字の高さ
-  cards.forEach(({x,y,it})=>drawCount(String(itemCount(it)),x+cw+ht*.18,y+ht*.62,ht,edge));
+  cards.forEach(({x,y,it})=>{ const c=itemCount(it); if (c!=null) drawCount(String(c),x+cw+ht*.18,y+ht*.62,ht,edge); });
   // 合計○個（数字を大きく）
-  const total=items.slice(0,n).reduce((a,it)=>a+itemCount(it),0);
+  const total=items.slice(0,n).reduce((a,it)=>a+nOf(itemCount(it)),0);
   const {base:fb,px}=fontPx(150), fBig=setF(fb,px), fSm=(()=>{ const {f,w}=jfontCss(); return `${w} ${Math.round(px*.52)}px "${f}"`; })();
   const m=document.createElement('canvas').getContext('2d');
   m.font=fSm; const w1=m.measureText('計').width, w3=m.measureText('点').width; m.font=fBig; const w2=m.measureText(String(total)).width;
@@ -1805,11 +1819,13 @@ $('dl').onclick=()=>{ const name='poketsui-'+Date.now()+'.png';
   },'image/png'); };
 try{ const v=localStorage.getItem('promo_titleTotal'); if(v!==null) $('titleTotal').checked=v==='1'; }catch(e){}
 $('titleTotal').addEventListener('change',()=>{ try{ localStorage.setItem('promo_titleTotal',$('titleTotal').checked?'1':'0'); }catch(e){} });
+try{ $('defCount').value=defCnt(); }catch(e){}
+$('defCount').addEventListener('change',()=>{ try{ localStorage.setItem('promo_defCount',$('defCount').value); }catch(e){} renderItems(); renderNames(); draw(); });
 ['txtStyle','titleOne','titleSep','txtHead','txtTotal','txtFoot'].forEach(id=>{ try{ const v=localStorage.getItem('promo_'+id); if(v!==null) $(id).value=v; }catch(e){}
   $(id).addEventListener('input',()=>{ try{ localStorage.setItem('promo_'+id,$(id).value); }catch(e){} }); });
 function listText(){
-  const list = items.length>1 ? items.filter(it=>!it.skip).map(it=>({name:it.name||'（名前を読み取れませんでした）', n:itemCount(it)}))
-    : (shotImg ? [{name:shotName||'（名前を読み取れませんでした）', n:countValue()??0}] : []);
+  const list = items.length>1 ? items.filter(it=>!it.skip).map(it=>({name:it.name||'（名前を読み取れませんでした）', n:nOf(itemCount(it))}))
+    : (shotImg ? [{name:shotName||'（名前を読み取れませんでした）', n:nOf(countValue())}] : []);
   const rows=list.filter(x=>x.n>0);
   if (!rows.length) return '';
   const total=rows.reduce((a,x)=>a+x.n,0), st=$('txtStyle').value;
@@ -1823,10 +1839,10 @@ function listText(){
   return parts.join('\n\n');
 }
 function titleText(){ // タイトル用：アイテム名×数だけ
-  const list = items.length>1 ? items.filter(it=>!it.skip).map(it=>({name:it.name||'', n:itemCount(it)})) : (shotImg ? [{name:shotName||'', n:countValue()??0}] : []);
+  const list = items.length>1 ? items.filter(it=>!it.skip).map(it=>({name:it.name||'', n:nOf(itemCount(it)), hide:itemCount(it)==null})) : (shotImg ? [{name:shotName||'', n:nOf(countValue()), hide:countValue()==null}] : []);
   const rows=list.filter(x=>x.n>0); if(!rows.length) return '';
   const sep=$('titleSep').value==='sp' ? ' ' : '\n';
-  const t=rows.map(x=>x.n===1&&$('titleOne').value==='hide' ? x.name : `${x.name}×${x.n}`).join(sep);
+  const t=rows.map(x=>x.hide || x.n===1&&$('titleOne').value==='hide' ? x.name : `${x.name}×${x.n}`).join(sep);
   return rows.length>1 && $('titleTotal').checked ? `${t}${sep}計${rows.reduce((a,x)=>a+x.n,0)}点` : t;
 }
 async function copyText(t){
