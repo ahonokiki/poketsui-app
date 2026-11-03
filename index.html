@@ -181,6 +181,31 @@
   .nmRow .t[contenteditable]:focus{background:#fff;box-shadow:0 0 0 2px #b79be0;border-bottom-color:transparent}
   .nmRow .ck{flex:none;border:0;border-radius:99px;padding:6px 10px;font:inherit;font-size:11px;font-weight:900;cursor:pointer;background:#ffd23f;color:#5a4300;white-space:nowrap}
   .nmRow.ng.low{background:#fff3b0;border-color:#f2c200} /* 自信のない字がある行は黄色 */
+  /* 名前一覧の配置（1〜10） */
+  body.cntInRows #multi{display:none}
+  #names .cr{line-height:0}#names .cr:empty{display:none}#names .orig{margin:0}
+  #names .ic,#names .btns,#names .bot,#names .rb{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+  #names .ic button.cp,#names .ic button.tx,#names .rb button.cp,#names .rb button.tx,#names .bot button.cp,#names .bot button.tx,.r8 button.cp,.r8 button.tx,.r5 .btns button.cp,.r5 .btns button.tx{padding:6px 8px}
+  .nmRow.r1,.nmRow.r9{display:block}.r1 .top{display:flex;gap:6px;align-items:center}.r1 .top .t{flex:1}.r1 .cr{margin:3px 0 2px 24px}.r1 .btns{margin-top:4px}.r1 .ng-gift{margin-left:24px}
+  .nmRow.r2,.nmRow.r4{flex-wrap:nowrap}.r2 .mid,.r4 .mid{flex:1;min-width:0}.r2 .cr,.r4 .cr{margin-top:3px}.r2 .ic,.r4 .ic{flex:none;flex-wrap:nowrap}
+  .nmRow.r3{flex-wrap:nowrap;align-items:center}.r3 .l{flex:1;min-width:0;border-right:2px dashed #eee;padding-right:6px;line-height:0}.r3 .l .orig{max-width:100%}.r3 .r{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-start}#names .r3 .rb{flex-wrap:nowrap}#names .r3 .rb button{padding:4px 8px;min-width:0}#names .r3 .rb .rm{width:28px;height:28px;line-height:28px;padding:0}
+  .nmRow.r4{border-left:8px solid #4fd08f}.nmRow.r4.ng{border-left-color:#ff8aa0}.nmRow.r4.iph{border-left-color:#ffd66b}.nmRow.r4.low{border-left-color:#f2c200}.nmRow.r4.wait{border-left-color:#ddd}.r4 .st{display:none}
+  .g5{display:grid;grid-template-columns:1fr 1fr;gap:6px}.nmRow.r5{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:flex-start;gap:3px;min-width:0}.r5 > *{flex:none !important;min-width:0 !important;max-width:100%}.r5 .top{display:flex;gap:6px;align-items:center}.r5 .t{font-size:12px}.r5 .cr{max-width:100%}.r5 .orig{max-width:100%}
+  .nmRow.r6{flex-wrap:nowrap;align-items:flex-start;gap:8px}.r6 .th{flex:none;width:62px;height:62px;border-radius:10px;object-fit:cover;background:#f6eef3}.r6 .mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.r6 .top{display:flex;gap:6px;align-items:flex-start}.r6 .top .t{flex:1}.r6 .cr{margin-left:24px}
+  #names .cnt{display:inline-flex;align-items:center;gap:3px}#names .cnt button{width:26px;height:26px;padding:0;border:0;border-radius:50%;background:var(--pink);color:#fff;font-weight:900;font-size:15px;line-height:26px;cursor:pointer}#names .cnt b{min-width:30px;text-align:center;color:var(--pink);font-weight:900}
+  .nmTable{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;font-size:13px}.nmTable th{font-size:11px;color:var(--sub);text-align:left;padding:4px;background:#fdf1f7}.nmTable td{padding:5px 4px;border-top:1px solid #f6e3ee;vertical-align:middle;cursor:pointer}
+  .nmTable tr.ng td{background:#fff4f6}.nmTable tr.iph td{background:#fffbea}.nmTable tr.low td{background:#fff3b0}.nmTable tr.skip .t{color:#b3a6b6;text-decoration:line-through}.nmTable td.n{white-space:nowrap;font-weight:900;color:var(--pink)}.nmTable td.b{white-space:nowrap}.nmTable .cr{margin-top:2px}.okm{color:#1f9a57;font-weight:900}
+  .nmTable button.ck,.nmTable button.rm{padding:4px 8px;border:0;border-radius:99px;font:inherit;font-size:11px;font-weight:900}
+  .nmTable button.ck{background:#ffd23f;color:#5a4300;cursor:pointer}.nmTable button.rm{background:#f3eef5;color:#8a7a8e;cursor:pointer}.nmTable button.rm.sure{background:#ff5a6e;color:#fff}.nmTable .t{font-weight:800}
+  #names .sec{font-weight:900;font-size:12px;margin:6px 0 0}#names .sec.y{color:#a87400}#names .sec.g{color:#1f9a57}
+  .nmRow.r8{flex-wrap:nowrap;padding:3px 8px}.r8 .t{flex:1;min-width:0;font-size:12px}
+  .r9{text-align:center}.r9 .pg{color:var(--sub);font-weight:900}.r9 .th{width:110px;height:110px;border-radius:14px;margin:6px auto;display:block;object-fit:cover}.r9 .cap{font-size:11px;color:var(--sub);margin-top:6px}.r9 .cr{display:flex;justify-content:center}.r9 .orig{max-width:100%}
+  .r9 .big .t{font-size:19px}.r9 .tags{display:flex;gap:4px;justify-content:center;margin-top:3px}.r9 .nav{display:flex;gap:8px;justify-content:center;margin-top:10px}.r9 .nav button{border:0;border-radius:99px;padding:10px 14px;font:inherit;font-size:13px;font-weight:900;background:#f3eef5;color:#8a7a8e;cursor:pointer}.r9 .nav button.ck{background:#ffd23f;color:#5a4300}.r9 .btns{justify-content:center;margin-top:8px}
+  #names .dots{display:flex;gap:7px;justify-content:center;margin-top:6px;flex-wrap:wrap}#names .dots span{width:12px;height:12px;border-radius:50%;background:#8fe8b9;cursor:pointer}#names .dots span.need{background:#f2c200}#names .dots span.wait{background:#ddd}#names .dots span.on{outline:2.5px solid var(--pink);outline-offset:1px}
+  .nmRow.r10{flex-wrap:nowrap}.r10 .box{flex:none;width:28px;height:28px;border-radius:8px;border:2.5px solid #d9c6e6;background:#fff;color:#fff;font-weight:900;padding:0;cursor:pointer}.r10 .box.on{background:#4fd08f;border-color:#4fd08f}.r10 .mid{flex:1;min-width:0}.r10 .cr{margin-top:3px}.r10 .ic{flex:none}.r10 .nn{font-weight:900;color:var(--pink);font-size:12px;margin-right:2px}.r10 .st{display:none}
+  #names .foot10{text-align:center;font-weight:900;font-size:12px;color:var(--sub);margin-top:2px}
+  .layPick{display:grid;grid-template-columns:1fr 1fr;gap:8px}.layPick button{border:2.5px solid #f3e3ee;background:#fff;border-radius:14px;padding:5px;font:inherit;font-size:11.5px;font-weight:900;color:var(--ink);cursor:pointer;text-align:left}.layPick button.on{border-color:var(--pink);background:#fff0f7}
+  .layPick img{display:block;width:100%;height:auto;border-radius:9px;margin-top:4px;background:#fff6fa}
   .nmRow .t mark{background:#ffe066;color:inherit;border-radius:3px;padding:0 1px}
   .nmRow .st{flex:none;font-size:11px;font-weight:900;border-radius:99px;padding:2px 8px;white-space:nowrap}
   .nmRow .tx{white-space:nowrap}
@@ -253,6 +278,11 @@
     <div id="learnedList"></div>
     <a class="pill wide" href="ranking.html" style="margin-top:8px;text-decoration:none;display:flex">📈 売れ筋ランキング</a>
     <a class="pill wide" href="items.html" style="margin-top:8px;text-decoration:none;display:flex">📖 アイテム名一覧を見る</a>
+  </div></section>
+
+  <section class="card"><h2>名前一覧の配置</h2><div class="in">
+    <div class="note" style="margin-top:0">読み取った名前の並べ方です。見本は実際のスクショ4枚（1番が要確認）。押すとすぐ変わります</div>
+    <div class="layPick" id="layPick"></div>
   </div></section>
 
   <section class="card"><h2>×数の最初の数</h2><div class="in">
@@ -350,7 +380,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='67'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='68'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -1244,34 +1274,71 @@ function setEntryName(i,v){ if (items.length>1){ items[i].name=v; items[i].iph=f
 function inlineFix(i,v){ v=(v||'').trim(); const e=nameEntries()[i]; if (!e) return renderNames(); if (!v){ toast('名前を入れてください（空のままでは決められません）'); return renderNames(); }
   fixIdx=i; fixThen=null; fixTyped=true; applyFix(v,true); renderNames(); }
 let namesLater=false; // 名前を書き直している間に届いた読み取りは、書き終わってから表示する
+// ---- 名前一覧の配置（設定で1〜10。はじめは6：アイテムの絵つき＋×数） ----
+const LAYOUTS=['今の形','コンパクト1行','左右で見比べ','色の帯','2列カード','アイテムの絵つき＋×数','表（一覧表）','要確認を上にまとめる','1件ずつ大きく','チェックリスト'];
+const nameLayout=()=>{ try{ const v=+localStorage.getItem('promo_nameLayout'); return v>=1&&v<=10 ? v : 6; }catch(e){ return 6; } };
+let oneIdx=0; // 9番（1件ずつ）で今見ている番号
+// アイテムの絵（一覧の左に出す小さい正方形）。同じ画像は1回だけ作る
+function thumbOf(img,top){ if (!img) return ''; if (img._th) return img._th; try{ const c=document.createElement('canvas'); c.width=c.height=120; const W=img.width; c.getContext('2d').drawImage(img,0,Math.max(0,top||0),W,Math.min(W,img.height-(top||0)),0,0,120,120*Math.min(1,(img.height-(top||0))/W)); img._th=c.toDataURL('image/jpeg',.8); }catch(e){ return ''; } return img._th; }
+function entryThumb(e){ return items.length>1 ? thumbOf(items[e.i]?.img, items[e.i]?.top) : thumbOf(shotImg, shotImg ? shotImg.width*$('ct').value/100 : 0); }
+const stLabel=(e,st)=>e.reading?'読取中':e.guess&&e.name?'仮の名前':st==='ok'?(dictExact.has(e.name)?'一覧と一致':nameOk(e.name)?'決めた名前':'読み取りOK'):st==='iph'?'iPhoneで読んだ':e.name&&ppSeen.has(e.name)?'要確認':e.name?'一覧にない':'読めず';
+const el=(tag,cls,txt)=>{ const x=document.createElement(tag); if (cls) x.className=cls; if (txt!=null) x.textContent=txt; return x; };
+const btn=(cls,txt,fn,aria)=>{ const b=el('button',cls,txt); b.type='button'; if (aria) b.setAttribute('aria-label',aria); b.onclick=ev=>{ ev.stopPropagation(); fn(b); }; return b; };
+// 1件分の部品（どの配置でも同じ動き）
+function nameParts(e){ const st=nameStatus(e), low=st==='ng' && !e.reading && !e.guess && ppSeen.get(e.name), P={e,st,low};
+  P.no=el('span','no',e.i+1);
+  P.label=el('span','st',stLabel(e,st));
+  const t=el('span','t'); P.name=t;
+  if (low){ for (const c of e.name){ if (low.includes(c)) t.appendChild(el('mark',null,c)); else t.append(c); } } else t.textContent=e.name||(e.reading?'…':'（名前なし）');
+  if (!e.reading){ t.contentEditable='plaintext-only'; if (t.contentEditable!=='plaintext-only') t.contentEditable='true'; t.spellcheck=false; t.setAttribute('role','textbox'); t.setAttribute('aria-label','名前（タップして直せます）');
+    t.onclick=ev=>ev.stopPropagation(); let done=false;
+    t.onkeydown=ev=>{ if (ev.key==='Enter'){ ev.preventDefault(); t.blur(); } if (ev.key==='Escape'){ done=true; t.blur(); renderNames(); } };
+    t.onblur=()=>{ if (done) return; done=true; const v=t.textContent.replace(/\s+/g,' ').trim(); if (v && v!==e.name) inlineFix(e.i,v); else if (!v && e.name) renderNames(); else if (namesLater) renderNames(); }; }
+  // 元の画像の名前（見比べ用）：字の高さを読み取った名前の字（g＝字の黒い部分の高さ）とそろえる
+  P.crop=(g=13*.9,align=true)=>{ if (!e.crop?.src || e.reading) return null; const im=el('img','orig'); im.src=e.crop.src; im.alt='元の画像の名前'; im.style.height=(e.crop.hr*g).toFixed(1)+'px'; im.style.marginLeft=align ? `-${(e.crop.pr*g).toFixed(1)}px` : '0'; return im; };
+  P.gift=e.noGift ? Object.assign(el('span','st ng-gift','🚫プレゼント禁止'),{style:'background:#ff5a6e;color:#fff'}) : null;
+  P.copy=(short)=>e.name ? btn('cp',short?'📋':'📋コピー',async()=>toast(await copyText(e.name) ? `「${e.name}」をコピーしました` : 'コピーできませんでした'),'名前をコピー') : null;
+  P.check=(txt='✓確認')=>st==='ng' && !e.reading && e.name ? btn('ck',txt,()=>inlineFix(e.i,e.name),'この名前で合っている') : null;
+  P.tx=(short)=>items.length>1 ? Object.assign(btn('tx'+(e.skip?' off':''),short?(e.skip?'文✕':'文'):(e.skip?'文字に入れない':'文字に入れる'),()=>{ items[e.i].skip=!items[e.i].skip; renderNames(); },'このアイテムを文字・題名に入れるかを切り替える')) : null;
+  P.rm=()=>items.length>1 ? btn('rm','✕',b=>{ if (b.dataset.sure){ removeItem(e.i); } else { b.dataset.sure=1; b.classList.add('sure'); b.textContent='外す？'; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.classList.remove('sure'); b.textContent='✕'; } },3000); } },'このアイテムを外す') : null;
+  // ×数（複数のとき）。表示なしは「なし」
+  P.count=()=>{ if (items.length<2 || e.reading) return null; const it=items[e.i], c=itemCount(it), w=el('span','cnt');
+    w.append(btn('m','−',()=>{ it.count=Math.max(0,(itemCount(it)??1)-1); renderItems(); renderNames(); draw(); },'1減らす'), el('b',null,c==null?'なし':'×'+c), btn('p','＋',()=>{ it.count=(itemCount(it)??0)+1; renderItems(); renderNames(); draw(); },'1増やす')); return w; };
+  P.countText=()=>{ if (e.reading) return ''; const c=items.length>1 ? itemCount(items[e.i]) : countValue(); return c==null ? 'なし' : '×'+c; };
+  P.thumb=()=>{ const s=entryThumb(e); if (!s) return null; const im=el('img','th'); im.src=s; im.alt=''; return im; };
+  P.row=(cls)=>{ const d=el('div','nmRow '+cls+' '+(e.reading?'wait':st)+(low?' low':'')+(e.skip?' skip':'')); if (e.noGift) d.style.borderColor='#ff5a6e'; d.onclick=()=>{ fixThen=null; openFix(e.i); }; return d; };
+  return P; }
+const add=(p,...xs)=>{ xs.forEach(x=>{ if (x) p.append(x); }); return p; };
+const line=(cls,...xs)=>add(el('div',cls),...xs);
 function renderNames(){
   const box=$('names'); if (box.contains(document.activeElement) && document.activeElement.classList.contains('t')){ namesLater=true; return; } namesLater=false; box.innerHTML='';
-  nameEntries().forEach(e=>{ const d=document.createElement('div'); const st=nameStatus(e);
-    d.className='nmRow '+(e.reading?'wait':st);
-    d.innerHTML=`<span class="no">${e.i+1}</span><span class="t"></span><span class="st">${e.reading?'読取中':e.guess&&e.name?'仮の名前':st==='ok'?(dictExact.has(e.name)?'一覧と一致':nameOk(e.name)?'決めた名前':'読み取りOK'):st==='iph'?'iPhoneで読んだ':e.name&&ppSeen.has(e.name)?'要確認':e.name?'一覧にない':'読めず'}</span>`;
-    d.querySelector('.t').textContent=e.name||(e.reading?'…':'（名前なし）');
-    const low=st==='ng' && !e.reading && !e.guess && ppSeen.get(e.name); // 自信の低い字に印
-    // 元の画像の字の高さを、読み取った名前の字（13px・字の黒い部分はおよそ0.9文字分）とそろえる。左のはしも名前の字にそろえる
-    if (e.crop?.src && !e.reading){ const im=document.createElement('img'); im.className='orig'; im.src=e.crop.src; const g=13*.9; im.style.height=(e.crop.hr*g).toFixed(1)+'px'; im.style.marginLeft=Math.max(0,24-e.crop.pr*g).toFixed(1)+'px'; im.alt='元の画像の名前'; const br=document.createElement('div'); br.style.cssText='flex-basis:100%;height:0'; d.querySelector('.st').after(br,im,br.cloneNode()); } // 元の画像の名前（見比べ用）
-    if (low){ d.classList.add('low'); const t=d.querySelector('.t'); t.textContent=''; for (const c of e.name){ if (low.includes(c)){ const m=document.createElement('mark'); m.textContent=c; t.appendChild(m); } else t.append(c); } }
-    if (!e.reading){ const t=d.querySelector('.t'); t.contentEditable='plaintext-only'; if (t.contentEditable!=='plaintext-only') t.contentEditable='true'; t.spellcheck=false; t.setAttribute('role','textbox'); t.setAttribute('aria-label','名前（タップして直せます）');
-      t.onclick=ev=>ev.stopPropagation(); let done=false;
-      t.onkeydown=ev=>{ if (ev.key==='Enter'){ ev.preventDefault(); t.blur(); } if (ev.key==='Escape'){ done=true; t.blur(); renderNames(); } };
-      t.onblur=()=>{ if (done) return; done=true; const v=t.textContent.replace(/\s+/g,' ').trim(); if (v && v!==e.name) inlineFix(e.i,v); else if (!v && e.name) renderNames(); else if (namesLater) renderNames(); }; } d.onclick=()=>{ fixThen=null; openFix(e.i); };
-    if (e.noGift){ const g=document.createElement('span'); g.className='st ng-gift'; g.style.cssText='background:#ff5a6e;color:#fff'; g.textContent='🚫プレゼント禁止'; d.querySelector('.t').after(g); d.style.borderColor='#ff5a6e'; }
-    if (e.name){ const cp=document.createElement('button'); cp.type='button'; cp.className='cp'; cp.textContent='📋コピー';
-      cp.onclick=async ev=>{ ev.stopPropagation(); toast(await copyText(e.name) ? `「${e.name}」をコピーしました` : 'コピーできませんでした'); };
-      d.appendChild(cp);
-      if (st==='ng' && !e.reading){ const ok=document.createElement('button'); ok.type='button'; ok.className='ck'; ok.textContent='✓確認'; ok.setAttribute('aria-label','この名前で合っている');
-        ok.onclick=ev=>{ ev.stopPropagation(); inlineFix(e.i,e.name); }; d.appendChild(ok); } }
-    if (items.length>1){ const tx=document.createElement('button'); tx.type='button'; tx.className='tx'+(e.skip?' off':''); tx.textContent=e.skip?'文字に入れない':'文字に入れる';
-      tx.setAttribute('aria-label','このアイテムを文字・題名に入れるかを切り替える');
-      tx.onclick=ev=>{ ev.stopPropagation(); items[e.i].skip=!items[e.i].skip; renderNames(); };
-      d.appendChild(tx); if (e.skip) d.classList.add('skip'); }
-    if (items.length>1){ const b=document.createElement('button'); b.type='button'; b.className='rm'; b.textContent='✕'; b.setAttribute('aria-label','このアイテムを外す');
-      b.onclick=ev=>{ ev.stopPropagation(); if (b.dataset.sure){ removeItem(e.i); } else { b.dataset.sure=1; b.classList.add('sure'); b.textContent='外す？'; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.classList.remove('sure'); b.textContent='✕'; } },3000); } };
-      d.appendChild(b); }
-    box.appendChild(d); });
+  const L=nameLayout(), es=nameEntries(); box.className='lay'+L; document.body.classList.toggle('cntInRows',L===6 && items.length>1);
+  if (L===7 && es.length){ const tb=el('table','nmTable'); tb.append(add(el('tr'),el('th',null,'#'),el('th',null,'名前（上：読み取り／下：元の画像）'),el('th',null,'数'),el('th')));
+    es.forEach(e=>{ const P=nameParts(e), tr=el('tr',(e.reading?'wait ':'')+P.st+(P.low?' low':'')+(e.skip?' skip':'')); tr.onclick=()=>{ fixThen=null; openFix(e.i); };
+      tr.append(add(el('td'),P.no), add(el('td'),P.name,P.gift,line('cr',P.crop())), add(el('td','n'),P.countText()), add(el('td','b'),P.check('✓')||(P.st==='ok'&&!e.reading?el('span','okm','✓'):null),P.rm())); tb.append(tr); });
+    box.append(tb); }
+  else if (L===8){ const need=es.filter(e=>!e.reading && nameStatus(e)!=='ok'), rest=es.filter(e=>!need.includes(e));
+    if (need.length){ box.append(el('div','sec y',`要確認 ${need.length}件`)); need.forEach(e=>{ const P=nameParts(e); box.append(add(P.row('r1'),line('top',P.no,P.name,P.label),P.gift,line('cr',P.crop()),line('btns',P.check(),P.copy(),P.tx(),P.rm()))); }); }
+    if (rest.length){ box.append(el('div','sec g',need.length?`OK ${rest.length}件`:`全部OK（${rest.length}件）`));
+      rest.forEach(e=>{ const P=nameParts(e); box.append(add(P.row('r8'),P.no,P.name,P.gift,e.reading?P.label:null,P.copy(true),P.tx(true),P.rm())); }); } }
+  else if (L===9 && es.length){ oneIdx=Math.min(Math.max(0,oneIdx),es.length-1); const e=es[oneIdx], P=nameParts(e), d=P.row('r9');
+    d.append(line('pg',`${oneIdx+1} / ${es.length}`), P.thumb(), el('div','cap','元の画像'), line('cr',P.crop(20,false)), el('div','cap','読み取った名前'), add(line('big',P.name)), line('tags',P.label,P.gift),
+      line('nav', btn('','◀ 前',()=>{ oneIdx=Math.max(0,oneIdx-1); renderNames(); }), P.st==='ng'&&!e.reading&&e.name ? btn('ck','✓ 合っている → 次',()=>{ const n=oneIdx; inlineFix(e.i,e.name); oneIdx=Math.min(es.length-1,n+1); renderNames(); }) : btn('ck','次 ▶',()=>{ oneIdx=Math.min(es.length-1,oneIdx+1); renderNames(); })),
+      line('btns',P.count(),P.copy(),P.tx(),P.rm()));
+    box.append(d, add(el('div','dots'),...es.map((x,i)=>{ const s=el('span',(i===oneIdx?'on ':'')+(x.reading?'wait':nameStatus(x)==='ok'?'ok':'need')); s.onclick=()=>{ oneIdx=i; renderNames(); }; return s; }))); }
+  else { const grid=L===5 ? el('div','g5') : null;
+    es.forEach(e=>{ const P=nameParts(e); let d;
+      if (L===1){ d=add(P.row('r1'),line('top',P.no,P.name,P.label),P.gift,line('cr',P.crop()),line('btns',P.copy(),P.check(),P.tx(),P.rm())); }
+      else if (L===2){ d=add(P.row('r2'),P.no,add(line('mid',P.name,P.gift),line('cr',P.crop())),line('ic',P.check('✓'),P.copy(true),P.tx(true),P.rm())); }
+      else if (L===3){ d=add(P.row('r3'),P.no,line('l',P.crop(11,false)),add(line('r',P.name,P.gift),line('rb',P.check('✓'),P.copy(true),P.tx(true),P.rm()))); }
+      else if (L===4){ d=add(P.row('r4'),P.no,add(line('mid',P.name,P.gift),line('cr',P.crop())),line('ic',P.check()||P.copy(true),P.tx(true),P.rm())); }
+      else if (L===5){ d=add(P.row('r5'),line('top',P.no,P.label),P.name,P.gift,line('cr',P.crop(10,false)),line('btns',P.check(),P.copy(true),P.tx(true),P.rm())); }
+      else if (L===10){ const ok=P.st==='ok' && !e.reading, bx=btn('box'+(ok?' on':''),ok?'✓':'',()=>{ if (!ok && e.name && !e.reading) inlineFix(e.i,e.name); },ok?'確認ずみ':'確認する');
+        d=add(P.row('r10'),bx,add(line('mid',P.name,P.gift),line('cr',P.crop())),line('ic',el('span','nn',P.countText()),P.copy(true),P.rm())); }
+      else { d=add(P.row('r6'),P.thumb()||el('span','th'),add(line('mid',line('top',P.no,P.name,P.label),P.gift,line('cr',P.crop()),line('bot',P.count(),P.check(),P.copy(true),P.tx(true),P.rm())))); }
+      (grid||box).append(d); });
+    if (grid) box.append(grid);
+    if (L===10 && es.length){ const n=es.filter(e=>!e.reading && nameStatus(e)==='ok').length; box.append(el('div','foot10',n===es.length ? `✓ 全部確認しました（${n}件）` : `確認 ${n} / ${es.length}（左の□を押すと確認）`)); } }
   // 名前を直す画面を開いたまま読み取り・組み合わせが終わったとき：欄をまだ書き直していなければ、今の名前に入れ直す
   // （撮った順に仮に入れた名前＝別のアイテムの名前が欄に残って、そのまま決めてしまわないように）
   // 読み取り中に開いた画面は、読み終わったら（名前が同じでも・読めなくても）言葉を入れ直す（「読み終わると入れ直します」のまま待たせない）。欄を書き直していたら、言葉だけ変える
@@ -1839,6 +1906,11 @@ try{ $('defCount').value=defCnt(); }catch(e){}
 function setDefCnt(m,reset){ try{ localStorage.setItem('promo_defCount',m); }catch(e){} $('defCount').value=m;
   if (reset){ items.forEach(it=>{ it.count=null; }); $('count').value=''; }
   document.querySelectorAll('.defBar button').forEach(b=>b.classList.toggle('on',b.dataset.m===m)); renderItems(); renderNames(); draw(); }
+// 名前一覧の配置を選ぶ（見本の画像は img/layouts/）
+(function(){ const box=$('layPick'); LAYOUTS.forEach((t,i)=>{ const n=i+1, b=document.createElement('button'); b.type='button'; b.dataset.n=n;
+  b.innerHTML=`${n}. ${t}<img src="img/layouts/L${n}.jpg" alt="${t}の見本" loading="lazy">`;
+  b.onclick=()=>{ try{ localStorage.setItem('promo_nameLayout',n); }catch(e){} box.querySelectorAll('button').forEach(x=>x.classList.toggle('on',+x.dataset.n===n)); renderNames(); toast(`名前一覧を「${n}. ${t}」にしました`); };
+  box.appendChild(b); }); box.querySelectorAll('button').forEach(x=>x.classList.toggle('on',+x.dataset.n===nameLayout())); })();
 $('defCount').addEventListener('change',()=>setDefCnt($('defCount').value,false));
 document.querySelectorAll('.defBar button').forEach(b=>{ b.classList.toggle('on',b.dataset.m===defCnt()); b.onclick=()=>{ setDefCnt(b.dataset.m,true); toast(b.dataset.m==='own'?'×数を「所持数−1」にしました':b.dataset.m==='one'?'×数を全部1にしました':'×数を全部「表示なし」にしました'); }; });
 ['txtStyle','titleOne','titleSep','txtHead','txtTotal','txtFoot'].forEach(id=>{ try{ const v=localStorage.getItem('promo_'+id); if(v!==null) $(id).value=v; }catch(e){}
