@@ -172,6 +172,9 @@
   .nmRow{flex-wrap:wrap}
   .nmRow .t{flex:1 1 55%;min-width:55%;overflow-wrap:anywhere;font-weight:800}
   .nmRow .orig{flex:0 0 auto;height:24px;width:auto;max-width:calc(100% - 19px);object-fit:contain;object-position:left;border-radius:4px;margin:-3px 0 0 19px}
+  .nmRow .t[contenteditable]{cursor:text;border-bottom:1.5px dashed #d9c6e6;outline:none;padding:1px 2px;border-radius:4px}
+  .nmRow .t[contenteditable]:focus{background:#fff;box-shadow:0 0 0 2px #b79be0;border-bottom-color:transparent}
+  .nmRow .ck{flex:none;border:0;border-radius:99px;padding:6px 10px;font:inherit;font-size:11px;font-weight:900;cursor:pointer;background:#ffd23f;color:#5a4300;white-space:nowrap}
   .nmRow.ng.low{background:#fff3b0;border-color:#f2c200} /* 自信のない字がある行は黄色 */
   .nmRow .t mark{background:#ffe066;color:inherit;border-radius:3px;padding:0 1px}
   .nmRow .st{flex:none;font-size:11px;font-weight:900;border-radius:99px;padding:2px 8px;white-space:nowrap}
@@ -323,7 +326,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='64'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='65'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -1213,8 +1216,12 @@ function nameEntries(){ return items.length>1 ? items.map((it,i)=>({i, name:it.n
 function warnNoGift(){ const ng=nameEntries().filter(e=>e.noGift); if (ng.length) toast(`⚠ プレゼント禁止のアイテムがあります\n${ng.map(e=>`${e.i+1}. ${e.name||'（名前なし）'}`).join('\n')}`); }
 // 手で決めた名前：あとで読み取り・組み合わせ・前の記録が終わっても書き換えない（fixed）
 function setEntryName(i,v){ if (items.length>1){ items[i].name=v; items[i].iph=false; items[i].fixed=true; } else { shotName=v; shotIph=false; shotFixed=true; } renderNames(); }
+// 名前をその場で直す：書き直して確定（Enter・欄の外をタップ）すると「この名前で決定」と同じ。「✓確認」は今の名前のまま決める
+function inlineFix(i,v){ v=(v||'').trim(); const e=nameEntries()[i]; if (!e) return renderNames(); if (!v){ toast('名前を入れてください（空のままでは決められません）'); return renderNames(); }
+  fixIdx=i; fixThen=null; fixTyped=true; applyFix(v,true); renderNames(); }
+let namesLater=false; // 名前を書き直している間に届いた読み取りは、書き終わってから表示する
 function renderNames(){
-  const box=$('names'); box.innerHTML='';
+  const box=$('names'); if (box.contains(document.activeElement) && document.activeElement.classList.contains('t')){ namesLater=true; return; } namesLater=false; box.innerHTML='';
   nameEntries().forEach(e=>{ const d=document.createElement('div'); const st=nameStatus(e);
     d.className='nmRow '+(e.reading?'wait':st);
     d.innerHTML=`<span class="no">${e.i+1}</span><span class="t"></span><span class="st">${e.reading?'読取中':e.guess&&e.name?'仮の名前':st==='ok'?(dictExact.has(e.name)?'一覧と一致':nameOk(e.name)?'決めた名前':'読み取りOK'):st==='iph'?'iPhoneで読んだ':e.name&&ppSeen.has(e.name)?'要確認':e.name?'一覧にない':'読めず'}</span>`;
@@ -1222,11 +1229,17 @@ function renderNames(){
     const low=st==='ng' && !e.reading && !e.guess && ppSeen.get(e.name); // 自信の低い字に印
     // 元の画像の字の高さを、読み取った名前の字（13px・字の黒い部分はおよそ0.9文字分）とそろえる。左のはしも名前の字にそろえる
     if (e.crop?.src && !e.reading){ const im=document.createElement('img'); im.className='orig'; im.src=e.crop.src; const g=13*.9; im.style.height=(e.crop.hr*g).toFixed(1)+'px'; im.style.marginLeft=Math.max(0,24-e.crop.pr*g).toFixed(1)+'px'; im.alt='元の画像の名前'; const br=document.createElement('div'); br.style.cssText='flex-basis:100%;height:0'; d.querySelector('.st').after(br,im,br.cloneNode()); } // 元の画像の名前（見比べ用）
-    if (low){ d.classList.add('low'); const t=d.querySelector('.t'); t.textContent=''; for (const c of e.name){ if (low.includes(c)){ const m=document.createElement('mark'); m.textContent=c; t.appendChild(m); } else t.append(c); } } d.onclick=()=>{ fixThen=null; openFix(e.i); };
+    if (low){ d.classList.add('low'); const t=d.querySelector('.t'); t.textContent=''; for (const c of e.name){ if (low.includes(c)){ const m=document.createElement('mark'); m.textContent=c; t.appendChild(m); } else t.append(c); } }
+    if (!e.reading){ const t=d.querySelector('.t'); t.contentEditable='plaintext-only'; if (t.contentEditable!=='plaintext-only') t.contentEditable='true'; t.spellcheck=false; t.setAttribute('role','textbox'); t.setAttribute('aria-label','名前（タップして直せます）');
+      t.onclick=ev=>ev.stopPropagation(); let done=false;
+      t.onkeydown=ev=>{ if (ev.key==='Enter'){ ev.preventDefault(); t.blur(); } if (ev.key==='Escape'){ done=true; t.blur(); renderNames(); } };
+      t.onblur=()=>{ if (done) return; done=true; const v=t.textContent.replace(/\s+/g,' ').trim(); if (v && v!==e.name) inlineFix(e.i,v); else if (!v && e.name) renderNames(); else if (namesLater) renderNames(); }; } d.onclick=()=>{ fixThen=null; openFix(e.i); };
     if (e.noGift){ const g=document.createElement('span'); g.className='st ng-gift'; g.style.cssText='background:#ff5a6e;color:#fff'; g.textContent='🚫プレゼント禁止'; d.querySelector('.t').after(g); d.style.borderColor='#ff5a6e'; }
     if (e.name){ const cp=document.createElement('button'); cp.type='button'; cp.className='cp'; cp.textContent='📋コピー';
       cp.onclick=async ev=>{ ev.stopPropagation(); toast(await copyText(e.name) ? `「${e.name}」をコピーしました` : 'コピーできませんでした'); };
-      d.appendChild(cp); }
+      d.appendChild(cp);
+      if (st==='ng' && !e.reading){ const ok=document.createElement('button'); ok.type='button'; ok.className='ck'; ok.textContent='✓確認'; ok.setAttribute('aria-label','この名前で合っている');
+        ok.onclick=ev=>{ ev.stopPropagation(); inlineFix(e.i,e.name); }; d.appendChild(ok); } }
     if (items.length>1){ const tx=document.createElement('button'); tx.type='button'; tx.className='tx'+(e.skip?' off':''); tx.textContent=e.skip?'文字に入れない':'文字に入れる';
       tx.setAttribute('aria-label','このアイテムを文字・題名に入れるかを切り替える');
       tx.onclick=ev=>{ ev.stopPropagation(); items[e.i].skip=!items[e.i].skip; renderNames(); };
