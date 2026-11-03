@@ -171,6 +171,7 @@
   .nmRow .no{flex:none;width:18px;height:18px;border-radius:50%;background:var(--pink);color:#fff;font-size:11px;font-weight:900;line-height:18px;text-align:center}
   .nmRow{flex-wrap:wrap}
   .nmRow .t{flex:1 1 55%;min-width:55%;overflow-wrap:anywhere;font-weight:800}
+  .nmRow .orig{flex:0 0 auto;height:24px;width:auto;max-width:calc(100% - 19px);object-fit:contain;object-position:left;border-radius:4px;margin:-3px 0 0 19px}
   .nmRow .t mark{background:#ffe066;color:inherit;border-radius:3px;padding:0 1px}
   .nmRow .st{flex:none;font-size:11px;font-weight:900;border-radius:99px;padding:2px 8px;white-space:nowrap}
   .nmRow .tx{white-space:nowrap}
@@ -321,7 +322,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='62'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='63'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -631,8 +632,10 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
 async function ppRead(img){ const lay=detectLayout(img); if (!lay) return null; const pp=await timeLimit(ppInit(),90000).catch(()=>null); if (!pp) return null;
   const rows=ppRows(img,lay); if (!rows.length) return null;
   const nl=await timeLimit(ppLine(pp,img,rows[0]),20000), name=nl.t; let owned=null;
+  let crop=''; try{ const b=rows[0], pd=b.h*.4, x0=Math.max(0,b.x-pd), y0=Math.max(0,b.y-pd), w=Math.min(img.width-x0,b.w+pd*2), h=Math.min(img.height-y0,b.h+pd*2), k=Math.min(1,60/h), c=document.createElement('canvas');
+    c.width=Math.round(w*k); c.height=Math.round(h*k); c.getContext('2d').drawImage(img,x0,y0,w,h,0,0,c.width,c.height); crop=c.toDataURL('image/jpeg',.85); }catch(e){} // 見比べ用：元の画像の名前の行
   if (rows[1]) try{ const m=(await timeLimit(ppLine(pp,img,rows[1]),20000)).t.match(/所持数\D{0,3}(\d{1,3})/); if (m) owned=+m[1]; }catch(e){}
-  return /\p{L}/u.test(name) && !/リリ.?ス日|所持数|欲しい/.test(name) ? {name, owned, low:nl.low} : {name:'', owned}; }
+  return /\p{L}/u.test(name) && !/リリ.?ス日|所持数|欲しい/.test(name) ? {name, owned, low:nl.low, crop} : {name:'', owned, crop}; }
 async function analyzeShot(img){
   const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.012, cardBottom:lay.cardBottom, nameBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
   if (!window.Tesseract) return r0;
@@ -720,7 +723,7 @@ async function analyzeShot(img){
   else if (W<600) r.sig=r.sig.filter(x=>x[0]!=='h'); // 小さい画像で画面の位置が分からないとき：画面全体の読みの数だけでは使わない
   try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'3'}); }catch(e){}
   // 新しい読み取りで名前が読めたら、そちらを使う（所持数は今までの読み取りで読めなかったときだけ）
-  try{ const p=await ppRead(img); if (p?.name){ r.name=p.name; r.pp=true; r.ppLow=p.low||''; } if (p?.owned!=null && !r.ownedSure){ r.owned=p.owned; r.ownedSure=true; } }catch(e){}
+  try{ const p=await ppRead(img); if (p?.name){ r.name=p.name; r.pp=true; r.ppLow=p.low||''; } if (p?.crop) r.nameCrop=p.crop; if (p?.owned!=null && !r.ownedSure){ r.owned=p.owned; r.ownedSure=true; } }catch(e){}
   return await nameDone(r);
 }
 // 読み取った名前を一覧・覚えた名前に合わせ、組にするときに比べる「いちばん近い一覧の名前」も出しておく
@@ -729,9 +732,9 @@ async function nameDone(r){ if (r.name){ r.raw=r.name;
   if (r.pp){ await loadItemNames(); r.name=dictNorm().get(r.name.normalize('NFKC')) || learnedTo(r.name) || r.name; ppSeen.set(r.name,r.ppLow||''); }
   else r.name=await nearestItemName(r.name);
   r.known=await knownNear(r.raw); } return r; }
-let picking=false, shotName='', shotRaw='', shotReading=false, shotIph=false, shotNoGift=false, shotFixed=false, shotGuess=false; // shotGuess：画像が読めず、受け取った名前を仮に入れた（赤にして確かめてもらう）
+let picking=false, shotName='', shotRaw='', shotReading=false, shotIph=false, shotNoGift=false, shotFixed=false, shotGuess=false, shotCrop=''; // shotGuess：画像が読めず、受け取った名前を仮に入れた（赤にして確かめてもらう）
 let shotOcr=null, shotOwnTyped=false; // shotOcr：画像から読んだ所持数・プレゼント禁止（名前を選び直したときに戻す）。shotOwnTyped：所持数を手で入れた（自動で書き換えない）
-function setShot(i){ i=trimBars(i); shotName=''; shotRaw=''; shotIph=false; shotNoGift=false; shotFixed=false; shotGuess=false; shotOcr=null; shotOwnTyped=false; fixSeen.clear(); $('ownSnap').hidden=true; items=[]; renderItems(); shotImg=i; $('owned').value=''; $('count').value=''; shotReading=true; renderNames(); readOwned(i); }
+function setShot(i){ i=trimBars(i); shotName=''; shotCrop=''; shotRaw=''; shotIph=false; shotNoGift=false; shotFixed=false; shotGuess=false; shotOcr=null; shotOwnTyped=false; fixSeen.clear(); $('ownSnap').hidden=true; items=[]; renderItems(); shotImg=i; $('owned').value=''; $('count').value=''; shotReading=true; renderNames(); readOwned(i); }
 // 1枚のとき：読み取りが終わってから、受け取った名前（または前の記録）と同じ画面かを確かめて当てはめる
 // （先に受け取りの名前を入れておくと、選んだのが別のスクショだったときに、その別アイテムの名前・所持数になってしまう）
 async function readOwned(img){
@@ -750,7 +753,7 @@ async function readOwned(img){
     if (proven(c||h)) relearn([r.name,r.raw],p.name);
     const own=c ? pickOwned(m,p,proven(c)) : h ? histOwned(m,h) : (r.owned||null);
     if (!shotFixed){ shotName=(p ? fullName(p,r.raw) : r.name)||''; shotIph=!!p; shotGuess=false; } // 手で直した名前はそのまま
-    shotRaw=r.raw||''; shotNoGift=!!(p?.noGift||r.noGift); shotOcr={owned:r.owned||null, sure:!!r.ownedSure, noGift:!!r.noGift};
+    shotRaw=r.raw||''; shotCrop=r.nameCrop||''; shotNoGift=!!(p?.noGift||r.noGift); shotOcr={owned:r.owned||null, sure:!!r.ownedSure, noGift:!!r.noGift};
     // 読み取り中に手で決めた名前が、組になった受け取り・前の記録と別のアイテム（組にならなかったときも）：所持数・プレゼント禁止はその名前のもの（読み終わってから選んだときと同じ）
     const mine=shotFixed && !(p && sameItem(p.name,shotName)) ? ownFor(shotName,shotOcr) : null, own2=mine ? mine.own : own; if (mine) shotNoGift=mine.ng;
     // 読み取り中に手で入れた所持数は書き換えない
@@ -1204,8 +1207,8 @@ const nameOk=n=>!!n && (dictExact.has(n) || okNames.has(n) || learnedNames().has
 const ppSeen=new Map(), ppOk=n=>!!n && ppSeen.get(n)==='';
 const nameStatus=e=>e.guess&&e.name?'ng':nameOk(e.name)||ppOk(e.name)?'ok':(e.iph&&e.name?'iph':'ng');
 // reading：読み取り中（撮った順に仮に入れた名前も、確かめ終わるまでは読み取り中）
-function nameEntries(){ return items.length>1 ? items.map((it,i)=>({i, name:it.name||'', raw:it.raw||'', reading:!!(it.reading||it.prov), iph:it.iph, noGift:it.noGift, skip:!!it.skip, fixed:!!it.fixed, guess:!!it.guess && !it.fixed}))
-  : (shotImg ? [{i:0, name:shotName, raw:shotRaw, reading:shotReading, iph:shotIph, noGift:shotNoGift, skip:false, fixed:shotFixed, guess:shotGuess && !shotFixed}] : []); }
+function nameEntries(){ return items.length>1 ? items.map((it,i)=>({i, name:it.name||'', raw:it.raw||'', reading:!!(it.reading||it.prov), iph:it.iph, noGift:it.noGift, skip:!!it.skip, fixed:!!it.fixed, guess:!!it.guess && !it.fixed, crop:it.nameCrop||''}))
+  : (shotImg ? [{i:0, name:shotName, raw:shotRaw, reading:shotReading, iph:shotIph, noGift:shotNoGift, skip:false, fixed:shotFixed, guess:shotGuess && !shotFixed, crop:shotCrop}] : []); }
 function warnNoGift(){ const ng=nameEntries().filter(e=>e.noGift); if (ng.length) toast(`⚠ プレゼント禁止のアイテムがあります\n${ng.map(e=>`${e.i+1}. ${e.name||'（名前なし）'}`).join('\n')}`); }
 // 手で決めた名前：あとで読み取り・組み合わせ・前の記録が終わっても書き換えない（fixed）
 function setEntryName(i,v){ if (items.length>1){ items[i].name=v; items[i].iph=false; items[i].fixed=true; } else { shotName=v; shotIph=false; shotFixed=true; } renderNames(); }
@@ -1216,6 +1219,7 @@ function renderNames(){
     d.innerHTML=`<span class="no">${e.i+1}</span><span class="t"></span><span class="st">${e.reading?'読取中':e.guess&&e.name?'仮の名前':st==='ok'?(dictExact.has(e.name)?'一覧と一致':nameOk(e.name)?'決めた名前':'読み取りOK'):st==='iph'?'iPhoneで読んだ':e.name&&ppSeen.has(e.name)?'要確認':e.name?'一覧にない':'読めず'}</span>`;
     d.querySelector('.t').textContent=e.name||(e.reading?'…':'（名前なし）');
     const low=st==='ng' && !e.reading && !e.guess && ppSeen.get(e.name); // 自信の低い字に印
+    if (e.crop && !e.reading){ const im=document.createElement('img'); im.className='orig'; im.src=e.crop; im.alt='元の画像の名前'; const br=document.createElement('div'); br.style.cssText='flex-basis:100%;height:0'; d.querySelector('.st').after(br,im,br.cloneNode()); } // 元の画像の名前（見比べ用）
     if (low){ const t=d.querySelector('.t'); t.textContent=''; for (const c of e.name){ if (low.includes(c)){ const m=document.createElement('mark'); m.textContent=c; t.appendChild(m); } else t.append(c); } } d.onclick=()=>{ fixThen=null; openFix(e.i); };
     if (e.noGift){ const g=document.createElement('span'); g.className='st ng-gift'; g.style.cssText='background:#ff5a6e;color:#fff'; g.textContent='🚫プレゼント禁止'; d.querySelector('.t').after(g); d.style.borderColor='#ff5a6e'; }
     if (e.name){ const cp=document.createElement('button'); cp.type='button'; cp.className='cp'; cp.textContent='📋コピー';
@@ -1244,7 +1248,7 @@ function removeItem(i){
   fixSeen.clear(); // 番号がずれるので、確かめた記録もやり直す
   // 読み取り・当てはめの途中だったときは、残った1枚を1枚のときと同じように読み直す（「読取中」のままコピーできなくならないように。手で決めた名前はそのまま）
   const again=items.length===1 && (itemsBusy===ocrSeq || !!items[0].reading || !!items[0].prov);
-  if (items.length===1){ const it=items[0]; items=[]; shotImg=it.img; shotName=it.name||''; shotRaw=it.raw||''; shotReading=again; shotIph=!!it.iph && !again; shotNoGift=!!it.noGift; shotFixed=!!it.fixed; shotGuess=!!it.guess && !again; shotOcr={owned:it.ocrOwned||null, sure:!!it.ownedSure, noGift:!!it.ocrNoGift}; shotOwnTyped=false;
+  if (items.length===1){ const it=items[0]; items=[]; shotImg=it.img; shotName=it.name||''; shotRaw=it.raw||''; shotCrop=it.nameCrop||''; shotReading=again; shotIph=!!it.iph && !again; shotNoGift=!!it.noGift; shotFixed=!!it.fixed; shotGuess=!!it.guess && !again; shotOcr={owned:it.ocrOwned||null, sure:!!it.ownedSure, noGift:!!it.ocrNoGift}; shotOwnTyped=false;
     $('owned').value=it.owned||''; $('count').value=it.count ?? ''; $('ownSnap').src=it.snap||''; $('ownSnap').hidden=!it.snap; $('ownState').textContent=it.owned?'自動':'読取×';
     const W=it.img.width, sb=showOwned()&&it.ownedBottom ? it.ownedBottom : (it.nameBottom ?? it.cardBottom); if (sb) $('ct').value=Math.max(0,+(((sb-W)/W)*100).toFixed(1)); }
   renderItems(); renderNames(); draw(); toast(`${i+1}番を外しました`);
@@ -1398,7 +1402,7 @@ async function setItems(files){
   // 読み取り中に ✕ で外されても、残りを1枚ずつ読む（外した画像は飛ばす。並びが変わっても読み残さないよう、始めの並びを写して回す）
   for (const it of list.slice()){ if (!items.includes(it)) continue; try{ const r=await ocrOne(()=>seq===ocrSeq ? analyzeShot(it.img) : null); if (seq!==ocrSeq) return;
       it.ocrOwned=r?.owned||null; it.ownedSure=!!r?.ownedSure; it.owned=it.ocrOwned; it.known=r?.known||null; // 所持数はまず画像の「所持数」の枠から
-      it.snap=r?.snap; it.raw=r?.raw; it.ocrName=r?.name; it.sig=r?.sig; if (!it.iph && !it.fixed) it.name=r?.name; if (r?.noGift){ it.noGift=true; it.ocrNoGift=true; } if (r?.cardBottom){ it.ownedBottom=r.ownedBottom; it.nameBottom=r.nameBottom; it.cardBottom=r.cardBottom; it.top=r.top ?? Math.max(0,r.squareBottom-it.img.width); }
+      it.snap=r?.snap; it.raw=r?.raw; it.nameCrop=r?.nameCrop||''; it.ocrName=r?.name; it.sig=r?.sig; if (!it.iph && !it.fixed) it.name=r?.name; if (r?.noGift){ it.noGift=true; it.ocrNoGift=true; } if (r?.cardBottom){ it.ownedBottom=r.ownedBottom; it.nameBottom=r.nameBottom; it.cardBottom=r.cardBottom; it.top=r.top ?? Math.max(0,r.squareBottom-it.img.width); }
     }catch(e){} if (seq!==ocrSeq) return; it.reading=false; renderItems(); renderNames(); draw(); }
   itemsBusy=0; if (items.length<2) return; // 途中で1枚になったときは、その1枚の読み取りに任せる
   pinfo=pendingInfo(); pend=pinfo.list; // 読み取り中にもう一度背面タップして届いた名前も使う
