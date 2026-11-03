@@ -259,6 +259,7 @@
     <div class="row" style="margin-top:10px"><label>受け取るスクショ：直近 <select id="shotWin" style="width:auto;display:inline-block;padding:6px 10px"><option value="15">15</option><option value="30">30</option><option value="60">60</option><option value="120">120</option></select> 分</label></div>
     <div class="note">この時間に撮ったスクショの名前を、画像を選んだときに当てはめます。これより前に撮ったスクショは、名前だけ覚えておき、あとでそのスクショを選ぶと黄色で出します（撮った時刻が分かるときだけ）。ショートカットの「写真を検索」の期間（おすすめ：1時間）と同じにしてください（はじめは60分）。</div>
     <div class="note" id="recvLog" style="white-space:pre-line;margin-top:8px"></div>
+    <button class="pill wide" id="unreadCopy" type="button" hidden style="margin-top:8px">📋 読めなかったアイテム画面の文字をコピー</button>
     <div class="note" id="appVer" style="text-align:right"></div>
   </div></section>
 
@@ -318,7 +319,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='55'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='56'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -782,8 +783,17 @@ const joinWrap=(a,b)=>a+(/[A-Za-z0-9]$/.test(a) && /^[A-Za-z0-9]/.test(b) ? ' ' 
 const POKE_MARK=[/欲しい」?の数/, /リリース日\D{0,2}\d{4}年/, /所持数\D{0,3}\d{1,3}個/];
 // 本物のスクショには、カードの外の文字（試着・ギフト出来ません・〜でもらえるアイテム など）か画面の上の時計がある。写真に保存した完成画像（カードだけ）にはない
 const POKE_FRAME=/もらえるアイテム|試着|贈れるようになります|ギフト出来ません|ギフト不可|複数所持しているアイテム|ロックすると/;
+// iPhoneの読み取りの文字をそろえる：全角の数字（「３個」「２０２５年」）を半角に。
+// 改行のない1行の文字（ショートカットや iPhone によって行が分かれずに届く）は、欄の字の前で行を分ける（そうしないと名前の行が見つからない）
+const halfDigits=t=>t.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+function prepText(t){ t=halfDigits(t||'');
+  if (t.split(/\n/).filter(l=>l.trim()).length<4 && t.length>60)
+    t=t.replace(/\s*(?=リリ.?ス\s*日|所持数|「?欲しい」?\s*の数|ショップ情報|タイプ\s*[:：]|タイトル\s*[:：]|公開期間|話題をさがす|コーデ例をみる|ギフトを贈る)/g,'\n');
+  return t; }
+// アイテムの画面（「欲しい」の数・リリース日・所持数のうち2つ）なのに名前が読めなかったか（⚙の記録で「保存した完成画像」と分ける）
+const itemLike=f=>POKE_MARK.filter(r=>r.test(f)).length>=2 && !APP_SCREEN.test(f) && !OTHER_GAME.test(f) && !savedImage(f);
 // 辞書を待たずにすぐ読む（辞書がまだなら、iPhoneが読んだ行をそのまま使う）
-function parseBlock(t){
+function parseBlock(t){ t=prepText(t);
   const lines=t.split(/\n/).map(l=>l.trim()).filter(Boolean), flat=t.replace(/\s/g,'');
   // ゲームのアイテム画面ではないスクショ（このアプリの画面・保存した完成画像・ピグパの画面・LINEなど）は使わない
   if (POKE_MARK.filter(r=>r.test(flat)).length<2 || APP_SCREEN.test(flat) || OTHER_GAME.test(flat) || savedImage(flat)) return null;
@@ -813,9 +823,13 @@ function parseBlock(t){
   const lt=learnedTo(hint); return {name:lt && slip(hint,lt) ? lt : hint, owned, iph:true, noGift, sig};
 }
 // 受け取った記録（設定の「ショートカット連携」に表示。うまくいかないときに画面で原因が分かるように）
-const RECV_KEY='promo_lastRecv';
+const RECV_KEY='promo_lastRecv', UNREAD_KEY='promo_unread';
+// 読めなかったアイテム画面の文字をコピー（LINEなどで送ってもらい、読めなかったわけを調べる）
+document.addEventListener('click',async e=>{ if (e.target?.id!=='unreadCopy') return; let j=null; try{ j=JSON.parse(localStorage.getItem(UNREAD_KEY)||'null'); }catch(_){}
+  if (!j?.t?.length) return; const t=`ポケツイ画像加工アプリ（版${j.ver}）で読めなかった画面の文字 ${j.t.length}枚\n`+j.t.map((x,i)=>`--- ${i+1} ---\n${x}`).join('\n');
+  toast(await copyText(t) ? 'コピーしました。LINEなどに貼り付けて送ってください' : 'コピーできませんでした'); });
 function saveRecv(o){ try{ localStorage.setItem(RECV_KEY,JSON.stringify({at:Date.now(),ver:APP_VER,...o})); }catch(e){} renderRecv(); }
-function renderRecv(){ const el=$('recvLog'); if(!el) return; let j=null; try{ j=JSON.parse(localStorage.getItem(RECV_KEY)||'null'); }catch(e){}
+function renderRecv(){ const el=$('recvLog'); if(!el) return; try{ $('unreadCopy').hidden=!localStorage.getItem(UNREAD_KEY); }catch(e){} let j=null; try{ j=JSON.parse(localStorage.getItem(RECV_KEY)||'null'); }catch(e){}
   if(!j){ el.textContent='まだショートカットから受け取っていません'; return; }
   const d=new Date(j.at), skip=[j.junk?`アイテム以外 ${j.junk}枚`:'', j.same?`同じ画面 ${j.same}枚`:''].filter(Boolean), why=(j.why||[]).filter(w=>!/^アイテム以外\d+$/.test(w));
   const how=[j.byDate?`作成日${j.byDate}枚`:'',j.byClock?`画面の時計${j.byClock}枚`:''].filter(Boolean).join('・');
@@ -865,7 +879,7 @@ function clockTime(c,now,h12){ const d=new Date(now); let best=null;
 // 撮った時刻の範囲（9:01〜9:14）
 const timeRange=ts=>{ ts=ts.filter(t=>t!=null); if (!ts.length) return ''; const a=hhmm(Math.min(...ts)), b=hhmm(Math.max(...ts)); return a===b ? a : `${a}〜${b}`; };
 // 使わなかったわけ（⚙の記録用。スクショの文字そのものは残さない）
-const whyJunk=t=>{ const f=t.replace(/\s/g,''); return APP_SCREEN.test(f)?'このアプリの画面':OTHER_GAME.test(f)?'ほかのゲーム':savedImage(f)||/所持数/.test(f)&&/リリース日/.test(f)?'保存した完成画像など':'アイテム以外'; };
+const whyJunk=t=>{ const f=prepText(t).replace(/\s/g,''); return APP_SCREEN.test(f)?'このアプリの画面':OTHER_GAME.test(f)?'ほかのゲーム':itemLike(f)?'アイテムの画面（名前が読めず）':savedImage(f)||/所持数/.test(f)&&/リリース日/.test(f)?'保存した完成画像など':'アイテム以外'; };
 // 届いた文字（撮った順）から受け取りの一覧を作る：アイテムの画面だけ・同じ画面は新しいほう1つだけ（新しいほうに所持数が読めていなければ古いほうの数を使う）
 // again：辞書が読めたあとに読み直すとき（先に読んだ結果 s.r は使わない）
 function buildPending(shots,again){ const parsed=[], why=new Map();
@@ -886,6 +900,9 @@ function processRaw(raw,via,now=Date.now()){
   // @@ の後ろが空（作成日が入っていない）・時刻のない日付（「時刻を含める」がオフ）・時刻はあるが読めない形 は、⚙の記録でそれぞれ直し方を出す
   const win=shotWin(), shots=blocks.map((b,k)=>{ const m=b.match(/^[@＠]{2}([^\n]*)(?:\n|$)/), v=m?m[1].normalize('NFKC').trim():'', at=m?shotTime(v):null, t=m?b.slice(m[0].length):b, tm=/\d[:時]\d{2}/.test(v);
     return {k, t, at, c:clockOf(t), by:at!=null?'date':'', hd:!!m, ne:!!m && !v, nt:!!m && !!v && !tm, nf:!!m && tm && at==null, r:parseBlock(t)}; });
+  // アイテムの画面なのに名前が読めなかったスクショの文字（3枚まで・この端末だけに残す）。⚙の「読めなかった画面の文字をコピー」で送ってもらい、直すのに使う
+  try{ const un=shots.filter(s=>!s.r?.name && itemLike(prepText(s.t).replace(/\s/g,''))).slice(0,3).map(s=>s.t.slice(0,2000));
+    if (un.length) localStorage.setItem(UNREAD_KEY,JSON.stringify({at:now,ver:APP_VER,t:un})); else localStorage.removeItem(UNREAD_KEY); }catch(e){}
   // 12時間表示か：アイテムの画面の時計だけで決める（13時以降・0時の表示があれば24時間表示。LINEなどほかの画面の時計は見ない）
   // どれも12時台までで分からないときは、この端末の時刻の表示のふつう（日本語の端末は24時間表示）に合わせる
   const h12=!shots.some(s=>s.r && s.c && (s.c.h>=13 || s.c.h===0)) && hour12();
