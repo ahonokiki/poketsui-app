@@ -171,6 +171,7 @@
   .nmRow .no{flex:none;width:18px;height:18px;border-radius:50%;background:var(--pink);color:#fff;font-size:11px;font-weight:900;line-height:18px;text-align:center}
   .nmRow{flex-wrap:wrap}
   .nmRow .t{flex:1 1 55%;min-width:55%;overflow-wrap:anywhere;font-weight:800}
+  .nmRow .t mark{background:#ffe066;color:inherit;border-radius:3px;padding:0 1px}
   .nmRow .st{flex:none;font-size:11px;font-weight:900;border-radius:99px;padding:2px 8px;white-space:nowrap}
   .nmRow .tx{white-space:nowrap}
   .nmRow .cp{flex:none;border:0;border-radius:99px;padding:6px 10px;font:inherit;font-size:11px;font-weight:900;cursor:pointer;background:#efe9ff;color:#7f63c9;white-space:nowrap}
@@ -320,7 +321,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='61'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='62'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -622,13 +623,16 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   const px=g.getImageData(0,0,Wd,H).data, f=new Float32Array(3*H*Wd);
   for (let i=0;i<H*Wd;i++){ f[i]=(px[i*4+2]/255-.5)/.5; f[H*Wd+i]=(px[i*4+1]/255-.5)/.5; f[2*H*Wd+i]=(px[i*4]/255-.5)/.5; }
   const o=(await pp.sess.run({[pp.sess.inputNames[0]]:new ort.Tensor('float32',f,[1,3,H,Wd])}))[pp.sess.outputNames[0]], [,T,C]=o.dims, P=o.data;
-  let t='', prev=-1; for (let k=0;k<T;k++){ let m=0,mi=0; for (let j=0;j<C;j++){ const v=P[k*C+j]*(pp.boost.has(j)?8:1); if(v>m){m=v;mi=j;} } if (mi!==prev&&mi!==0) t+= mi<=pp.D.length?pp.D[mi-1]:' '; prev=mi; }
-  return t.replace(/[「」□■ロ口\s]+$/u,'').trim(); } // 名前の横のコピーのマークは外す
+  // 1文字ずつ、読み取りの自信（0〜1）も取っておく
+  const ch=[]; let prev=-1; for (let k=0;k<T;k++){ let m=0,mi=0; for (let j=0;j<C;j++){ const v=P[k*C+j]*(pp.boost.has(j)?8:1); if(v>m){m=v;mi=j;} } const raw=P[k*C+mi];
+    if (mi!==0){ if (mi!==prev) ch.push({c:mi<=pp.D.length?pp.D[mi-1]:' ', p:raw}); else ch[ch.length-1].p=Math.max(ch[ch.length-1].p,raw); } prev=mi; }
+  while (ch.length && /[「」□■ロ口\s]/u.test(ch[ch.length-1].c)) ch.pop(); while (ch.length && /\s/.test(ch[0].c)) ch.shift(); // 名前の横のコピーのマークは外す
+  return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 async function ppRead(img){ const lay=detectLayout(img); if (!lay) return null; const pp=await timeLimit(ppInit(),90000).catch(()=>null); if (!pp) return null;
   const rows=ppRows(img,lay); if (!rows.length) return null;
-  const name=await timeLimit(ppLine(pp,img,rows[0]),20000); let owned=null;
-  if (rows[1]) try{ const m=(await timeLimit(ppLine(pp,img,rows[1]),20000)).match(/所持数\D{0,3}(\d{1,3})/); if (m) owned=+m[1]; }catch(e){}
-  return /\p{L}/u.test(name) && !/リリ.?ス日|所持数|欲しい/.test(name) ? {name, owned} : {name:'', owned}; }
+  const nl=await timeLimit(ppLine(pp,img,rows[0]),20000), name=nl.t; let owned=null;
+  if (rows[1]) try{ const m=(await timeLimit(ppLine(pp,img,rows[1]),20000)).t.match(/所持数\D{0,3}(\d{1,3})/); if (m) owned=+m[1]; }catch(e){}
+  return /\p{L}/u.test(name) && !/リリ.?ス日|所持数|欲しい/.test(name) ? {name, owned, low:nl.low} : {name:'', owned}; }
 async function analyzeShot(img){
   const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.012, cardBottom:lay.cardBottom, nameBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
   if (!window.Tesseract) return r0;
@@ -716,13 +720,13 @@ async function analyzeShot(img){
   else if (W<600) r.sig=r.sig.filter(x=>x[0]!=='h'); // 小さい画像で画面の位置が分からないとき：画面全体の読みの数だけでは使わない
   try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'3'}); }catch(e){}
   // 新しい読み取りで名前が読めたら、そちらを使う（所持数は今までの読み取りで読めなかったときだけ）
-  try{ const p=await ppRead(img); if (p?.name){ r.name=p.name; r.pp=true; } if (p?.owned!=null && !r.ownedSure){ r.owned=p.owned; r.ownedSure=true; } }catch(e){}
+  try{ const p=await ppRead(img); if (p?.name){ r.name=p.name; r.pp=true; r.ppLow=p.low||''; } if (p?.owned!=null && !r.ownedSure){ r.owned=p.owned; r.ownedSure=true; } }catch(e){}
   return await nameDone(r);
 }
 // 読み取った名前を一覧・覚えた名前に合わせ、組にするときに比べる「いちばん近い一覧の名前」も出しておく
 async function nameDone(r){ if (r.name){ r.raw=r.name;
   // 新しい読み取りの名前はほぼ正確なので、一覧と同じ名前・前に直した名前のときだけ置き換える（「BR」を一覧にある「BE」に直してしまわない）
-  if (r.pp){ await loadItemNames(); r.name=dictNorm().get(r.name.normalize('NFKC')) || learnedTo(r.name) || r.name; }
+  if (r.pp){ await loadItemNames(); r.name=dictNorm().get(r.name.normalize('NFKC')) || learnedTo(r.name) || r.name; ppSeen.set(r.name,r.ppLow||''); }
   else r.name=await nearestItemName(r.name);
   r.known=await knownNear(r.raw); } return r; }
 let picking=false, shotName='', shotRaw='', shotReading=false, shotIph=false, shotNoGift=false, shotFixed=false, shotGuess=false; // shotGuess：画像が読めず、受け取った名前を仮に入れた（赤にして確かめてもらう）
@@ -1196,7 +1200,9 @@ window.addEventListener('storage',e=>{ if (e.key===PENDING_KEY) renderPendNote()
 const nameOk=n=>!!n && (dictExact.has(n) || okNames.has(n) || learnedNames().has(n));
 // 'ok'＝一覧・覚えた名前と一致（緑）、'iph'＝一覧にないがiPhoneで読んだ名前（黄・コピーできる）、'ng'＝赤
 // 画像が読めずに仮に入れた名前（guess）は、一覧にある名前でも赤（コピーの前に確かめてもらう）
-const nameStatus=e=>e.guess&&e.name?'ng':nameOk(e.name)?'ok':(e.iph&&e.name?'iph':'ng');
+// 新しい読み取りで読んだ名前（一覧になくても）：自信があれば緑「読み取りOK」、自信の低い字があれば赤「要確認」（その字に印をつける）
+const ppSeen=new Map(), ppOk=n=>!!n && ppSeen.get(n)==='';
+const nameStatus=e=>e.guess&&e.name?'ng':nameOk(e.name)||ppOk(e.name)?'ok':(e.iph&&e.name?'iph':'ng');
 // reading：読み取り中（撮った順に仮に入れた名前も、確かめ終わるまでは読み取り中）
 function nameEntries(){ return items.length>1 ? items.map((it,i)=>({i, name:it.name||'', raw:it.raw||'', reading:!!(it.reading||it.prov), iph:it.iph, noGift:it.noGift, skip:!!it.skip, fixed:!!it.fixed, guess:!!it.guess && !it.fixed}))
   : (shotImg ? [{i:0, name:shotName, raw:shotRaw, reading:shotReading, iph:shotIph, noGift:shotNoGift, skip:false, fixed:shotFixed, guess:shotGuess && !shotFixed}] : []); }
@@ -1207,8 +1213,10 @@ function renderNames(){
   const box=$('names'); box.innerHTML='';
   nameEntries().forEach(e=>{ const d=document.createElement('div'); const st=nameStatus(e);
     d.className='nmRow '+(e.reading?'wait':st);
-    d.innerHTML=`<span class="no">${e.i+1}</span><span class="t"></span><span class="st">${e.reading?'読取中':e.guess&&e.name?'仮の名前':st==='ok'?(dictExact.has(e.name)?'一覧と一致':'決めた名前'):st==='iph'?'iPhoneで読んだ':e.name?'一覧にない':'読めず'}</span>`;
-    d.querySelector('.t').textContent=e.name||(e.reading?'…':'（名前なし）'); d.onclick=()=>{ fixThen=null; openFix(e.i); };
+    d.innerHTML=`<span class="no">${e.i+1}</span><span class="t"></span><span class="st">${e.reading?'読取中':e.guess&&e.name?'仮の名前':st==='ok'?(dictExact.has(e.name)?'一覧と一致':nameOk(e.name)?'決めた名前':'読み取りOK'):st==='iph'?'iPhoneで読んだ':e.name&&ppSeen.has(e.name)?'要確認':e.name?'一覧にない':'読めず'}</span>`;
+    d.querySelector('.t').textContent=e.name||(e.reading?'…':'（名前なし）');
+    const low=st==='ng' && !e.reading && !e.guess && ppSeen.get(e.name); // 自信の低い字に印
+    if (low){ const t=d.querySelector('.t'); t.textContent=''; for (const c of e.name){ if (low.includes(c)){ const m=document.createElement('mark'); m.textContent=c; t.appendChild(m); } else t.append(c); } } d.onclick=()=>{ fixThen=null; openFix(e.i); };
     if (e.noGift){ const g=document.createElement('span'); g.className='st ng-gift'; g.style.cssText='background:#ff5a6e;color:#fff'; g.textContent='🚫プレゼント禁止'; d.querySelector('.t').after(g); d.style.borderColor='#ff5a6e'; }
     if (e.name){ const cp=document.createElement('button'); cp.type='button'; cp.className='cp'; cp.textContent='📋コピー';
       cp.onclick=async ev=>{ ev.stopPropagation(); toast(await copyText(e.name) ? `「${e.name}」をコピーしました` : 'コピーできませんでした'); };
