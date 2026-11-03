@@ -276,6 +276,7 @@
   <section class="card"><h2>覚えた名前</h2><div class="in">
     <div class="note">「名前を直す」で決めた名前や、文字起こしで直して「もう一度コピー」した名前です。同じ読み取りになったら右の名前に自動で直します（この端末だけ）。</div>
     <div id="learnedList"></div>
+    <a class="pill wide" href="shikumi.pdf" target="_blank" rel="noopener" style="margin-top:8px;text-decoration:none;display:flex">📄 アプリのしくみ（PDF）</a>
     <a class="pill wide" href="ranking.html" style="margin-top:8px;text-decoration:none;display:flex">📈 売れ筋ランキング</a>
     <a class="pill wide" href="items.html" style="margin-top:8px;text-decoration:none;display:flex">📖 アイテム名一覧を見る</a>
   </div></section>
@@ -380,7 +381,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='68'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='69'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
