@@ -319,7 +319,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='56'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='57'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -791,7 +791,8 @@ function prepText(t){ t=halfDigits(t||'');
     t=t.replace(/\s*(?=リリ.?ス\s*日|所持数|「?欲しい」?\s*の数|ショップ情報|タイプ\s*[:：]|タイトル\s*[:：]|公開期間|話題をさがす|コーデ例をみる|ギフトを贈る)/g,'\n');
   return t; }
 // アイテムの画面（「欲しい」の数・リリース日・所持数のうち2つ）なのに名前が読めなかったか（⚙の記録で「保存した完成画像」と分ける）
-const itemLike=f=>POKE_MARK.filter(r=>r.test(f)).length>=2 && !APP_SCREEN.test(f) && !OTHER_GAME.test(f) && !savedImage(f);
+// （ゲームの画面の字（ショップ情報・ギフトを贈る など）があるときだけ。LINEの会話などで「所持数」「リリース日」と書いただけのものは入れない）
+const itemLike=f=>POKE_MARK.filter(r=>r.test(f)).length>=2 && (POKE_FRAME.test(f) || /ショップ情報|ギフトを贈る|話題をさがす|コーデ例をみる/.test(f)) && !APP_SCREEN.test(f) && !OTHER_GAME.test(f) && !savedImage(f);
 // 辞書を待たずにすぐ読む（辞書がまだなら、iPhoneが読んだ行をそのまま使う）
 function parseBlock(t){ t=prepText(t);
   const lines=t.split(/\n/).map(l=>l.trim()).filter(Boolean), flat=t.replace(/\s/g,'');
