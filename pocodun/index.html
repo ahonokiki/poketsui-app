@@ -272,7 +272,7 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='16';
+const APP_VER='17';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
@@ -295,7 +295,7 @@ const BLOCKS0=[
   {label:'お渡し方法', on:true, t:`${LINE}\n引き継ぎコードにてお譲りいたします。\n（iOS、Androidどちらでも使用できます。）\n{番号}.石{石}\n${LINE}`},
   {label:'最後の挨拶文', on:true, t:`\n※ 記載以外の情報は特定防止の為、お見せできません。また譲渡後のアカウント凍結等は自己責任になります。ご了承の上ご購入ください。\n\n⚠️質問後の無返信、既読無視、運営レビューのお客様とはお取引いたしかねます。ご了承ください。\n\n${LINE}`},
 ];
-const SET0={titleName:'nick', descName:'name', cand:true, times:false, autoOrder:true, autoCopy:true, autoBg:'pearl', arrow:true, cols:'auto', titleTpl:'{番号}.石{石}　{題名キャラ}+運UP{運UP}{↑}', blocks:BLOCKS0};
+const SET0={titleName:'nick', descName:'name', cand:true, times:false, autoOrder:true, autoCopy:false, autoBg:'pearl', arrow:true, cols:'auto', titleTpl:'{番号}.石{石}　{題名キャラ}+運UP{運UP}{↑}', blocks:BLOCKS0};
 let SET={...SET0, ...load('set',{})}; if (!Array.isArray(SET.blocks)) SET.blocks=BLOCKS0;
 const saveSet=()=>save('set',SET);
 
