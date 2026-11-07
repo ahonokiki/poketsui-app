@@ -41,7 +41,7 @@
   .cands{flex-basis:100%;display:flex;flex-direction:column;align-items:flex-start;gap:3px;font-size:11px;color:var(--sub);padding-left:4px}.cands button{border:2px solid transparent;background:#efe4fb;color:#5b3fa0;border-radius:99px;padding:2px 11px;font:inherit;font-size:13px;font-weight:800;text-align:left}
   .cands button.on{background:#6a4bc4;color:#fff;border-color:#4a2f9a}.cands button.on::before{content:'✓ '}
   .status{margin-top:6px;display:flex;flex-direction:column;gap:2px;font-weight:800;font-size:13px}.status .ok{color:#2f7a4f}.status .ng{color:#d0304f}.status .sub{color:var(--sub);font-weight:500}
-  .lk{display:flex;gap:8px;align-items:center;border:2px solid var(--line);border-radius:12px;padding:5px;margin:5px 0}.lk.need{border-color:var(--yelb);background:var(--yel)}.lk img{width:52px;border-radius:8px}.lk .mid{flex:1}
+  .lk{display:flex;gap:8px;align-items:center;border:2px solid var(--line);border-radius:12px;padding:5px;margin:5px 0}.lk.need{border-color:var(--yelb);background:var(--yel)}.lk.off{opacity:.55;padding:3px}.lk.off img{width:36px}.lkn{font-size:12px;font-weight:800}.lk img{width:52px;border-radius:8px}.lk .mid{flex:1}
   .wb{border:2px solid var(--line);background:#fff;border-radius:99px;padding:3px 10px;margin-left:4px;font:inherit;font-weight:900}.wb.on{background:#3fae6a;border-color:#3fae6a;color:#fff}
   textarea.out{width:100%;font-size:13px;line-height:1.5}
   #titleLen{font-size:12px;color:var(--sub)}#titleLen.over{color:#d0304f;font-weight:900}
@@ -272,7 +272,7 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='20';
+const APP_VER='21';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
@@ -354,10 +354,23 @@ async function readShot(img,si){
     const has=[...new Set(cells.map(c=>c.ri))].sort((x,y)=>x-y); let best=[0,-1],st=0; for (let i=1;i<=has.length;i++){ if (i===has.length||has[i]!==has[i-1]+1){ if (i-1-st>best[1]-best[0]) best=[st,i-1]; st=i; } }
     const keep=new Set(has.slice(best[0],best[1]+1)); for (let i=cells.length-1;i>=0;i--) if (!keep.has(cells[i].ri)) cells.splice(i,1); }
   // 鍵マークが1つでもあれば「鍵キャラのスクショ」、なければ「ラッキーのスクショ」（運アップ用モンスターを並べた画面）
-  if (!cells.some(c=>c.lock)){ const got=cells.filter(c=>c.filled).map(c=>({canvas:cellImg(img,c,H), fp:pdFP2(img,c.x0,c.a,c.w,c.h)}));
-    // ラッキーの画面は、同じポポロンばかりで種類が少ない。種類が多いのは、鍵が点滅で消えた瞬間の鍵キャラのスクショ
+  if (!cells.some(c=>c.lock)){
+    const got=cells.filter(c=>c.filled).map(c=>({canvas:cellImg(img,c,H), fp:pdFP2(img,c.x0,c.a,c.w,c.h), cnt:0, si}));
+    // 強化素材の一覧は、同じ素材を1マスにまとめて、アイコンの下に「x225」のように数を出す → その数を読む
+    const pp=got.length ? await timeLimit(ppInit(),90000) : null; let withCnt=0;
+    if (pp){ const fc=cells.filter(c=>c.filled); for (let k=0;k<fc.length;k++){ const c=fc[k]; try{ for (const o of [.35,.3,.4]){ const r=await timeLimit(ppLine(pp,img,{x:c.x0+c.w*.12, y:c.b+G.pitch*o, w:c.w*.76, h:G.pitch*.16}),8000);
+      const m=(r?.t||'').replace(/[×✕Ｘｘ]/g,'x').replace(/[０-９]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0xFEE0)).match(/x\s*(\d{1,4})/i); if (m){ got[k].cnt=+m[1]; withCnt++; break; } } }catch(e){} } }
+    // 強化素材の一覧（x数つき）は、行の位置が少しずれて見つかることがある → 行ごとに、GameWith のアイコンにいちばん似る高さに合わせ直す
+    if (GW?.length && withCnt>=got.length*.3){ const rows=[...new Set(cells.filter(c=>c.filled).map(c=>c.ri))];
+      for (const ri of rows){ const rc=cells.filter(c=>c.ri===ri&&c.filled).slice(0,2); let bo=0,bd=1e9;
+        for (let o=-.4;o<=.401;o+=.05){ let sum=0; for (const c of rc){ const a=c.a+G.pitch*o; if (a<0||c.b+G.pitch*o>=H){ sum=1e9; break; } const fp=pdFP2(img,c.x0,a,c.w,c.h); let m=1e9; for (const x of GW){ const dd=pdDist(x.f,fp); if (dd<m) m=dd; } sum+=m; } if (sum<bd){ bd=sum; bo=o; } }
+        if (bo) for (const c of cells) if (c.ri===ri){ c.a+=Math.round(G.pitch*bo); c.b+=Math.round(G.pitch*bo); c.shift=bo; } } }
+      const fc2=cells.filter(c=>c.filled); fc2.forEach((c,k)=>{ if (c.shift){ got[k].canvas=cellImg(img,c,H); got[k].fp=pdFP2(img,c.x0,c.a,c.w,c.h); } });
+    // ラッキーの画面（運アップ用だけ）は種類が少ない。強化素材の一覧は「x数」が付く。どちらでもなく種類が多いのは、鍵が点滅で消えた瞬間の鍵キャラのスクショ
     const kinds=[]; for (const x of got) if (!kinds.some(k=>pdDist(k,x.fp)<30)) kinds.push(x.fp);
-    if (got.length && (kinds.length<=10 || kinds.length<=got.length*.5)) lucky.push(...got);
+    if (got.length && (withCnt>=got.length*.3 || kinds.length<=10 || kinds.length<=got.length*.5)){
+      // 2枚以上のスクショで、同じ種類・同じ「x数」が出てきたら、重なって写った同じマスなので1回だけ数える
+      for (const x of got){ if (x.cnt && lucky.some(l=>l.si!==x.si && l.cnt===x.cnt && pdDist(l.fp,x.fp)<30)) continue; lucky.push(x); } }
     else toast(`${si+1}枚目：鍵マークが見つかりませんでした。鍵がはっきり出ている瞬間に撮り直してください`);
     return; }
   for (const {a,b,x0,w,h,lock} of cells){ if (!lock) continue;
@@ -380,7 +393,7 @@ function filled(d,W,x0,a,w,h){ let n=0,m=0; for (let y=Math.round(a+h*.3);y<a+h*
 // 運アップ用モンスター（図鑑No・名前・運気）。ゲームの詳しい画面で「運気 7/7」なのはラッキーセブンポポロンだけ、ほかは「1/1」
 const LUCK_DB={'0479':['ラッキーポポロン',1],'2457':['ラッキーセブンポポロン',7],'2000':['2000体目記念ラッキーポロンちゃん',1],'0618':['ラッキーじじい',1],'1828':['らっきいじじい',1],'2572':['じじいレイ',1],
   '2429':['ジジィートス・ジジラ',1],'2430':['ジジィートス・ジジイラ',1],'2277':['ラッキースライムじじい',1],'2107':['ラッキー猫おばば',1]};
-function luckGroups(){ const gs=[]; for (const l of lucky){ const g=gs.find(x=>pdDist(x.fp,l.fp)<30); if (g) g.n++; else gs.push({fp:l.fp, canvas:l.canvas, n:1}); }
+function luckGroups(){ const gs=[], mixed=lucky.some(l=>l.cnt>0); for (const l of lucky){ const g=gs.find(x=>pdDist(x.fp,l.fp)<30), k=l.cnt||1; if (g) g.n+=k; else gs.push({fp:l.fp, canvas:l.canvas, n:k}); }
   for (const g of gs){ let best=null,bd=1e9; for (const e of LUCK){ const dd=pdDist(e.fp,g.fp); if (dd<bd){bd=dd;best=e;} } g.known=bd<30; g.w=g.known ? best.w : 1; g.name='';
     // 覚えていなければ、GameWith のアイコンと見比べて、上の表のモンスターなら名前と運気を自動で入れる
     let gb=null,gd=1e9; for (const x of (GW||[])){ const dd=pdDist(x.f,g.fp); if (dd<gd){gd=dd;gb=x;} }
@@ -388,7 +401,9 @@ function luckGroups(){ const gs=[]; for (const l of lucky){ const g=gs.find(x=>p
     // ラッキーポポロンとセブンは、スクショの小さなアイコンでは絵が近すぎる → 帽子の赤（セブンは赤い帽子）で見分ける
     if (!hit){ const dd=i=>{ const x=(GW||[]).find(y=>y.i===i); return x ? pdDist(x.f,g.fp) : 1e9; }, d1=dd('0479'), d7=dd('2457');
       if (Math.min(d1,d7)<=45 && Object.keys(LUCK_DB).every(i=>i==='0479'||i==='2457'||dd(i)>Math.min(d1,d7))) hit=redHat(g.canvas)>=.06 ? '2457' : '0479'; }
-    if (hit){ g.name=LUCK_DB[hit][0]; if (!g.known){ g.w=LUCK_DB[hit][1]; g.known=true; g.auto=true; } } }
+    if (hit){ g.name=LUCK_DB[hit][0]; if (!g.known){ g.w=LUCK_DB[hit][1]; g.known=true; g.auto=true; } }
+    // 強化素材の一覧（x数つき）は、運アップ用でない素材もまざる。GameWith に名前のある素材（スキルポポロンなど）にはっきり似ていれば「数えない」
+    else if (!g.known && mixed){ if (gb && gd<=26 && gb.n){ g.name=gb.n; g.w=0; g.known=true; g.auto=true; g.other=true; } else g.w=0; } }
   return gs; }
 // アイコンの上の方（帽子のあたり）の、はっきりした赤の割合
 function redHat(c){ const W=c.width,H=c.height, d=c.getContext('2d').getImageData(0,0,W,H).data, top=H-W*.98; let red=0,n=0;
@@ -396,14 +411,14 @@ function redHat(c){ const W=c.width,H=c.height, d=c.getContext('2d').getImageDat
 const luckTotal=()=>luckGroups().reduce((s,g)=>s+g.n*g.w,0);
 function fillUnup(){ if (!lucky.length || $('unup').dataset.typed) return; const t=luckTotal(); $('unup').value=t>=10 ? Math.floor(t/10)*10 : t; }
 function setLuck(fp,w){ const e=LUCK.find(x=>pdDist(x.fp,fp)<30); if (e) e.w=w; else LUCK.push({fp,w}); saveLuck(); $('unup').dataset.typed=''; fillUnup(); renderAll(); }
-function renderLucky(){ const box=$('lucky'), gs=luckGroups(); $('luckyCard').hidden=!lucky.length; box.innerHTML='';
-  gs.forEach(g=>{ const d=document.createElement('div'); d.className='lk'+(g.known?'':' need'); const im=document.createElement('img'); im.src=g.canvas.toDataURL('image/jpeg',.85); d.appendChild(im);
+function renderLucky(){ const box=$('lucky'), gs=luckGroups().sort((a,b)=>((b.known&&b.w>0)-(a.known&&a.w>0)) || ((!b.known)-(!a.known))), mixed=lucky.some(l=>l.cnt>0); $('luckyCard').hidden=!lucky.length; box.innerHTML='';
+  gs.forEach(g=>{ const d=document.createElement('div'); d.className='lk'+(g.known?'':' need')+(g.known&&g.w===0?' off':''); const im=document.createElement('img'); im.src=g.canvas.toDataURL('image/jpeg',.85); d.appendChild(im);
     const t=document.createElement('div'); t.className='mid'; t.innerHTML=(g.name?`<div class="lkn">${esc(g.name)}</div>`:'')+`<b>${g.n}体</b>　`;
     for (const w of [1,7,0]){ const b=document.createElement('button'); b.type='button'; b.className='wb'+(g.w===w&&g.known?' on':''); b.textContent=w?'+'+w:'数えない'; b.onclick=()=>setLuck(g.fp,w); t.appendChild(b); }
     // ＋1・＋7 以外の運気のキャラ（たとえば＋11）は、数を打って覚えさせる
     { const other=g.known && ![1,7,0].includes(g.w), b=document.createElement('button'); b.type='button'; b.className='wb'+(other?' on':''); b.textContent=other?'+'+g.w:'ほかの数';
       b.onclick=()=>{ const v=prompt('このモンスター1体の運気（例：11）',other?g.w:''); if (v==null) return; const n=parseInt(String(v).replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)),10); if (n>=0 && n<=999) setLuck(g.fp,n); }; t.appendChild(b); }
-    if (!g.known) t.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent:'初めて見るモンスターです。ラッキーセブンポポロンなら「+7」、ラッキーポポロン・ラッキーじじいなどは「+1」、＋1・＋7以外なら「ほかの数」、運アップ用でない素材なら「数えない」を押してください（次からは覚えます）'}));
+    if (!g.known) t.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent: mixed ? '運気キャラですか？ 運気キャラなら「+1」などを押してください（運気でない素材なら、そのままで数えません。次からは覚えます）' : '初めて見るモンスターです。ラッキーセブンポポロンなら「+7」、ラッキーポポロン・ラッキーじじいなどは「+1」、＋1・＋7以外なら「ほかの数」、運アップ用でない素材なら「数えない」を押してください（次からは覚えます）'}));
     d.appendChild(t); box.appendChild(d); });
   const tot=luckTotal(); $('luckyTotal').textContent=lucky.length ? `合計 ${tot}体分 → 運UPに「${tot>=10?Math.floor(tot/10)*10:tot}」を入れました` : ''; }
 function fullFP(c){ const t=document.createElement('canvas'); t.width=t.height=16; t.getContext('2d').drawImage(c,0,0,16,16); return Array.from(t.getContext('2d').getImageData(0,0,16,16).data).filter((_,i)=>i%4!==3); }
