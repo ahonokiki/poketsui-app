@@ -413,13 +413,18 @@ function draw(){ ctx.clearRect(0,0,S,S);
   const n=icons.length; if (n){ const cols=Math.min(n,bestCols(n)), rows=Math.ceil(n/cols), areaH=S*.68, top=S*.04, gap=S*.018;
     const w=Math.min((S*.92-gap*(cols-1))/cols, (areaH-gap*(rows-1))/rows/1.02), h=w*1.02; let y=top+(areaH-(rows*h+(rows-1)*gap))/2;
     for (let r=0;r<rows;r++){ const k=Math.min(cols,n-r*cols); let x=(S-(k*w+(k-1)*gap))/2; for (let i=0;i<k;i++){ const ic=icons[r*cols+i].canvas; ctx.drawImage(ic,x,y,w,w*ic.height/ic.width); x+=w+gap; } y+=h+gap; } }
-  // 下の石の枠
-  const v=$('stone').value.trim()||'0', bw=S*.62, bh=S*.17, bx=(S-bw)/2, by=S*.79;
+  // 下の石の枠（奥さんの画像に合わせて、枠の幅は数字の長さに合わせる。マークのすぐ右に数字）
+  const v=$('stone').value.trim()||'0', bh=S*.158, by=S*.807, fs=Math.round(bh*.64);
+  ctx.font=`900 ${fs}px "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif`; const tw=ctx.measureText(v).width;
+  const ok=CRYSTAL.complete && CRYSTAL.naturalWidth, gh=bh*.9, gw=ok ? gh*CRYSTAL.naturalWidth/CRYSTAL.naturalHeight : bh*.7;
+  const bw=Math.max(S*.48, bh*.38+gw+bh*.2+tw+bh*.5), bx=(S-bw)/2;
   ctx.save(); ctx.shadowColor='rgba(0,0,0,.45)'; ctx.shadowBlur=18; rr(bx,by,bw,bh,bh/2); ctx.fillStyle='#d9a441'; ctx.fill(); ctx.restore();
-  rr(bx+8,by+8,bw-16,bh-16,(bh-16)/2); const gb=ctx.createLinearGradient(0,by,0,by+bh); gb.addColorStop(0,'#6b3a1c'); gb.addColorStop(1,'#3d1f0c'); ctx.fillStyle=gb; ctx.fill();
-  gem(bx+bh*.62,by+bh/2,bh*.36);
-  ctx.font=`900 ${Math.round(bh*.62)}px "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif`; ctx.textBaseline='middle'; ctx.textAlign='center'; const tx=bx+bh*1.15+(bw-bh*1.3)/2;
+  rr(bx+S*.007,by+S*.007,bw-S*.014,bh-S*.014,(bh-S*.014)/2); const gb=ctx.createLinearGradient(0,by,0,by+bh); gb.addColorStop(0,'#6b3a1c'); gb.addColorStop(1,'#3d1f0c'); ctx.fillStyle=gb; ctx.fill();
+  const gx=bx+bh*.38; if (ok){ ctx.imageSmoothingQuality='high'; ctx.drawImage(CRYSTAL,gx,by+(bh-gh)/2,gw,gh); } else gem(gx+gw/2,by+bh/2,bh*.36);
+  const tx=gx+gw+bh*.2+tw/2+Math.max(0,(bw-(bh*.38+gw+bh*.2+tw+bh*.5))/2); ctx.textBaseline='middle'; ctx.textAlign='center';
   ctx.lineJoin='round'; ctx.lineWidth=bh*.1; ctx.strokeStyle='#2a1406'; ctx.strokeText(v,tx,by+bh*.54); ctx.fillStyle='#fff'; ctx.fillText(v,tx,by+bh*.54); }
+// 虹結晶のマーク：ゲーム画面の上の虹結晶を切り抜いたもの
+const CRYSTAL=new Image(); CRYSTAL.onload=()=>draw(); CRYSTAL.src='crystal.png';
 function rr(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
 function gem(cx,cy,r){ const pts=[...Array(6)].map((_,i)=>[cx+r*Math.cos(Math.PI/6+i*Math.PI/3),cy+r*Math.sin(Math.PI/6+i*Math.PI/3)]); ctx.beginPath(); pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y)); ctx.closePath();
   const g=ctx.createConicGradient(0,cx,cy); ['#ff4d6d','#ffb347','#fff35c','#5ce87a','#4dc3ff','#a06bff','#ff4d6d'].forEach((c,i)=>g.addColorStop(i/6,c)); ctx.fillStyle=g; ctx.fill(); ctx.lineWidth=r*.12; ctx.strokeStyle='#fff'; ctx.stroke();
