@@ -112,7 +112,7 @@
     <div class="row"><label>題名</label><select data-set="titleName"><option value="nick">呼称（なければ正式名）</option><option value="name">正式名</option></select></div>
     <div class="row"><label>説明文</label><select data-set="descName"><option value="name">正式名</option><option value="nick">呼称（なければ正式名）</option></select></div>
     <div class="row"><label><input type="checkbox" data-set="cand"> 呼称の候補を出す（前の出品から）</label></div>
-    <div class="row"><label><input type="checkbox" data-set="autoOrder"> キャラの順番を自動で並べる（開催中ガチャのキャラ→強い順。あとから ↑↓ で入れ替えられます）</label></div>
+    <div class="row"><label><input type="checkbox" data-set="autoOrder"> キャラの順番を強い順に自動で並べる（GameWith の最強ランキング。あとから ↑↓ で入れ替えられます）</label></div>
     <div class="row"><label><input type="checkbox" data-set="times"> 同じキャラの数に「×」を付ける（例：イヴ＆シンラ×2）</label></div>
     <div class="row"><label><input type="checkbox" data-set="arrow"> 運UPの数に「↑」を付ける</label></div>
     <div class="row"><label>画像の列の数</label><select data-set="cols"><option value="auto">自動（いちばん大きく）</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>
@@ -243,7 +243,7 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='10';
+const APP_VER='11';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
@@ -296,7 +296,7 @@ $('shot').addEventListener('change', async e=>{ const files=[...e.target.files];
   $('busy').hidden=true; autoOrder();
   if (!icons.length && !lucky.length) toast('鍵マークの付いたアイコンが見つかりませんでした。鍵がはっきり出ている瞬間に撮ったスクショで試してください');
   fillUnup(); renderAll(); });
-// 名前の並び順（はじめ）：開催中ガチャのキャラ（その中で強い順）→ ほかは強い順（GameWith の最強ランキング）。あとは ↑↓ で入れ替える
+// 名前の並び順（はじめ）：強い順（GameWith の最強ランキング。ランキングにないものは新しい順）。あとは ↑↓ で入れ替える
 function orderOf(ic){ const c=ic.cands?.find(c=>c.n===ic.name) || (GW||[]).find(x=>x.n===ic.name); return c?.o ?? 1e9; }
 function autoOrder(){ if (!SET.autoOrder) return; icons.forEach((ic,k)=>ic.k0=k); icons.sort((a,b)=>orderOf(a)-orderOf(b) || a.k0-b.k0); icons.forEach((ic,k)=>ic.inTitle=k<4); }
 function fileImg(f){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(f), i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('画像')); i.src=u; }); }
