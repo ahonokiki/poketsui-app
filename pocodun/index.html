@@ -117,8 +117,8 @@
     <div class="row"><label><input type="checkbox" data-set="arrow"> 運UPの数に「↑」を付ける</label></div>
     <div class="row"><label>画像の列の数</label><select data-set="cols"><option value="auto">自動（いちばん大きく）</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>
   </section>
-  <section class="card"><h2>背景</h2><div class="note">＋を押して、色ごとに用意した背景を入れてください。押すと選べます。長押しで消せます。何も入っていない所を選ぶと、新しいガチャの絵の色から作った背景（パール絵の具・キラキラ・ぼかし＋光の玉・グラデーション・ステンドグラス・水彩画から選べます）になります。</div><div class="bgs" id="bgs"></div><div class="row" style="margin-top:6px"><label>何も入っていない所の背景</label><select data-set="autoBg"><option value="pearl">パール絵の具</option><option value="sparkle">キラキラ</option><option value="bokeh">ぼかし＋光の玉</option><option value="gradient">グラデーション</option><option value="stained">ステンドグラス</option><option value="wc">水彩画</option></select></div>
-<button type="button" class="sbtn" id="bgPearl" style="margin-top:6px">好きな画像をパール絵の具ふうにして背景に入れる</button> <button type="button" class="sbtn" id="bgWc" style="margin-top:6px">好きな画像を水彩画ふうにして背景に入れる</button> <button type="button" class="sbtn" id="bgDel" style="margin-top:6px">選んでいる背景を消す</button></section>
+  <section class="card"><h2>背景</h2><div class="note">＋を押して、色ごとに用意した背景を入れてください。押すと選べます。長押しで消せます。何も入っていない所を選ぶと、新しいガチャの絵の色から作った背景（水彩画＋パールのキラキラ・キラキラ・ぼかし＋光の玉・グラデーション・ステンドグラス・水彩画から選べます）になります。</div><div class="bgs" id="bgs"></div><div class="row" style="margin-top:6px"><label>何も入っていない所の背景</label><select data-set="autoBg"><option value="pearl">水彩画＋パールのキラキラ</option><option value="sparkle">キラキラ</option><option value="bokeh">ぼかし＋光の玉</option><option value="gradient">グラデーション</option><option value="stained">ステンドグラス</option><option value="wc">水彩画</option></select></div>
+<button type="button" class="sbtn" id="bgPearl" style="margin-top:6px">好きな画像を水彩画＋パールのキラキラにして背景に入れる</button> <button type="button" class="sbtn" id="bgWc" style="margin-top:6px">好きな画像を水彩画ふうにして背景に入れる</button> <button type="button" class="sbtn" id="bgDel" style="margin-top:6px">選んでいる背景を消す</button></section>
   <section class="card"><h2>題名の形</h2><input id="titleTpl" style="width:100%"><div class="note">差し込み：{番号} {石} {題名キャラ} {運UP} {↑}</div></section>
   <section class="card"><h2>説明文の形（ブロック）</h2>
     <div class="note">チェックを外すと、そのブロックは入りません。↑↓で順番、「編集」で中身を変えられます。<br>差し込み：{見出し} {絵文字挨拶} {石} {運UP} {↑} {キャラ一覧} {番号}</div>
@@ -220,46 +220,30 @@ function pdWatercolor(img, S=1080, seed=7){
   g.save(); g.globalCompositeOperation='soft-light'; g.globalAlpha=.35; g.filter='blur(.6px)'; g.drawImage(tex,0,0,S,S); g.restore();
   return c;
 }
-// パール絵の具ふうの背景：ガチャの色で、へらで伸ばした厚塗りの絵の具（白っぽいパール→色へのグラデーション・へらの細い筋・端の放射）＋虹色の光沢＋ラメ
-function pdPearl(img, S=1080, seed=11){
-  let r=seed>>>0; const rnd=()=>((r=(r*1664525+1013904223)>>>0)/4294967296);
-  const N=12, sm=document.createElement('canvas'); sm.width=sm.height=N; const sg=sm.getContext('2d',{willReadFrequently:true});
-  sg.imageSmoothingQuality='high'; sg.drawImage(img,0,0,N,N); const px=sg.getImageData(0,0,N,N).data;
-  const pal=[]; for (let i=0;i<px.length;i+=4){ const R=px[i],G=px[i+1],B=px[i+2], m=(R+G+B)/3, s=1.9; pal.push([R,G,B].map(v=>Math.round(Math.max(0,Math.min(255,m+(v-m)*s))))); }
-  const col=(x,y)=>pal[Math.min(N-1,Math.max(0,(y/S*N)|0))*N+Math.min(N-1,Math.max(0,(x/S*N)|0))];
-  const mix=(c,w,t)=>c.map((v,i)=>Math.round(v+(w[i]-v)*t)), rgb=(c,a=1)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
-  const c=document.createElement('canvas'); c.width=c.height=S; const g=c.getContext('2d');
-  // 下地：ガチャの色を大きくぼかす（少し暗めにして、絵の具が浮き出るように）
-  g.fillStyle='#3a3048'; g.fillRect(0,0,S,S);
-  g.save(); g.filter=`blur(${S/12}px) brightness(.8) saturate(1.3)`; g.drawImage(sm,-S*.1,-S*.1,S*1.2,S*1.2); g.restore();
-  // 絵の具の塗り跡（豆の形）。左＝パールの白、右＝色。右の端に、へらを離したときの放射
-  const blob=(x,y,len,wid,ang,base)=>{
-    g.save(); g.translate(x,y); g.rotate(ang);
-    const w1=wid*(.8+rnd()*.25), w2=wid, L=len/2;
-    const path=()=>{ g.beginPath(); g.moveTo(-L,0); g.bezierCurveTo(-L,-w1*1.15,-L*.2,-w1*.85+(rnd()-.5)*wid*.1,0,-w1*.75); g.bezierCurveTo(L*.4,-w2*.75,L,-w2*1.2,L,0);
-      g.bezierCurveTo(L,w2*1.2,L*.4,w2*.8,0,w1*.8); g.bezierCurveTo(-L*.2,w1*.9,-L,w1*1.15,-L,0); g.closePath(); };
-    path(); g.shadowColor='rgba(0,0,0,.45)'; g.shadowBlur=wid*.25; g.shadowOffsetY=wid*.1;
-    const gr=g.createLinearGradient(-L,0,L,0); gr.addColorStop(0,rgb(mix(base,[255,255,255],.8))); gr.addColorStop(.35,rgb(mix(base,[255,255,255],.35))); gr.addColorStop(.7,rgb(base)); gr.addColorStop(1,rgb(mix(base,[0,0,0],.2)));
-    g.fillStyle=gr; g.fill(); g.shadowColor='transparent';
-    g.save(); path(); g.clip();
-    // へらの細い筋（指紋のような同心の弧）
-    const cx=L*.55; for (let k=0;k<60;k++){ const rr=wid*.12+k*wid*.034; g.beginPath(); g.ellipse(cx-rr*.6,0,rr,rr*1.15,0,-1.35,1.35); g.lineWidth=1.3; g.strokeStyle=k%2?rgb(mix(base,[0,0,0],.4),.5):rgb([255,255,255],.5); g.stroke(); }
-    // 端の放射
-    for (let k=0;k<70;k++){ const a=rnd()*6.283, l=wid*(.08+rnd()*.32); g.beginPath(); g.moveTo(cx,0); g.lineTo(cx+Math.cos(a)*l,Math.sin(a)*l); g.lineWidth=.7; g.strokeStyle='rgba(255,255,255,.7)'; g.stroke(); }
-    // ツヤ（上からの光）と、パールの白いすじ
-    const hl=g.createLinearGradient(0,-wid,0,wid); hl.addColorStop(0,'rgba(255,255,255,.6)'); hl.addColorStop(.3,'rgba(255,255,255,.05)'); hl.addColorStop(.75,'rgba(0,0,0,0)'); hl.addColorStop(1,'rgba(0,0,0,.18)'); g.fillStyle=hl; g.fillRect(-L,-wid*1.3,len,wid*2.6);
-    for (let k=0;k<5;k++){ g.beginPath(); const yy=(rnd()-.5)*wid; g.moveTo(-L*.9,yy); g.quadraticCurveTo(-L*.4,yy+(rnd()-.5)*wid*.5,-L*.05,yy*.6); g.lineWidth=wid*(.04+rnd()*.06); g.lineCap='round'; g.strokeStyle='rgba(255,255,255,.12)'; g.stroke(); }
-    g.restore(); g.restore(); };
-  const n=20; for (let t=0;t<n;t++){ const x=S*((t%4)+.5+(rnd()-.5)*1.1)/4, y=S*(((t/4)|0)+.5+(rnd()-.5)*1.0)/5; blob(x,y,S*(.22+rnd()*.24),S*(.06+rnd()*.045),(rnd()-.5)*1.8+(rnd()<.5?0:Math.PI),col(x,y)); }
-  // パールの虹色の光沢
-  g.save(); g.globalCompositeOperation='soft-light'; const ir=g.createLinearGradient(0,0,S,S); ['#ffc6ee','#bff0ff','#fff0a8','#dccbff','#bfffe0','#ffc6ee'].forEach((cc,i)=>ir.addColorStop(i/5,cc)); g.globalAlpha=.6; g.fillStyle=ir; g.fillRect(0,0,S,S); g.restore();
-  // ラメ
-  g.save(); g.globalCompositeOperation='lighter';
-  for (let k=0;k<2600;k++){ const x=rnd()*S, y=rnd()*S, s=rnd()*1.4+.3; g.fillStyle=`rgba(255,${230+rnd()*25|0},${210+rnd()*45|0},${.2+rnd()*.55})`; g.fillRect(x,y,s,s); }
-  for (let k=0;k<12;k++){ const x=rnd()*S, y=rnd()*S, l=S*(.006+rnd()*.012); const gr=g.createRadialGradient(x,y,0,x,y,l*2); gr.addColorStop(0,'rgba(255,255,255,.9)'); gr.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=gr; g.beginPath(); g.arc(x,y,l*2,0,7); g.fill();
-    g.strokeStyle='rgba(255,255,255,.75)'; g.lineWidth=1; g.beginPath(); g.moveTo(x-l*3,y); g.lineTo(x+l*3,y); g.moveTo(x,y-l*3); g.lineTo(x,y+l*3); g.stroke(); }
+// 水彩画＋パール：水彩画の上に、パールの虹色のツヤ（ゆるい光の帯）と細かいラメ・小さなキラッを重ねる
+function pdWcPearl(img, S=1080, seed=7){
+  const c=pdWatercolor(img,S,seed), g=c.getContext('2d');
+  let r=(seed*7919+13)>>>0; const rnd=()=>((r=(r*1664525+1013904223)>>>0)/4294967296);
+  // パールの虹色のツヤ：斜めにゆるく波打つ光の帯
+  g.save(); g.globalCompositeOperation='soft-light';
+  for (let k=0;k<3;k++){ const a=rnd()*Math.PI, x=S/2+Math.cos(a)*S*.6, y=S/2+Math.sin(a)*S*.6; const gr=g.createLinearGradient(x,y,S-x,S-y);
+    ['#ffd6f3','#d4f6ff','#fff4c2','#e6d8ff','#d2ffec','#ffd6f3'].forEach((cc,i)=>gr.addColorStop(i/5,cc)); g.globalAlpha=.35; g.fillStyle=gr; g.fillRect(0,0,S,S); }
   g.restore();
-  return c;
+  // パールの白い光沢（ふんわりした明るい帯）
+  g.save(); g.globalCompositeOperation='screen'; g.filter=`blur(${S/30}px)`;
+  for (let k=0;k<4;k++){ g.beginPath(); const y0=rnd()*S; g.moveTo(-50,y0); g.bezierCurveTo(S*.3,y0+(rnd()-.5)*S*.4,S*.7,y0+(rnd()-.5)*S*.4,S+50,y0+(rnd()-.5)*S*.3); g.lineWidth=S*(.03+rnd()*.05); g.strokeStyle='rgba(255,255,255,.22)'; g.stroke(); }
+  g.restore();
+  // ラメ（細かい粒）と小さなキラッ
+  g.save(); g.globalCompositeOperation='lighter';
+  for (let k=0;k<2200;k++){ const x=rnd()*S, y=rnd()*S, s=rnd()*1.5+.3, h=rnd(); g.fillStyle=h<.33?`rgba(255,220,245,${.25+rnd()*.5})`:h<.66?`rgba(215,245,255,${.25+rnd()*.5})`:`rgba(255,245,210,${.25+rnd()*.5})`; g.fillRect(x,y,s,s); }
+  // キラッ：細く長い十字の光（中心は小さく）
+  for (let k=0;k<30;k++){ const x=rnd()*S, y=rnd()*S, l=S*(.008+rnd()*.018), w=.8+rnd()*.8;
+    const gr=g.createRadialGradient(x,y,0,x,y,l*.35); gr.addColorStop(0,'rgba(255,255,255,.95)'); gr.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=gr; g.beginPath(); g.arc(x,y,l*.35,0,7); g.fill();
+    for (const [dx,dy,L] of [[1,0,l],[0,1,l],[.7,.7,l*.45],[.7,-.7,l*.45]]){ const lg=g.createLinearGradient(x-dx*L,y-dy*L,x+dx*L,y+dy*L); lg.addColorStop(0,'rgba(255,255,255,0)'); lg.addColorStop(.5,'rgba(255,255,255,.9)'); lg.addColorStop(1,'rgba(255,255,255,0)');
+      g.strokeStyle=lg; g.lineWidth=w; g.beginPath(); g.moveTo(x-dx*L,y-dy*L); g.lineTo(x+dx*L,y+dy*L); g.stroke(); } }
+  // 少し大きめのラメ粒
+  for (let k=0;k<260;k++){ const x=rnd()*S, y=rnd()*S, rr=1+rnd()*1.8; g.fillStyle=`rgba(255,255,255,${.35+rnd()*.45})`; g.beginPath(); g.arc(x,y,rr,0,7); g.fill(); }
+  g.restore(); return c;
 }
 
 const timeLimit=(p,ms)=>Promise.race([p,new Promise((_,ng)=>setTimeout(()=>ng(new Error('timeout')),ms))]);
@@ -285,7 +269,7 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='13';
+const APP_VER='14';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
@@ -526,7 +510,7 @@ async function renderBg(){ const box=$('bgs'); box.innerHTML=''; for (let i=0;i<
     if (v){ b.oncontextmenu=e=>{ e.preventDefault(); if (confirm('この背景を消しますか？')){ bgPut(i,null).then(renderBg); } }; }
     box.appendChild(b); } }
 function pickBg(i,wc){ const f=document.createElement('input'); f.type='file'; f.accept='image/*'; f.onchange=async()=>{ const file=f.files[0]; if (!file) return; const img=await fileImg(file); let c=document.createElement('canvas'); const k=Math.min(1,1400/Math.max(img.width,img.height)); c.width=img.width*k; c.height=img.height*k; c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-  if (wc==='pearl') c=pdPearl(c,1080,Date.now()%997); else if (wc) c=pdWatercolor(c,1080,Date.now()%997);
+  if (wc==='pearl') c=pdWcPearl(c,1080,Date.now()%997); else if (wc) c=pdWatercolor(c,1080,Date.now()%997);
   await bgPut(i,c.toDataURL('image/jpeg',.9)); bgSel=i; save('bgSel',i); await useBg(); renderBg(); }; f.click(); }
 // 背景を選んでいないときは、開催中ガチャの絵を水彩画ふうにした背景（bg_auto.jpg）を使う
 async function useBg(){ const v=await bgGet(bgSel); if (!v){ const a=new Image(); a.onload=()=>{ if (!bgImg||bgImg.auto){ a.auto=true; bgImg=a; draw(); } }; a.onerror=()=>{ bgImg=null; draw(); }; bgImg=null; a.src=({wc:'bg_auto.jpg',pearl:'bg_auto_pearl.jpg',sparkle:'bg_auto_sparkle.jpg',bokeh:'bg_auto_bokeh.jpg',gradient:'bg_auto_gradient.jpg',stained:'bg_auto_stained.jpg'}[SET.autoBg]||'bg_auto_pearl.jpg')+'?v='+APP_VER; return; } const i=new Image(); i.onload=()=>{ bgImg=i; draw(); }; i.src=v; }
