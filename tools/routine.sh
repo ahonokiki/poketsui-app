@@ -11,7 +11,13 @@ for pair in poketsui-app:claude/vigilant-pasteur-1ug721 piggparty-app:claude/sto
   repo=${pair%%:*}; br=${pair#*:}; dir=/home/user/$repo
   [ -d "$dir/.git" ] || { out+=("FAIL $repo フォルダがありません"); continue; }
   cd "$dir" || continue
-  retry git fetch -q origin main && git checkout -q -B "$br" origin/main || { out+=("FAIL $repo mainにそろえられません"); continue; }
+  # 作業中の変更があるときは何もしない（作業ブランチを main に作り直すと、直しかけの物が消えるため）
+  retry git fetch -q origin main || { out+=("FAIL $repo mainを取れません"); continue; }
+  git fetch -q origin "$br" 2>/dev/null
+  if [ -n "$(git status --porcelain --untracked-files=no)" ] || [ -n "$(git diff --name-only origin/main HEAD -- . ':!data' 2>/dev/null)" ] \
+     || { git rev-parse -q --verify "origin/$br" >/dev/null && [ -n "$(git diff --name-only origin/main "origin/$br" -- . ':!data')" ]; }; then
+    out+=("FAIL $repo 作業中の変更（data/ 以外）がまだ main に入っていないので、集計を止めました"); continue; fi
+  git checkout -q -B "$br" origin/main || { out+=("FAIL $repo mainにそろえられません"); continue; }
   log=$(${TRACK:-node tools/gametrade-track.mjs} 2>&1); code=$? # TRACK：試すときだけ別の命令に差しかえる
   sum=$(printf '%s\n' "$log" | grep -E '^一覧 ' | tail -1)
   if printf '%s' "$log" | grep -qE '一覧から出品を1件も読めませんでした|status 403|HTTP 403|VPN'; then out+=("FAIL $repo ゲームトレードにアクセスを断られました（403など）"); break; fi
