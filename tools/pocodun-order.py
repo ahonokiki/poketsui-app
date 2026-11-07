@@ -2,9 +2,10 @@
 1) 開催中の期間限定ガチャを始まった日の新しい順に並べ、各ガチャの中は当たり順（GameWith）
    コラボガチャは、そのシリーズ（そのガチャの図鑑No の最小以上）のほかのキャラもその直後
 2) ほかは GameWith 最強ランキングの順、ランキングにないものは図鑑No の新しい順
-使い方: python3 pocodun-order.py gacha_now.json rank.json merged.json gw.json"""
+使い方: python3 pocodun-order.py gacha_now.json rank.json merged.json gw.json
+  （gacha_now.json の代わりに - を渡すと、ガチャは見ずにランキング順だけ。今はこちらを使っている）"""
 import json,sys
-G,R,M=(json.load(open(f)) for f in sys.argv[1:4]); gwp=sys.argv[4]; GW=json.load(open(gwp))
+G,R,M=([] if f=='-' else json.load(open(f)) for f in sys.argv[1:4]); gwp=sys.argv[4]; GW=json.load(open(gwp))
 art={no:v.get('article') for no,v in M.items()}; fam={}
 for no,a in art.items():
     if a: fam.setdefault(a,[]).append(no)
