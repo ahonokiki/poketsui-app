@@ -306,7 +306,7 @@
     <div class="row"><label>題名の×1 <select id="titleOne"><option value="show">×1も付ける</option><option value="hide">×1は省く</option></select></label></div>
     <div class="row"><label>題名の名前の区切り <select id="titleSep"><option value="nl">改行（1行に1つ）</option><option value="sp">空白（1行にまとめる）</option></select></label></div>
     <div class="row"><label><input type="checkbox" id="titleTotal" checked> 題名に「計○点」を付ける（2個以上のとき）</label></div>
-    <div class="row"><label><input type="checkbox" id="autoCopy" checked> 「題名」「文字」を押したらすぐコピーする</label></div>
+    <div class="row"><label><input type="checkbox" id="autoCopy"> 「題名」「文字」を押したらすぐコピーする</label></div>
     <div class="note">オフにすると、押したときは文字を表示するだけで、確認してから「コピー」を押します。赤い名前（一覧にない名前）があるときは、先に名前を確かめる画面が出ます（閉じたあとは、確認してそのままコピーもできます）。</div>
     <div class="row"><label style="width:100%">最初の行（空欄なら入れない）<input type="text" id="txtHead" placeholder="例：【即購入OK】" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font-size:16px"></label></div>
     <div class="row"><label style="width:100%">合計の書き方<input type="text" id="txtTotal" value="計{n}点" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font-size:16px"></label></div>
@@ -381,7 +381,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='72'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='73'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
