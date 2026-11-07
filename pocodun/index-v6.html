@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ポコダン画像加工（試作）</title>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#4a3424;--sub:#8c7a6b;--gold:#d9a441;--brown:#5a3216;--bg:#fbf3e6;--line:#ead8bf;--yel:#fff3b0;--yelb:#f2c200}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif;font-size:14px;padding-bottom:110px}
+  header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:10px 16px;background:linear-gradient(#6b3a1c,#3d1f0c);color:#ffe7b0}
+  header h1{font-size:16px;margin:0;flex:1}header small{color:#e8c98f;font-size:11px}
+  header button{border:2px solid var(--gold);background:#3d1f0c;color:#ffe7b0;border-radius:99px;padding:6px 12px;font:inherit;font-weight:800}
+  main{max-width:560px;margin:0 auto;padding:12px 16px}
+  .card{background:#fff;border:2px solid var(--line);border-radius:16px;padding:10px 12px;margin:10px 0}
+  .card h2{font-size:14px;margin:0 0 6px;color:var(--brown)}
+  .pick{display:flex;justify-content:center;align-items:center;gap:6px;width:100%;padding:14px;border-radius:16px;background:linear-gradient(#ffcf6b,#e8a530);color:#4a2a08;font-weight:900;font-size:16px;border:0;box-shadow:0 3px 0 #b87a17}
+  .note{font-size:11.5px;color:var(--sub);line-height:1.6}
+  details.safe{font-size:11.5px;color:var(--sub);margin-top:6px}details.safe summary{font-weight:800;color:#2f7a4f}
+  #cv{width:100%;height:auto;border-radius:14px;display:block;background:#eee}
+  .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0}
+  .row>label{min-width:84px;font-weight:800;font-size:13px}
+  input[type=text],input[type=number],input:not([type]),textarea,select{font:inherit;font-size:16px;border:2px solid var(--line);border-radius:10px;padding:7px 9px;background:#fff;color:var(--ink);min-width:0}
+  .grow{flex:1}
+  .chips{display:flex;gap:4px;flex-wrap:wrap;margin:2px 0 4px 90px}
+  .chip{display:inline-flex;align-items:center;background:#f6ecdc;border-radius:99px;overflow:hidden}
+  .chip button{border:0;background:none;font:inherit;font-size:12px;padding:4px 8px;color:var(--ink)}.chip .x{color:#b0846a;padding:4px 6px 4px 0}
+  .upb,.sbtn{border:2px solid var(--line);background:#fff;border-radius:99px;padding:5px 10px;font:inherit;font-weight:800}
+  #stoneBox{display:flex;align-items:center;gap:8px;flex-wrap:wrap}#stoneBox.low{background:var(--yel);border-radius:10px;padding:4px}#stoneBox.low input{border-color:var(--yelb)}
+  .crop{display:inline-flex;flex-direction:column;align-items:center;gap:1px;font-size:10px;color:var(--sub);pointer-events:none}.crop img{height:30px;border-radius:4px;opacity:.95}
+  .ic{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;border:2px solid var(--line);border-radius:14px;padding:6px;margin:6px 0;background:#fff}
+  .ic.need{border-color:var(--yelb);background:var(--yel)}
+  .ic img{width:64px;height:auto;border-radius:8px;flex:none}
+  .ic .mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+  .ic input{width:100%;font-size:15px;padding:6px 8px}
+  .nick{display:flex;gap:4px;align-items:center;font-size:12px;color:var(--sub)}.nick input{flex:1;font-size:14px;padding:4px 7px}
+  .nick input.cand{color:#b8a898}
+  .reg{border:0;background:#ffd23f;color:#5a4300;border-radius:99px;padding:5px 9px;font:inherit;font-size:12px;font-weight:900;white-space:nowrap}
+  .ops{display:flex;gap:6px;align-items:center;font-size:12px}.ops button{border:0;background:#f3eadf;border-radius:99px;width:30px;height:28px;font:inherit;font-weight:900;color:#8a6a55}.ops button.ok{width:auto;padding:0 10px;background:#5fae6e;color:#fff}
+  .note2{font-size:11px;color:#a87400}
+  .cands{flex-basis:100%;display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:11px;color:var(--sub);padding-left:4px}.cands button{border:2px solid transparent;background:#efe4fb;color:#5b3fa0;border-radius:99px;padding:5px 11px;font:inherit;font-size:13px;font-weight:800;text-align:left}
+  .cands button.on{background:#6a4bc4;color:#fff;border-color:#4a2f9a}.cands button.on::before{content:'✓ '}
+  .status{margin-top:6px;display:flex;flex-direction:column;gap:2px;font-weight:800;font-size:13px}.status .ok{color:#2f7a4f}.status .ng{color:#d0304f}.status .sub{color:var(--sub);font-weight:500}
+  .lk{display:flex;gap:8px;align-items:center;border:2px solid var(--line);border-radius:12px;padding:5px;margin:5px 0}.lk.need{border-color:var(--yelb);background:var(--yel)}.lk img{width:52px;border-radius:8px}.lk .mid{flex:1}
+  .wb{border:2px solid var(--line);background:#fff;border-radius:99px;padding:3px 10px;margin-left:4px;font:inherit;font-weight:900}.wb.on{background:#3fae6a;border-color:#3fae6a;color:#fff}
+  textarea.out{width:100%;font-size:13px;line-height:1.5}
+  #titleLen{font-size:12px;color:var(--sub)}#titleLen.over{color:#d0304f;font-weight:900}
+  .warn{color:#d0304f;font-size:12px;font-weight:800}
+  .bar{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(251,243,230,.95);border-top:2px solid var(--line)}
+  .bar button{flex:1;border:0;border-radius:16px;padding:13px 6px;font:inherit;font-weight:900;font-size:15px;color:#fff;background:#8c5a34;box-shadow:0 3px 0 #5a3216}
+  .bar button.main{background:#3fae6a;box-shadow:0 3px 0 #2b7a49;flex:1.4}
+  #busy{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:20;color:#fff;font-weight:900}
+  #busy[hidden],[hidden]{display:none !important}
+  #toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:rgba(60,35,20,.92);color:#fff;padding:10px 14px;border-radius:14px;font-size:13px;z-index:30;max-width:90%;white-space:pre-line}
+  #settings{position:fixed;inset:0;background:var(--bg);z-index:15;overflow:auto;padding-bottom:40px}
+  .blk{border:2px solid var(--line);border-radius:12px;padding:6px 8px;margin:6px 0;background:#fff}
+  .blk .bh{display:flex;justify-content:space-between;align-items:center;gap:6px}.blk .bh span{display:flex;gap:4px}
+  .blk button{border:0;background:#f3eadf;border-radius:8px;padding:4px 8px;font:inherit;font-size:12px;font-weight:800;color:#6b4a35}
+  .blk textarea{width:100%;margin-top:6px;font-size:13px}
+  .bgs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .bg{aspect-ratio:1;border-radius:12px;border:3px solid var(--line);background:#fff center/cover;font-size:22px;color:#c9b39b}.bg.on{border-color:#e8a530}
+  .lr{display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px dashed var(--line);font-size:13px}.lr span{flex:1;color:var(--sub);font-size:12px}.lr button{border:0;background:#f3eadf;border-radius:8px;padding:3px 8px;font:inherit;font-size:12px}
+  #big{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:25;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;font-weight:800}#big img{max-width:92%;max-height:80%}
+</style></head>
+<body>
+<header><h1>ポコダン画像加工 <small id="ver"></small></h1><button type="button" id="openSet">⚙ 設定</button></header>
+<main>
+  <section class="card">
+    <label class="pick">📷 スクショを選ぶ（鍵キャラ＋ラッキー）<input type="file" id="shot" accept="image/*" multiple hidden></label>
+    <div class="note" style="margin-top:6px">次の2枚をいっしょに選んでください（順番はどちらでも大丈夫。アプリが見分けます）。
+      <br>🔒 <b>鍵キャラのスクショ</b>：出品に入れたいキャラに鍵を付けたモンスター一覧
+      <br>🍀 <b>ラッキーのスクショ</b>：モンスターハウスの「素材モンスター」で、ラッキーポポロンなどの運アップ用モンスターが並んだ画面（「ラッキー」で検索するとラッキーだけになります。なければ選ばなくてOK。運UPは手で入れます）
+      <br>※ 鍵と「new」は点滅することがあるので、はっきり出ている瞬間に撮ってください</div>
+    <div id="status" class="status" hidden><div id="stKey"></div><div id="stLucky"></div></div>
+    <details class="safe"><summary>🔒 読み取りはすべてこのiPhoneの中で行い、写真はどこにも送信していません</summary>
+      <div>選んだスクショは、このiPhoneのSafariの中で読み取ります（鍵マークの見分け・虹結晶の数の読み取り）。写真そのものはインターネットに送信も保存もしません。覚えたキャラ名・設定・背景も、このiPhoneの中だけに保存します。</div></details>
+  </section>
+
+  <section class="card"><canvas id="cv"></canvas></section>
+
+  <section class="card">
+    <h2>出品ごとに入れる所</h2>
+    <div class="row"><label>管理番号</label><input id="num" inputmode="numeric" class="grow" placeholder="例：9431"><span id="numWarn" class="warn" hidden>前に使った番号です</span></div>
+    <div class="row" id="stoneRow"><label>虹結晶</label><div id="stoneBox" class="grow"><input id="stone" inputmode="numeric" class="grow" style="flex:1" placeholder="鍵キャラのスクショから自動で入ります"><span id="stoneCropBox" class="crop" hidden><small>元の画像</small><img id="stoneCrop" alt="スクショの虹結晶の数"></span></div></div>
+    <div class="row"><label>運UP</label><input id="unup" inputmode="numeric" class="grow" placeholder="ラッキーのスクショを入れると自動で入ります"></div>
+    <div class="row"><label>見出し</label><input id="head" class="grow" placeholder="なし（空なら入れない）"></div>
+    <div class="chips" id="headChips"></div>
+    <div class="row"><label>挨拶の絵文字</label><input id="emo" class="grow" placeholder="空＝おまかせ（例：🌼即購入🌹🌻可能）"><button type="button" class="sbtn" id="emoRand">おまかせ</button></div>
+    <div class="chips" id="emoChips"></div>
+  </section>
+
+  <section class="card" id="luckyCard" hidden>
+    <h2>🍀 ラッキー（運アップ用モンスター）</h2><div id="lucky"></div><div class="note" id="luckyTotal"></div>
+    <div class="note">上下が切れたアイコンは数えません。ラッキーのスクショが2枚以上のときは、同じモンスターが重ならないように撮ってください（重なると2回数えます）。</div>
+  </section>
+
+  <section class="card" id="iconHead" hidden>
+    <h2>鍵マークのキャラ <span class="note" id="iconNote"></span></h2>
+    <div class="note">正式名は自動で入ります（GameWith の全キャラ約2800体・進化前もふくむ）。黄色の「要確認」だけ見て、合っていれば「✓確認」、ちがえば候補を押すか直してください。同じ名前は1つにまとめて数を付けます。</div>
+    <div id="icons"></div><datalist id="nameList"></datalist>
+  </section>
+
+  <section class="card">
+    <h2>題名 <span id="titleLen"></span></h2><textarea class="out" id="titleOut" rows="2" readonly></textarea>
+    <h2 style="margin-top:8px">説明文</h2><textarea class="out" id="descOut" rows="12" readonly></textarea>
+  </section>
+</main>
+<div class="bar"><button type="button" id="copyTitle">題名コピー</button><button type="button" id="copyDesc">説明文コピー</button><button type="button" class="main" id="save">🖼 画像を保存</button></div>
+
+<div id="settings" hidden><header><h1>設定</h1><button type="button" id="closeSet">閉じる</button></header><main>
+  <section class="card"><h2>キャラ名の書き方</h2>
+    <div class="row"><label>題名</label><select data-set="titleName"><option value="nick">呼称（なければ正式名）</option><option value="name">正式名</option></select></div>
+    <div class="row"><label>説明文</label><select data-set="descName"><option value="name">正式名</option><option value="nick">呼称（なければ正式名）</option></select></div>
+    <div class="row"><label><input type="checkbox" data-set="cand"> 呼称の候補を出す（前の出品から）</label></div>
+    <div class="row"><label><input type="checkbox" data-set="times"> 同じキャラの数に「×」を付ける（例：イヴ＆シンラ×2）</label></div>
+    <div class="row"><label><input type="checkbox" data-set="arrow"> 運UPの数に「↑」を付ける</label></div>
+    <div class="row"><label>画像の列の数</label><select data-set="cols"><option value="auto">自動（いちばん大きく）</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>
+  </section>
+  <section class="card"><h2>背景</h2><div class="note">＋を押して、色ごとに用意した背景を入れてください。押すと選べます。長押しで消せます。</div><div class="bgs" id="bgs"></div><button type="button" class="sbtn" id="bgDel" style="margin-top:6px">選んでいる背景を消す</button></section>
+  <section class="card"><h2>題名の形</h2><input id="titleTpl" style="width:100%"><div class="note">差し込み：{番号} {石} {題名キャラ} {運UP} {↑}</div></section>
+  <section class="card"><h2>説明文の形（ブロック）</h2>
+    <div class="note">チェックを外すと、そのブロックは入りません。↑↓で順番、「編集」で中身を変えられます。<br>差し込み：{見出し} {絵文字挨拶} {石} {運UP} {↑} {キャラ一覧} {番号}</div>
+    <div id="blocks"></div>
+    <div class="row"><button type="button" class="sbtn" id="addBlock">＋ ブロックを足す</button><button type="button" class="sbtn" id="resetBlocks">はじめの形に戻す</button></div></section>
+  <section class="card"><h2>覚えたキャラ</h2><div id="learned"></div>
+    <div class="row"><button type="button" class="sbtn" id="exportBtn">ファイルに書き出す</button><button type="button" class="sbtn" id="importBtn">ファイルから読み込む</button></div>
+    <div class="note">書き出したファイルを別の端末で読み込むと、覚えたキャラ・呼称・設定を移せます（全端末で自動で共有するのは、次の版で）。</div></section>
+</main></div>
+
+<div id="busy" hidden>読み取り中…</div>
+<div id="toast" hidden></div>
+<div id="big" hidden><img id="bigImg" alt="出品画像"><div>画像を長押しして「写真に保存」</div></div>
+<script>
+// ポコダン：ボックス画面から、アイコンのマスと鍵マークを見つける（画像は canvas の ImageData）
+function pdGrid(d,W,H){
+  const brown=(x,y)=>{const i=(y*W+x)*4,r=d[i],g=d[i+1],b=d[i+2]; return r>=35&&r<=120&&g>=20&&g<=90&&b<=70&&r>g&&g>=b; };
+  const y0=Math.round(H*.15), y1=Math.round(H*.9);
+  const colB=[]; for (let x=0;x<W;x++){ let n=0,m=0; for (let y=y0;y<y1;y+=3){ m++; if (brown(x,y)) n++; } colB.push(n/m); }
+  const runs=(arr,th,minLen)=>{ const out=[]; let s=-1; arr.forEach((v,i)=>{ if (v>=th&&s<0) s=i; if ((v<th||i===arr.length-1)&&s>=0){ if (i-s>=minLen) out.push([s,i-1]); s=-1; } }); return out; };
+  let cg=runs(colB,.5,Math.max(3,W*.01));
+  // 列：すきまとすきまの間で、幅がアイコンくらい（W*.13〜.18）のもの
+  let cols=[]; for (let k=0;k+1<cg.length;k++){ const a=cg[k][1]+1, b=cg[k+1][0]-1, w=b-a+1; if (w>W*.12 && w<W*.2) cols.push([a,b]); }
+  if (cols.length<4) return null;
+  const xa=cols[0][0], xb=cols[cols.length-1][1];
+  const rowB=[]; for (let y=0;y<H;y++){ let n=0,m=0; for (let x=xa;x<=xb;x+=2){ m++; if (brown(x,y)) n++; } rowB.push(n/m); }
+  const rg=runs(rowB,.55,Math.max(3,W*.008));
+  const cw=cols[0][1]-cols[0][0]+1, pitch=cols.length>1 ? cols[1][0]-cols[0][0] : cw*1.13;
+  // 行：すきまの後から、次のすきままで（高さがアイコンくらい）
+  let rows=[]; for (let k=0;k+1<rg.length;k++){ const a=rg[k][1]+1, b=rg[k+1][0]-1, h=b-a+1; if (h>cw*.85 && h<cw*1.25) rows.push([a,b]); }
+  return {cols,rows,cw,pitch};
+}
+// 鍵マーク：マスの右側・中ほどに、クリーム〜オレンジの四角（まわりが濃い茶色）
+function pdLockScore(d,W,H,x0,y0,w,h){
+  let n=0,m=0; const xs=Math.round(x0+w*.68), xe=Math.round(x0+w*.99), ys=Math.round(y0+h*.42), ye=Math.round(y0+h*.82);
+  for (let y=ys;y<ye;y++) for (let x=xs;x<xe;x++){ m++; const i=(y*W+x)*4,r=d[i],g=d[i+1],b=d[i+2]; if (r>=235&&g>=175&&g<=245&&b>=95&&b<=190&&r-b>=55&&g-b>=35) n++; }
+  return n/m;
+}
+if (typeof module!=='undefined') module.exports={pdGrid,pdLockScore};
+// 鍵マークの形と比べる（正規化相互相関）。tpl：鍵の見本（マスの幅を100にしたときの大きさ）
+function pdCellCanvas(img,x0,y0,w,h,S){ const c=document.createElement('canvas'); const k=S/w; c.width=S; c.height=Math.round(h*k); c.getContext('2d').drawImage(img,x0,y0,w,h,0,0,c.width,c.height); return c; }
+function pdGray(c){ const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data, g=new Float32Array(c.width*c.height); for (let i=0;i<g.length;i++) g[i]=(d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11); return g; }
+function pdNCC(G,GW,GH,T,TW,TH,xs,xe,ys,ye){ let tm=0; for (const v of T) tm+=v; tm/=T.length; let tv=0; for (const v of T) tv+=(v-tm)**2;
+  let best=-1,bx=0,by=0; for (let y=Math.max(0,ys);y<=Math.min(GH-TH,ye);y++) for (let x=Math.max(0,xs);x<=Math.min(GW-TW,xe);x++){ let m=0; for (let j=0;j<TH;j++) for (let i=0;i<TW;i++) m+=G[(y+j)*GW+x+i]; m/=T.length; let cv=0,gv=0; for (let j=0;j<TH;j++) for (let i=0;i<TW;i++){ const a=G[(y+j)*GW+x+i]-m, t=T[j*TW+i]-tm; cv+=a*t; gv+=a*a; } const s=cv/Math.sqrt(gv*tv+1e-6); if (s>best){best=s;bx=x;by=y;} } return {s:best,x:bx,y:by}; }
+// アイコンの見分け用の数字（顔のあたりを 12×12 に縮めた色）。new・鍵・星・Lv の所は使わない
+function pdFP(img,x0,y0,w,h){ const c=document.createElement('canvas'); c.width=12; c.height=12; const g=c.getContext('2d'); g.imageSmoothingQuality='high';
+  const top=y0+h-w*.98; g.drawImage(img,x0+w*.1,top+w*.18,w*.58,w*.5,0,0,12,12); return Array.from(g.getImageData(0,0,12,12).data).filter((_,i)=>i%4!==3); }
+function pdDist(a,b){ let s=0; for (let i=0;i<a.length;i++) s+=Math.abs(a[i]-b[i]); return s/a.length; }
+// 行を、見つかった行から上下に同じ間隔でのばす（行の間がせまい画面でも全部の行を取る）
+function pdAllRows(G,H,d,W){ const rs=G.rows; if (!rs.length) return rs; const ds=rs.slice(1).map((r,i)=>r[0]-rs[i][0]).filter(d=>d>G.pitch*.9&&d<G.pitch*1.4).sort((a,b)=>a-b);
+  const rp=ds.length ? ds[ds.length>>1] : G.pitch*1.1, h=Math.round(G.cw*1.03), out=[];
+  for (let a=rs[0][0]; a>=0; a-=rp) out.unshift([Math.round(a),Math.round(a)+h-1]);
+  for (let a=rs[0][0]+rp; a+h<=H; a+=rp) out.push([Math.round(a),Math.round(a)+h-1]);
+  // マスの並ぶ板の中だけ（列の間のすきまが茶色）。上の見出しなどの所は行にしない
+  const brown=(x,y)=>{const i=(y*W+x)*4,r=d[i],g=d[i+1],b=d[i+2]; return r>=35&&r<=120&&g>=20&&g<=90&&b<=70&&r>g&&g>=b; };
+  const gx=Math.round((G.cols[0][1]+G.cols[1][0])/2);
+  const ok=out.map(([a,b])=>{ if (a<0||b>=H) return false; if (!d) return true; let n=0,m=0; for (let y=a;y<=b;y+=2){ m++; if (brown(gx,y)||brown(gx-1,y)||brown(gx+1,y)) n++; } return n/m>.5; });
+  // つながった行のかたまりのうち、いちばん長いものだけ（離れた所の行はまちがい）
+  let best=[0,-1],st=-1; ok.forEach((v,i)=>{ if (v&&st<0) st=i; if ((!v||i===ok.length-1)&&st>=0){ const e=v?i:i-1; if (e-st>best[1]-best[0]) best=[st,e]; st=-1; } });
+  return out.slice(best[0],best[1]+1); }
+// マスのアイコンが全部見えているか：色のついた枠の左右のふちが、上から下までつながっている
+function pdFullIcon(d,W,x0,a,w,h){ const sat=(x,y)=>{ const i=(y*W+x)*4,r=d[i],g=d[i+1],b=d[i+2], mx=Math.max(r,g,b), mn=Math.min(r,g,b); return mx>110 && (mx-mn>70 || mx>200); };
+  let ok=0,m=0; for (let y=Math.round(a+h*.18);y<a+h*.82;y+=2){ m++; let L=false,R=false; for (let dx=1;dx<=Math.max(3,w*.05);dx++){ if (sat(x0+dx,y)) L=true; if (sat(x0+w-1-dx,y)) R=true; } if (L) ok++; } return ok/m>.75; } // 右のふちはスクロールの棒で隠れることがあるので、左のふちで見る
+// 見分け用（小さい・圧縮された画像でもぶれにくいよう、一度ぼかして 8×8 に）
+function pdFP2(img,x0,y0,w,h){ const t=document.createElement('canvas'); t.width=t.height=32; const g=t.getContext('2d'); g.imageSmoothingQuality='high'; const top=y0+h-w*.98; g.drawImage(img,x0+w*.1,top+w*.15,w*.6,w*.62,0,0,32,32); // 右側はスクロールの棒がかかることがあるので使わない
+  const c=document.createElement('canvas'); c.width=c.height=8; const g2=c.getContext('2d'); g2.imageSmoothingQuality='high'; g2.drawImage(t,0,0,8,8); return Array.from(g2.getImageData(0,0,8,8).data).filter((_,i)=>i%4!==3); }
+// 顔の上にかかった文字（「編成中」の明るい緑）の所は見比べに使わない：8×8 のマスごとに、かかっていれば印を付ける
+function pdMask2(img,x0,y0,w,h){ const t=document.createElement('canvas'); t.width=t.height=32; const g=t.getContext('2d',{willReadFrequently:true}); const top=y0+h-w*.98; g.drawImage(img,x0+w*.1,top+w*.15,w*.6,w*.62,0,0,32,32);
+  const d=g.getImageData(0,0,32,32).data, m=new Array(64).fill(false);
+  for (let by=0;by<8;by++) for (let bx=0;bx<8;bx++){ let n=0; for (let y=by*4;y<by*4+4;y++) for (let x=bx*4;x<bx*4+4;x++){ const i=(y*32+x)*4,r=d[i],gg=d[i+1],b=d[i+2]; if (gg>170&&r<150&&b<150&&gg-r>60&&gg-b>40) n++; } m[by*8+bx]=n>=3; }
+  return m; }
+function pdDistM(a,b,m){ let s=0,n=0; for (let k=0;k<64;k++){ if (m&&m[k]) continue; for (let c=0;c<3;c++){ s+=Math.abs(a[k*3+c]-b[k*3+c]); n++; } } return n ? s/n : 999; }
+
+const timeLimit=(p,ms)=>Promise.race([p,new Promise((_,ng)=>setTimeout(()=>ng(new Error('timeout')),ms))]);
+let ppReady=null, ppOff=false;
+function ppInit(){ if (ppOff) return Promise.resolve(null);
+  return ppReady ??= (async()=>{ const base=new URL('../ocr/pp/',location.href).href;
+    if (!window.ort) await new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=base+'ort.min.js'; sc.onload=res; sc.onerror=()=>rej(new Error('ort')); document.head.appendChild(sc); });
+    ort.env.wasm.wasmPaths=base; ort.env.wasm.numThreads=1;
+    const D=await (await fetch(base+'dict.json')).json(), IDX=new Map(D.map((c,i)=>[c,i+1]));
+    const sess=await ort.InferenceSession.create(base+'rec.onnx',{executionProviders:['wasm']});
+    // 名前によく出る記号（♡☆♪・など）は、読み取りの自信が少し低くても落とさない
+    return {sess, D, boost:new Set(['♡','♥','☆','★','♪','♫','・','〜','～'].map(c=>IDX.get(c)).filter(Boolean))}; })()
+    .catch(e=>{ ppOff=true; ppReady=null; return null; }); }
+async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad), y0=Math.max(0,box.y-pad), w=Math.min(img.width-x0,box.w+pad*2), h=Math.min(img.height-y0,box.h+pad*2);
+  const H=48, Wd=Math.min(1600,Math.max(16,Math.round(w*H/h))), c=document.createElement('canvas'); c.width=Wd; c.height=H; const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,x0,y0,w,h,0,0,Wd,H);
+  const px=g.getImageData(0,0,Wd,H).data, f=new Float32Array(3*H*Wd);
+  for (let i=0;i<H*Wd;i++){ f[i]=(px[i*4+2]/255-.5)/.5; f[H*Wd+i]=(px[i*4+1]/255-.5)/.5; f[2*H*Wd+i]=(px[i*4]/255-.5)/.5; }
+  const o=(await pp.sess.run({[pp.sess.inputNames[0]]:new ort.Tensor('float32',f,[1,3,H,Wd])}))[pp.sess.outputNames[0]], [,T,C]=o.dims, P=o.data;
+  // 1文字ずつ、読み取りの自信（0〜1）も取っておく
+  const ch=[]; let prev=-1; for (let k=0;k<T;k++){ let m=0,mi=0; for (let j=0;j<C;j++){ const v=P[k*C+j]*(pp.boost.has(j)?8:1); if(v>m){m=v;mi=j;} } const raw=P[k*C+mi];
+    if (mi!==0){ if (mi!==prev) ch.push({c:mi<=pp.D.length?pp.D[mi-1]:' ', p:raw}); else ch[ch.length-1].p=Math.max(ch[ch.length-1].p,raw); } prev=mi; }
+  while (ch.length && /[「」□■ロ口\s]/u.test(ch[ch.length-1].c)) ch.pop(); while (ch.length && /\s/.test(ch[0].c)) ch.shift(); // 名前の横のコピーのマークは外す
+  return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
+
+// ---- ポコダン画像加工（試作） ----
+const APP_VER='6';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const PFX='poco_';
+const load=(k,def)=>{ try{ const v=localStorage.getItem(PFX+k); return v==null ? def : JSON.parse(v); }catch(e){ return def; } };
+const save=(k,v)=>{ try{ localStorage.setItem(PFX+k,JSON.stringify(v)); }catch(e){ toast('保存できませんでした（容量がいっぱいかもしれません）'); } };
+let toastT=0; function toast(t){ const e=$('toast'); e.textContent=t; e.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>e.hidden=true,2600); }
+
+// 過去の出品から拾った物（見出し・絵文字・呼称の候補）
+const HEADS0=['在庫ラスト','最終値下げ','【期間限定】大幅値下げ','最終値下げ【期間限定】大幅値下げ','本日限り‼️見つけた方はラッキー‼️超特別セールです。','本日の特価品','底値 値下げ不可❌'];
+const EMOJI=["🌙", "🍄", "🫶🏻", "♡", "🐮", "🧣🐤", "💍🌧️", "🎂🎀", "🍄🍋", "🥕", "🦙🦀", "🐻‍❄️", "🐮🐯", "📮📕", "🍌🛵", "🍏🥝", "🐸", "🦜", "🌻", "🍓🔴⚠️", "🌸💌🐚", "🦋", "🫍🫯", "🧸🍪👜", "📔", "🎪", "💘🕶", "🐯🌻", "🌱🦊", "🍬🍭", "🐟", "❄️", "🌈", "🎡🎪", "🍒🍓", "🐯🦴", "✨🤗✨", "☃️", "🌺🐳", "💫", "🐹🌱", "🐣", "🍀", "🐼🌸", "⚡️", "🦊🌻", "🐰🤍🐩", "⛄️", "🦙🎗️", "☄️🌸", "💓", "🎃🦊", "🍔", "☂️🐨", "🕶", "🐈‍", "🐢", "🥐☘️", "🐿", "🧣", "🗼👠", "🪗", "🍬🧞‍♀️", "😈", "☔️", "⛸️🥄🍨", "☁️", "⛅️", "🧚🏻", "🐻🍪", "🦉", "👾", "🥝", "🦖🍃", "🍬🥑", "🍃", "🦚", "🌼", "🌹🌻", "🟦", "🧞‍♀️", "⚛️🍬"].filter(e=>!/⚠|❌|✅/.test(e));
+const CAND={'不死川実弥':'実弥','霞柱時透無一郎':'無一郎','蛇柱伊黒小芭内':'伊黒','ヒノカミ神楽＆水の呼吸竈門炭治郎':'炭治郎','嘴平伊之助':'伊之助','音柱宇髄天元':'天元','風柱不死川実弥':'不死川実弥','岩柱悲鳴嶼行冥':'悲鳴嶼行冥','恋柱甘露寺蜜璃':'蜜璃','竈門禰豆子':'禰豆子','水柱冨岡義勇':'義勇','乙骨憂太＆リカ':'乙骨','芻霊呪法の使い手釘崎野薔薇':'野薔薇','我妻善逸':'善逸','煉獄千寿郎':'煉獄'};
+
+// ---- 設定 ----
+const LINE='✼••┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈••✼';
+const BLOCKS0=[
+  {label:'見出し', on:true, t:'{見出し}'},
+  {label:'最初の挨拶文', on:true, t:'{絵文字挨拶}(⚠️24時間以内にお取引完了、又はいつ頃お取引可能かご連絡頂ける方+やり取りが出来る方のみ)'},
+  {label:'定型文', on:true, t:`${LINE}\n🍑 出品アイテム一覧【運営レビュー】で検索 🔍\n${LINE}`},
+  {label:'アカウント情報', on:true, t:'\n虹結晶：{石}\n\n\n運アップ用モンスター{運UP}{↑}体分\n\n未進行初期アカウント\n\n虹結晶を豊富に回収可能\n\n聖樹の種(限界突破)多数\n\nレアメダル(アイテム交換)多数'},
+  {label:'キャラ一覧', on:true, t:`${LINE}\n❄️ゴッドラッシュ・限定他❄️一覧(ある場合)\n\n{キャラ一覧}\n+運UP{運UP}{↑}\n\n\n`},
+  {label:'お渡し方法', on:true, t:`${LINE}\n引き継ぎコードにてお譲りいたします。\n（iOS、Androidどちらでも使用できます。）\n{番号}.石{石}\n${LINE}`},
+  {label:'最後の挨拶文', on:true, t:`\n※ 記載以外の情報は特定防止の為、お見せできません。また譲渡後のアカウント凍結等は自己責任になります。ご了承の上ご購入ください。\n\n⚠️質問後の無返信、既読無視、運営レビューのお客様とはお取引いたしかねます。ご了承ください。\n\n${LINE}`},
+];
+const SET0={titleName:'nick', descName:'name', cand:true, times:false, arrow:true, cols:'auto', titleTpl:'{番号}.石{石}　{題名キャラ}+運UP{運UP}{↑}', blocks:BLOCKS0};
+let SET={...SET0, ...load('set',{})}; if (!Array.isArray(SET.blocks)) SET.blocks=BLOCKS0;
+const saveSet=()=>save('set',SET);
+
+// ---- 覚えた物 ----
+let CHARS=load('chars',{});      // 正式名 -> {nick:'登録した呼称', fps:[[...]], no:true(候補を出さない)}
+let HIST=load('hist',{heads:HEADS0.slice(), emojis:[], nums:[]});
+const saveChars=()=>save('chars',CHARS), saveHist=()=>save('hist',HIST);
+function rememberFP(name,fp){ if (!name||!fp) return; const c=CHARS[name] ??= {nick:'',fps:[]}; if (!c.fps.some(f=>pdDist(f,fp)<1.5)){ c.fps.push(fp); if (c.fps.length>8) c.fps.shift(); } saveChars(); }
+function guessName(fp){ let best=null,bd=1e9; for (const [n,c] of Object.entries(CHARS)) for (const f of c.fps||[]){ const d=pdDist(f,fp); if (d<bd){bd=d;best=n;} } return bd<6 ? best : null; }
+const nickOf=n=>CHARS[n]?.nick||'';
+const candOf=n=>SET.cand && !nickOf(n) && !CHARS[n]?.no ? (CAND[n]||'') : '';
+
+// ---- 状態 ----
+let shots=[];   // {img, name}
+let icons=[];   // {canvas, fp, name, guess, inTitle, src(shot index), key}
+let stone={v:'', sure:true, crop:''};
+let lucky=[];   // ラッキーのスクショのアイコン {canvas, fp}
+let LUCK=load('luck',[]); // 覚えた運アップ用モンスター {fp, w:1|7}
+const saveLuck=()=>save('luck',LUCK);
+
+// ---- 画像を読む ----
+$('shot').addEventListener('change', async e=>{ const files=[...e.target.files]; e.target.value=''; if (!files.length) return;
+  $('busy').hidden=false; icons=[]; shots=[]; lucky=[]; stone={v:'',sure:true,crop:''}; $('unup').dataset.typed=''; $('stone').dataset.typed=''; $('unup').value='';
+  try{
+    for (const f of files){ const img=await fileImg(f); shots.push({img}); await readShot(img, shots.length-1); }
+  }catch(err){ toast('画像を読めませんでした：'+(err?.message||err)); }
+  $('busy').hidden=true;
+  if (!icons.length && !lucky.length) toast('鍵マークの付いたアイコンが見つかりませんでした。鍵がはっきり出ている瞬間に撮ったスクショで試してください');
+  fillUnup(); renderAll(); });
+function fileImg(f){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(f), i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('画像')); i.src=u; }); }
+// GameWith の全アイコン（図鑑No・正式名・アイコンの見分け用の数字）。初めて読むときに読み込む
+let GW=null; const GW_SURE=26, GW_GAP=5; // これより近く、2番目と差があれば「確か」
+async function loadGW(){ if (GW) return GW; try{ const j=await (await fetch('gw.json')).json(); GW=j.map(x=>({i:x.i, n:x.n||'', a:x.a||'', f:x.f ? Array.from(atob(x.f),c=>c.charCodeAt(0)) : null})).filter(x=>x.f); }catch(e){ GW=[]; } return GW; }
+// GameWith の全アイコン（図鑑No ごと・進化前も）と見比べる。名前は持っている形そのものの正式名（初期アカウントは進化前の名前）
+function gwCands(fp2,m){ if (!GW?.length) return []; const ds=GW.map(x=>({n:x.n,i:x.i,a:x.a,d:pdDistM(x.f,fp2,m)})).sort((a,b)=>a.d-b.d); const out=[]; for (const x of ds){ if (!out.some(o=>o.n===x.n)) out.push(x); if (out.length>=4) break; } return out; }
+let TPL=null;
+async function lockTpl(){ if (TPL) return TPL; const i=new Image(); i.src='lock.png'; await i.decode(); const c=document.createElement('canvas'); c.width=i.width; c.height=i.height; c.getContext('2d').drawImage(i,0,0); return TPL={g:pdGray(c),w:i.width,h:i.height}; }
+async function readShot(img,si){
+  const W=img.width,H=img.height,c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,0,0);
+  const d=g.getImageData(0,0,W,H).data, G=pdGrid(d,W,H); if (!G){ toast(`${si+1}枚目：アイコンの並びが見つかりませんでした`); return; }
+  const T=await lockTpl(), cells=[]; await loadGW();
+  const RS=pdAllRows(G,H,d,W); for (const [ri,[a,b]] of RS.entries()) for (const [x0,x1] of G.cols){ if (!pdFullIcon(d,W,x0,a,x1-x0+1,b-a+1)) continue; const w=x1-x0+1, h=b-a+1, cc=pdCellCanvas(img,x0,a,w,h,100), gg=pdGray(cc), ey=cc.height-58;
+    const r=pdNCC(gg,100,cc.height,T.g,T.w,T.h,64,82,ey-12,ey+12); cells.push({ri,a,b,x0,x1,w,h,lock:r.s>=.6,filled:filled(d,W,x0,a,w,h)}); }
+  { // アイコンのある行がつながっている所だけ（離れた所の1マスは、上の見出しなどのまちがい）
+    const has=[...new Set(cells.map(c=>c.ri))].sort((x,y)=>x-y); let best=[0,-1],st=0; for (let i=1;i<=has.length;i++){ if (i===has.length||has[i]!==has[i-1]+1){ if (i-1-st>best[1]-best[0]) best=[st,i-1]; st=i; } }
+    const keep=new Set(has.slice(best[0],best[1]+1)); for (let i=cells.length-1;i>=0;i--) if (!keep.has(cells[i].ri)) cells.splice(i,1); }
+  // 鍵マークが1つでもあれば「鍵キャラのスクショ」、なければ「ラッキーのスクショ」（運アップ用モンスターを並べた画面）
+  if (!cells.some(c=>c.lock)){ const got=cells.filter(c=>c.filled).map(c=>({canvas:cellImg(img,c,H), fp:pdFP2(img,c.x0,c.a,c.w,c.h)}));
+    // ラッキーの画面は、同じポポロンばかりで種類が少ない。種類が多いのは、鍵が点滅で消えた瞬間の鍵キャラのスクショ
+    const kinds=[]; for (const x of got) if (!kinds.some(k=>pdDist(k,x.fp)<30)) kinds.push(x.fp);
+    if (got.length && (kinds.length<=10 || kinds.length<=got.length*.5)) lucky.push(...got);
+    else toast(`${si+1}枚目：鍵マークが見つかりませんでした。鍵がはっきり出ている瞬間に撮り直してください`);
+    return; }
+  for (const {a,b,x0,w,h,lock} of cells){ if (!lock) continue;
+    // アイコン（new の文字が少し上にはみ出すので、上はマスの幅だけ取る）
+    const bot=Math.min(H,b+1+Math.round(w*.07)), top=Math.max(a,bot-Math.round(w*1.2)), ic=document.createElement('canvas'); ic.width=w; ic.height=bot-top; ic.getContext('2d').drawImage(img,x0,top,w,ic.height,0,0,w,ic.height); // 下の Lv・星・運の数字が少しはみ出すので、下は少し広めに
+    const fp=pdFP(img,x0,a,w,h);
+    // 同じスクショどうしを何枚か入れたとき（重なった所）は、ほとんど同じ絵なら1つにする
+    if (icons.some(o=>o.src!==si && pdDist(o.fp,fp)<1.2 && pdDist(o.full,fullFP(ic))<3)) continue;
+    let name=guessName(fp)||'', guess=name?'mem':''; const cands=gwCands(pdFP2(img,x0,a,w,h),pdMask2(img,x0,a,w,h));
+    // 覚えた名前がなければ、いちばん似ているアイコンの正式名を必ず入れる。はっきりしないときは「要確認」
+    if (!name && cands[0]){ name=cands[0].n; const sure=!!name && cands[0].d<=GW_SURE && (!cands[1] || cands[1].d-cands[0].d>=GW_GAP); guess=sure?'gw':'gwlow'; }
+    icons.push({canvas:ic, fp, full:fullFP(ic), name, guess, cands, inTitle:icons.length<4, src:si, key:Math.random()});
+  }
+  if (!stone.v) await readStone(img);
+}
+function cellImg(img,c,H){ const bot=Math.min(H,c.b+1+Math.round(c.w*.07)), top=Math.max(c.a,bot-Math.round(c.w*1.2)), ic=document.createElement('canvas'); ic.width=c.w; ic.height=bot-top; ic.getContext('2d').drawImage(img,c.x0,top,c.w,ic.height,0,0,c.w,ic.height); return ic; }
+// マスにアイコンがあるか（空のマスは茶色の地のまま）
+function filled(d,W,x0,a,w,h){ let n=0,m=0; for (let y=Math.round(a+h*.3);y<a+h*.8;y+=2) for (let x=Math.round(x0+w*.2);x<x0+w*.8;x+=2){ m++; const i=(y*W+x)*4,r=d[i],g=d[i+1],b=d[i+2]; if (r>=35&&r<=120&&g>=20&&g<=90&&b<=70&&r>g&&g>=b) n++; } return n/m<.5; }
+// ---- ラッキー（運アップ用モンスター）の数 ----
+function luckGroups(){ const gs=[]; for (const l of lucky){ const g=gs.find(x=>pdDist(x.fp,l.fp)<30); if (g) g.n++; else gs.push({fp:l.fp, canvas:l.canvas, n:1}); }
+  for (const g of gs){ let best=null,bd=1e9; for (const e of LUCK){ const dd=pdDist(e.fp,g.fp); if (dd<bd){bd=dd;best=e;} } g.known=bd<30; g.w=g.known ? best.w : 1; } return gs; }
+const luckTotal=()=>luckGroups().reduce((s,g)=>s+g.n*g.w,0);
+function fillUnup(){ if (!lucky.length || $('unup').dataset.typed) return; const t=luckTotal(); $('unup').value=t>=10 ? Math.floor(t/10)*10 : t; }
+function setLuck(fp,w){ const e=LUCK.find(x=>pdDist(x.fp,fp)<30); if (e) e.w=w; else LUCK.push({fp,w}); saveLuck(); $('unup').dataset.typed=''; fillUnup(); renderAll(); }
+function renderLucky(){ const box=$('lucky'), gs=luckGroups(); $('luckyCard').hidden=!lucky.length; box.innerHTML='';
+  gs.forEach(g=>{ const d=document.createElement('div'); d.className='lk'+(g.known?'':' need'); const im=document.createElement('img'); im.src=g.canvas.toDataURL('image/jpeg',.85); d.appendChild(im);
+    const t=document.createElement('div'); t.className='mid'; t.innerHTML=`<b>${g.n}体</b>　`;
+    for (const w of [1,7,0]){ const b=document.createElement('button'); b.type='button'; b.className='wb'+(g.w===w&&g.known?' on':''); b.textContent=w?'+'+w:'数えない'; b.onclick=()=>setLuck(g.fp,w); t.appendChild(b); }
+    if (!g.known) t.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent:'初めて見るモンスターです。ラッキーセブンポポロンなら「+7」、ラッキーポポロン・ラッキーじじいなどは「+1」、運アップ用でない素材なら「数えない」を押してください（次からは覚えます）'}));
+    d.appendChild(t); box.appendChild(d); });
+  const tot=luckTotal(); $('luckyTotal').textContent=lucky.length ? `合計 ${tot}体分 → 運UPに「${tot>=10?Math.floor(tot/10)*10:tot}」を入れました` : ''; }
+function fullFP(c){ const t=document.createElement('canvas'); t.width=t.height=16; t.getContext('2d').drawImage(c,0,0,16,16); return Array.from(t.getContext('2d').getImageData(0,0,16,16).data).filter((_,i)=>i%4!==3); }
+// 虹結晶の数：画面の右上（虹色の石のマークの右）
+async function readStone(img){ try{ const W=img.width, pp=await timeLimit(ppInit(),90000); if (!pp) return;
+    const box=stoneBox(img); if (!box){ stone.sure=false; return; }
+    const r=await timeLimit(ppLine(pp,img,box),20000); const m=(r.t||'').replace(/[,，]/g,'').match(/\d{1,6}/g);
+    const pad=box.h*.4, cc=document.createElement('canvas'); cc.width=Math.round(box.w+pad*2); cc.height=Math.round(box.h+pad*2); cc.getContext('2d').drawImage(img,box.x-pad,box.y-pad,cc.width,cc.height,0,0,cc.width,cc.height); stone.crop=cc.toDataURL('image/jpeg',.85);
+    if (m){ stone.v=m.sort((a,b)=>b.length-a.length)[0]; stone.sure=!r.low; } else { stone.sure=false; }
+  }catch(e){ stone.sure=false; } }
+// 虹結晶の数の場所：画面の右上の緑の「＋」ボタンを見つけ、その左の白い数字だけを囲む
+function stoneBox(img){ const W=img.width, y0=Math.round(W*.17), y1=Math.round(W*.3), x0=Math.round(W*.6), c=document.createElement('canvas'); c.width=W-x0; c.height=y1-y0; const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,x0,y0,c.width,c.height,0,0,c.width,c.height);
+  const d=g.getImageData(0,0,c.width,c.height).data, at=(x,y)=>{ const i=(y*c.width+x)*4; return [d[i],d[i+1],d[i+2]]; };
+  // 緑の＋ボタン：いちばん右のほうにある緑のかたまりの左はし
+  let gx=-1, gy=0, gn=0; for (let x=c.width-1;x>=0;x--){ let n=0,sy=0; for (let y=0;y<c.height;y++){ const [r,gg,b]=at(x,y); if (gg>150&&r<130&&b<130&&gg-r>60){ n++; sy+=y; } } if (n>c.height*.15){ gx=x; gy=sy/n; gn=n; } else if (gx>=0 && x<gx-3) break; }
+  if (gx<0) return null;
+  // その左の白っぽい字（数字）の範囲
+  const ya=Math.max(0,Math.round(gy-W*.03)), yb=Math.min(c.height-1,Math.round(gy+W*.03)); let xa=-1,xb=-1,ta=c.height,tb=0;
+  for (let x=gx-2;x>gx-W*.2 && x>0;x--){ let hit=false; for (let y=ya;y<=yb;y++){ const [r,gg,b]=at(x,y); if (r>200&&gg>200&&b>170){ hit=true; if(y<ta)ta=y; if(y>tb)tb=y; } } if (hit){ if (xb<0) xb=x; xa=x; } else if (xb>=0 && xa-x>W*.025) break; }
+  if (xb<0) return null; return {x:x0+xa, y:y0+ta, w:xb-xa+1, h:tb-ta+1}; }
+
+// ---- 名前の組み立て ----
+function groups(){ // 同じ名前は1つにまとめて数える（名前がまだのアイコンは1つずつ）
+  const out=[]; icons.forEach(ic=>{ const g=ic.name ? out.find(o=>o.name===ic.name) : null; if (g){ g.n++; g.inTitle ||= ic.inTitle; } else out.push({name:ic.name, n:1, inTitle:ic.inTitle}); }); return out; }
+const withN=(s,n)=>n>1 ? s+(SET.times?'×':'')+n : s;
+const nameFor=(n,where)=>((where==='title'?SET.titleName:SET.descName)==='nick' && nickOf(n)) ? nickOf(n) : n;
+function fill(t,v){ return t.replace(/\{([^}]+)\}/g,(m,k)=>k in v ? v[k] : m); }
+function emojiGreeting(){ const e=$('emo').value.trim(); if (e) return e.includes('即') ? e : e+'即購入可能'; return randomGreeting(); }
+let lastRand=''; function randomGreeting(){ if (lastRand) return lastRand; const pick=()=>EMOJI[Math.floor(Math.random()*EMOJI.length)], many=n=>Array.from({length:n},pick).join('');
+  // 実例と同じくらい：前に0〜2個・後ろに1〜2個、ときどき「即購入」と「可能」の間に1個（合計2〜4個）
+  const a=Math.floor(Math.random()*3), b=1+Math.floor(Math.random()*2), mid=(a+b<4 && Math.random()<.25)?pick():'';
+  return lastRand=many(a)+'即購入'+mid+'可能'+many(Math.max(b,a?1:2)); }
+function vals(){ const gs=groups().filter(g=>g.name), up=$('unup').value.trim(), arrow=SET.arrow?'↑':'';
+  return {'番号':$('num').value.trim(), '石':$('stone').value.trim(), '運UP':up, '↑':up?arrow:'', '見出し':$('head').value.trim(), '絵文字挨拶':emojiGreeting(),
+    '題名キャラ':gs.filter(g=>g.inTitle).map(g=>withN(nameFor(g.name,'title'),g.n)).join('+'),
+    'キャラ一覧':gs.map(g=>withN(nameFor(g.name,'desc'),g.n)).join('\n')}; }
+function titleText(){ return fill(SET.titleTpl, vals()).replace(/\+運UP(?=\s*$)/,'').trim(); }
+function descText(){ const v=vals(); const parts=[]; for (const b of SET.blocks){ if (!b.on) continue; const t=fill(b.t,v); if (/\{見出し\}/.test(b.t) && !t.trim()) continue; parts.push(t); } return parts.join('\n').replace(/\n{5,}/g,'\n\n\n\n'); }
+
+// ---- 画面：アイコンと名前の一覧 ----
+function renderAll(){ renderIcons(); renderStone(); renderLucky(); renderStatus(); renderText(); draw(); }
+function renderStatus(){ const k=$('stKey'), l=$('stLucky'); const any=shots.length>0; $('status').hidden=!any;
+  k.textContent=icons.length ? `🔒 鍵キャラ：${icons.length}体 ✓` : '🔒 鍵キャラ：見つかりません'; k.className=icons.length?'ok':'ng';
+  l.textContent=lucky.length ? `🍀 ラッキー：${luckTotal()}体分 ✓` : '🍀 ラッキー：スクショなし（運UPは手で入れる）'; l.className=lucky.length?'ok':'sub'; }
+function renderStone(){ if (!$('stone').dataset.typed) $('stone').value=stone.v||''; $('stoneBox').classList.toggle('low',shots.length>0 && (!stone.sure||!$('stone').value)); $('stoneCrop').src=stone.crop||''; $('stoneCropBox').hidden=!stone.crop; }
+function renderIcons(){ const box=$('icons'); box.innerHTML=''; $('iconHead').hidden=!icons.length;
+  icons.forEach((ic,i)=>{ let candBox=null; const d=document.createElement('div'); d.className='ic'+(ic.name&&ic.guess!=='gwlow'?'':' need');
+    const im=document.createElement('img'); im.src=ic.canvas.toDataURL('image/jpeg',.9); d.appendChild(im);
+    const m=document.createElement('div'); m.className='mid';
+    const inp=document.createElement('input'); inp.type='text'; inp.placeholder='正式名を入れる（1回入れると覚えます）'; inp.value=ic.name; inp.setAttribute('list','nameList');
+    inp.onchange=()=>{ ic.name=inp.value.trim(); ic.guess=false; if (ic.name) rememberFP(ic.name,ic.fp); renderAll(); };
+    m.appendChild(inp);
+    if (ic.guess==='gwlow') m.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent:ic.guess==='gwlow' ? '要確認：いちばん似ているキャラを入れました。ちがうときは候補を押すか直して「✓確認」' : ''}));
+    if ((!ic.name || ic.guess==='gwlow' || ic.picked) && ic.cands?.length){ const cs=document.createElement('div'); cs.className='cands'; cs.append(Object.assign(document.createElement('span'),{textContent:'候補：'}));
+      ic.cands.filter(c=>c.n).forEach(c=>{ const b=document.createElement('button'); b.type='button'; b.textContent=c.n; if (c.n===ic.name) b.className='on'; b.title='図鑑No.'+c.i; b.onclick=()=>{ ic.name=c.n; ic.guess=''; ic.picked=true; rememberFP(ic.name,ic.fp); renderAll(); }; cs.appendChild(b); }); candBox=cs; }
+    if (ic.name){ const nk=document.createElement('div'); nk.className='nick'; const reg=nickOf(ic.name), cand=candOf(ic.name);
+      nk.innerHTML=`<span>呼称：</span>`; const ni=document.createElement('input'); ni.type='text'; ni.className=reg?'':'cand'; ni.value=reg||cand; ni.placeholder='（なし＝正式名）';
+      ni.onchange=()=>{ const c=CHARS[ic.name] ??= {nick:'',fps:[]}; c.nick=ni.value.trim(); if (!c.nick && cand) c.no=true; saveChars(); renderAll(); };
+      nk.appendChild(ni);
+      if (!reg && cand){ const b=document.createElement('button'); b.type='button'; b.className='reg'; b.textContent='呼称を登録'; b.onclick=()=>{ const c=CHARS[ic.name] ??= {nick:'',fps:[]}; c.nick=ni.value.trim()||cand; saveChars(); renderAll(); toast(`「${ic.name}」の呼称を「${c.nick}」で登録しました`); }; nk.appendChild(b); }
+      m.appendChild(nk); }
+    const ops=document.createElement('div'); ops.className='ops';
+    const t=document.createElement('label'); t.innerHTML=`<input type="checkbox" ${ic.inTitle?'checked':''}> 題名に入れる`; t.querySelector('input').onchange=e=>{ ic.inTitle=e.target.checked; renderText(); }; ops.appendChild(t);
+    if (ic.guess==='gwlow' && ic.name){ const ok=document.createElement('button'); ok.type='button'; ok.className='ok'; ok.textContent='✓確認'; ok.onclick=()=>{ ic.guess=''; rememberFP(ic.name,ic.fp); renderAll(); }; ops.appendChild(ok); }
+    const up=document.createElement('button'); up.type='button'; up.textContent='↑'; up.disabled=i===0; up.onclick=()=>{ [icons[i-1],icons[i]]=[icons[i],icons[i-1]]; renderAll(); }; ops.appendChild(up);
+    const rm=document.createElement('button'); rm.type='button'; rm.textContent='✕'; rm.onclick=()=>{ icons.splice(i,1); renderAll(); }; ops.appendChild(rm);
+    m.appendChild(ops); d.appendChild(m); if (candBox) d.appendChild(candBox); box.appendChild(d); });
+  const dl=$('nameList'); if (!dl.dataset.n || +dl.dataset.n!==Object.keys(CHARS).length){ const set=new Set([...Object.keys(CHARS), ...(GW||[]).map(x=>x.n).filter(Boolean)]); dl.innerHTML=[...set].map(n=>`<option value="${esc(n)}">`).join(''); dl.dataset.n=Object.keys(CHARS).length; }
+  const nd=icons.filter(x=>!x.name||x.guess==='gwlow').length; $('iconNote').textContent=icons.length ? `鍵マークのアイコン ${icons.length}個`+(nd?`（要確認 ${nd}個）`:'') : '';
+}
+function renderText(){ const t=titleText(); $('titleOut').value=t; $('descOut').value=descText(); const n=[...t].length; $('titleLen').textContent=`${n}/50字`; $('titleLen').classList.toggle('over',n>50);
+  const used=HIST.nums.includes($('num').value.trim()); $('numWarn').hidden=!used||!$('num').value.trim(); renderChips(); }
+['num','head','emo','unup','stone'].forEach(id=>$(id).addEventListener('input',()=>{ if (id==='unup') $('unup').dataset.typed=1; if (id==='stone') $('stone').dataset.typed=1; if (id==='emo') lastRand=''; renderText(); if (id==='stone'){ renderStone(); draw(); } }));
+$('emoRand').onclick=()=>{ $('emo').value=''; lastRand=''; renderText(); };
+// 前に打った物（見出し・絵文字）：押すと入る、✕で消す
+function renderChips(){ for (const [key,id] of [['heads','head'],['emojis','emo']]){ const box=$(id+'Chips'); box.innerHTML='';
+  (HIST[key]||[]).forEach((v,i)=>{ const c=document.createElement('span'); c.className='chip'; const a=document.createElement('button'); a.type='button'; a.textContent=v; a.onclick=()=>{ $(id).value=v; if (id==='emo') lastRand=''; renderText(); };
+    const x=document.createElement('button'); x.type='button'; x.className='x'; x.textContent='✕'; x.setAttribute('aria-label','この履歴を消す'); x.onclick=()=>{ HIST[key].splice(i,1); saveHist(); renderChips(); };
+    c.append(a,x); box.appendChild(c); }); } }
+function remember(){ const h=$('head').value.trim(), e=$('emo').value.trim(), n=$('num').value.trim(); const up=(k,v)=>{ if (!v) return; HIST[k]=[v,...(HIST[k]||[]).filter(x=>x!==v)].slice(0,30); };
+  up('heads',h); up('emojis',e||lastRand); if (n && !HIST.nums.includes(n)) HIST.nums.push(n); saveHist(); }
+async function copy(t,what){ try{ await navigator.clipboard.writeText(t); toast(what+'をコピーしました'); }catch(e){ const ta=$(what==='題名'?'titleOut':'descOut'); ta.focus(); ta.select(); try{ document.execCommand('copy'); toast(what+'をコピーしました'); }catch(_){ toast('コピーできませんでした。長押しでコピーしてください'); } } }
+function checkBefore(){ const miss=[]; if (!$('num').value.trim()) miss.push('管理番号が空です'); if (!$('stone').value.trim()) miss.push('虹結晶の数が空です'); if (icons.some(x=>!x.name)) miss.push('名前がまだのアイコンがあります');
+  return !miss.length || confirm(miss.join('\n')+'\n\nこのままコピーしますか？'); }
+$('copyTitle').onclick=()=>{ if (!checkBefore()) return; remember(); copy(titleText(),'題名'); };
+$('copyDesc').onclick=()=>{ if (!checkBefore()) return; remember(); copy(descText(),'説明文'); };
+
+// ---- 出品画像 ----
+const S=1080, cv=$('cv'), ctx=cv.getContext('2d'); cv.width=cv.height=S;
+let bgImg=null;
+function bestCols(n){ if (SET.cols!=='auto') return +SET.cols; const area={w:S*.9,h:S*.66}; let best=1,bw=0; for (let c=1;c<=5;c++){ const r=Math.ceil(n/c), w=Math.min(area.w/c/1.04, area.h/r/1.12); if (w>bw+.5){bw=w;best=c;} } return best; }
+function draw(){ ctx.clearRect(0,0,S,S);
+  if (bgImg){ const k=Math.max(S/bgImg.width,S/bgImg.height); ctx.drawImage(bgImg,(S-bgImg.width*k)/2,(S-bgImg.height*k)/2,bgImg.width*k,bgImg.height*k); }
+  else { const g=ctx.createLinearGradient(0,0,S,S); ['#ff9ad5','#ffd76e','#8fe3ff','#b98cff'].forEach((c,i)=>g.addColorStop(i/3,c)); ctx.fillStyle=g; ctx.fillRect(0,0,S,S); }
+  const n=icons.length; if (n){ const cols=Math.min(n,bestCols(n)), rows=Math.ceil(n/cols), areaH=S*.68, top=S*.04, gap=S*.018;
+    const w=Math.min((S*.92-gap*(cols-1))/cols, (areaH-gap*(rows-1))/rows/1.02), h=w*1.02; let y=top+(areaH-(rows*h+(rows-1)*gap))/2;
+    for (let r=0;r<rows;r++){ const k=Math.min(cols,n-r*cols); let x=(S-(k*w+(k-1)*gap))/2; for (let i=0;i<k;i++){ const ic=icons[r*cols+i].canvas; ctx.drawImage(ic,x,y,w,w*ic.height/ic.width); x+=w+gap; } y+=h+gap; } }
+  // 下の石の枠（奥さんの画像に合わせて、枠の幅は数字の長さに合わせる。マークのすぐ右に数字）
+  const v=$('stone').value.trim()||'0', bh=S*.158, by=S*.807, fs=Math.round(bh*.64);
+  ctx.font=`900 ${fs}px "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif`; const tw=ctx.measureText(v).width;
+  const ok=CRYSTAL.complete && CRYSTAL.naturalWidth, gh=bh*.9, gw=ok ? gh*CRYSTAL.naturalWidth/CRYSTAL.naturalHeight : bh*.7;
+  const bw=Math.max(S*.48, bh*.38+gw+bh*.2+tw+bh*.5), bx=(S-bw)/2;
+  ctx.save(); ctx.shadowColor='rgba(0,0,0,.45)'; ctx.shadowBlur=18; rr(bx,by,bw,bh,bh/2); ctx.fillStyle='#d9a441'; ctx.fill(); ctx.restore();
+  rr(bx+S*.007,by+S*.007,bw-S*.014,bh-S*.014,(bh-S*.014)/2); const gb=ctx.createLinearGradient(0,by,0,by+bh); gb.addColorStop(0,'#6b3a1c'); gb.addColorStop(1,'#3d1f0c'); ctx.fillStyle=gb; ctx.fill();
+  const gx=bx+bh*.38; if (ok){ ctx.imageSmoothingQuality='high'; ctx.drawImage(CRYSTAL,gx,by+(bh-gh)/2,gw,gh); } else gem(gx+gw/2,by+bh/2,bh*.36);
+  const tx=gx+gw+bh*.2+tw/2+Math.max(0,(bw-(bh*.38+gw+bh*.2+tw+bh*.5))/2); ctx.textBaseline='middle'; ctx.textAlign='center';
+  ctx.lineJoin='round'; ctx.lineWidth=bh*.1; ctx.strokeStyle='#2a1406'; ctx.strokeText(v,tx,by+bh*.54); ctx.fillStyle='#fff'; ctx.fillText(v,tx,by+bh*.54); }
+// 虹結晶のマーク：ゲーム画面の上の虹結晶を切り抜いたもの
+const CRYSTAL=new Image(); CRYSTAL.onload=()=>draw(); CRYSTAL.src='crystal.png';
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
+function gem(cx,cy,r){ const pts=[...Array(6)].map((_,i)=>[cx+r*Math.cos(Math.PI/6+i*Math.PI/3),cy+r*Math.sin(Math.PI/6+i*Math.PI/3)]); ctx.beginPath(); pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y)); ctx.closePath();
+  const g=ctx.createConicGradient(0,cx,cy); ['#ff4d6d','#ffb347','#fff35c','#5ce87a','#4dc3ff','#a06bff','#ff4d6d'].forEach((c,i)=>g.addColorStop(i/6,c)); ctx.fillStyle=g; ctx.fill(); ctx.lineWidth=r*.12; ctx.strokeStyle='#fff'; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,cy-r*.55); ctx.lineTo(cx+r*.45,cy); ctx.lineTo(cx,cy+r*.55); ctx.lineTo(cx-r*.45,cy); ctx.closePath(); ctx.fillStyle='rgba(255,255,255,.6)'; ctx.fill(); }
+$('save').onclick=()=>{ draw(); cv.toBlob(async b=>{ const f=new File([b],'pocodun-'+Date.now()+'.png',{type:'image/png'}); try{ if (navigator.canShare?.({files:[f]})){ await navigator.share({files:[f]}); return; } }catch(e){ if (e.name==='AbortError') return; }
+  const u=URL.createObjectURL(b); $('bigImg').src=u; $('big').hidden=false; },'image/png'); };
+$('big').onclick=()=>$('big').hidden=true;
+
+// ---- 背景（色ごとに自分で用意した画像。この端末に保存） ----
+const idb=()=>new Promise((res,rej)=>{ const r=indexedDB.open('pocodun',1); r.onupgradeneeded=()=>r.result.createObjectStore('bg'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
+async function bgGet(k){ const db=await idb(); return new Promise(res=>{ const q=db.transaction('bg').objectStore('bg').get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }); }
+async function bgPut(k,v){ const db=await idb(); return new Promise(res=>{ const t=db.transaction('bg','readwrite'); v==null ? t.objectStore('bg').delete(k) : t.objectStore('bg').put(v,k); t.oncomplete=()=>res(); t.onerror=()=>res(); }); }
+let bgSel=load('bgSel',0);
+async function renderBg(){ const box=$('bgs'); box.innerHTML=''; for (let i=0;i<8;i++){ const v=await bgGet(i), b=document.createElement('button'); b.type='button'; b.className='bg'+(i===bgSel?' on':'');
+    b.style.backgroundImage=v?`url(${v})`:'none'; b.textContent=v?'':'＋'; b.onclick=async()=>{ if (!v){ pickBg(i); return; } bgSel=i; save('bgSel',i); await useBg(); renderBg(); };
+    if (v){ b.oncontextmenu=e=>{ e.preventDefault(); if (confirm('この背景を消しますか？')){ bgPut(i,null).then(renderBg); } }; }
+    box.appendChild(b); } }
+function pickBg(i){ const f=document.createElement('input'); f.type='file'; f.accept='image/*'; f.onchange=async()=>{ const file=f.files[0]; if (!file) return; const img=await fileImg(file); const c=document.createElement('canvas'), k=Math.min(1,1400/Math.max(img.width,img.height)); c.width=img.width*k; c.height=img.height*k; c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  await bgPut(i,c.toDataURL('image/jpeg',.9)); bgSel=i; save('bgSel',i); await useBg(); renderBg(); }; f.click(); }
+async function useBg(){ const v=await bgGet(bgSel); if (!v){ bgImg=null; draw(); return; } const i=new Image(); i.onload=()=>{ bgImg=i; draw(); }; i.src=v; }
+$('bgDel').onclick=async()=>{ if (await bgGet(bgSel) && confirm('選んでいる背景を消しますか？')){ await bgPut(bgSel,null); bgImg=null; draw(); renderBg(); } };
+
+// ---- 設定画面 ----
+$('openSet').onclick=()=>{ renderSet(); $('settings').hidden=false; };
+$('closeSet').onclick=()=>{ $('settings').hidden=true; renderAll(); };
+function renderSet(){
+  document.querySelectorAll('[data-set]').forEach(el=>{ const k=el.dataset.set; if (el.type==='checkbox') el.checked=!!SET[k]; else el.value=SET[k]; el.onchange=()=>{ SET[k]=el.type==='checkbox'?el.checked:el.value; saveSet(); renderAll(); }; });
+  $('titleTpl').value=SET.titleTpl; $('titleTpl').onchange=()=>{ SET.titleTpl=$('titleTpl').value; saveSet(); };
+  const box=$('blocks'); box.innerHTML='';
+  SET.blocks.forEach((b,i)=>{ const d=document.createElement('div'); d.className='blk';
+    d.innerHTML=`<div class="bh"><label><input type="checkbox" ${b.on?'checked':''}> ${esc(b.label)}</label><span><button type="button" class="u">↑</button><button type="button" class="d">↓</button><button type="button" class="e">編集</button><button type="button" class="r">✕</button></span></div><textarea hidden></textarea>`;
+    const ta=d.querySelector('textarea'); ta.value=b.t; ta.rows=Math.min(14,b.t.split('\n').length+1);
+    d.querySelector('input').onchange=e=>{ b.on=e.target.checked; saveSet(); };
+    d.querySelector('.u').onclick=()=>{ if (i){ [SET.blocks[i-1],SET.blocks[i]]=[SET.blocks[i],SET.blocks[i-1]]; saveSet(); renderSet(); } };
+    d.querySelector('.d').onclick=()=>{ if (i<SET.blocks.length-1){ [SET.blocks[i+1],SET.blocks[i]]=[SET.blocks[i],SET.blocks[i+1]]; saveSet(); renderSet(); } };
+    d.querySelector('.e').onclick=()=>{ ta.hidden=!ta.hidden; };
+    d.querySelector('.r').onclick=()=>{ if (confirm(`「${b.label}」を消しますか？`)){ SET.blocks.splice(i,1); saveSet(); renderSet(); } };
+    ta.oninput=()=>{ b.t=ta.value; saveSet(); };
+    box.appendChild(d); });
+  renderBg(); renderLearned(); }
+$('addBlock').onclick=()=>{ const l=prompt('新しいブロックの名前'); if (!l) return; SET.blocks.push({label:l,on:true,t:''}); saveSet(); renderSet(); };
+$('resetBlocks').onclick=()=>{ if (confirm('文字の形を、はじめの形（最新の出品と同じ）に戻しますか？')){ SET.blocks=JSON.parse(JSON.stringify(BLOCKS0)); SET.titleTpl=SET0.titleTpl; saveSet(); renderSet(); } };
+function renderLearned(){ const box=$('learned'); const ks=Object.keys(CHARS); box.innerHTML=ks.length?'':'<div class="note">まだありません</div>';
+  ks.forEach(n=>{ const d=document.createElement('div'); d.className='lr'; d.innerHTML=`<b>${esc(n)}</b><span>${CHARS[n].nick?'呼称：'+esc(CHARS[n].nick):''}</span><button type="button">消す</button>`; d.querySelector('button').onclick=()=>{ if (confirm(`「${n}」を忘れますか？（覚えた絵も消えます）`)){ delete CHARS[n]; saveChars(); renderLearned(); } }; box.appendChild(d); }); }
+$('exportBtn').onclick=()=>{ const b=new Blob([JSON.stringify({chars:CHARS,hist:HIST,set:SET},null,1)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='pocodun-覚えた物.json'; a.click(); };
+$('importBtn').onclick=()=>{ const f=document.createElement('input'); f.type='file'; f.accept='application/json'; f.onchange=async()=>{ try{ const j=JSON.parse(await f.files[0].text()); if (j.chars){ CHARS={...CHARS,...j.chars}; saveChars(); } if (j.hist){ HIST=j.hist; saveHist(); } if (j.set){ SET={...SET0,...j.set}; saveSet(); } renderSet(); toast('読み込みました'); }catch(e){ toast('読み込めませんでした'); } }; f.click(); };
+
+$('ver').textContent='試作 v'+APP_VER;
+useBg(); renderAll();
+
+</script>
+</body></html>
