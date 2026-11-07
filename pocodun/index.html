@@ -272,7 +272,7 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='18';
+const APP_VER='19';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
@@ -377,14 +377,28 @@ function cellImg(img,c,H){ const bot=Math.min(H,c.b+1+Math.round(c.w*.07)), top=
 // マスにアイコンがあるか（空のマスは茶色の地のまま）
 function filled(d,W,x0,a,w,h){ let n=0,m=0; for (let y=Math.round(a+h*.3);y<a+h*.8;y+=2) for (let x=Math.round(x0+w*.2);x<x0+w*.8;x+=2){ m++; const i=(y*W+x)*4,r=d[i],g=d[i+1],b=d[i+2]; if (r>=35&&r<=120&&g>=20&&g<=90&&b<=70&&r>g&&g>=b) n++; } return n/m<.5; }
 // ---- ラッキー（運アップ用モンスター）の数 ----
+// 運アップ用モンスター（図鑑No・名前・運気）。ゲームの詳しい画面で「運気 7/7」なのはラッキーセブンポポロンだけ、ほかは「1/1」
+const LUCK_DB={'0479':['ラッキーポポロン',1],'2457':['ラッキーセブンポポロン',7],'2000':['2000体目記念ラッキーポロンちゃん',1],'0618':['ラッキーじじい',1],'1828':['らっきいじじい',1],'2572':['じじいレイ',1],
+  '2429':['ジジィートス・ジジラ',1],'2430':['ジジィートス・ジジイラ',1],'2277':['ラッキースライムじじい',1],'2107':['ラッキー猫おばば',1]};
 function luckGroups(){ const gs=[]; for (const l of lucky){ const g=gs.find(x=>pdDist(x.fp,l.fp)<30); if (g) g.n++; else gs.push({fp:l.fp, canvas:l.canvas, n:1}); }
-  for (const g of gs){ let best=null,bd=1e9; for (const e of LUCK){ const dd=pdDist(e.fp,g.fp); if (dd<bd){bd=dd;best=e;} } g.known=bd<30; g.w=g.known ? best.w : 1; } return gs; }
+  for (const g of gs){ let best=null,bd=1e9; for (const e of LUCK){ const dd=pdDist(e.fp,g.fp); if (dd<bd){bd=dd;best=e;} } g.known=bd<30; g.w=g.known ? best.w : 1; g.name='';
+    // 覚えていなければ、GameWith のアイコンと見比べて、上の表のモンスターなら名前と運気を自動で入れる
+    let gb=null,gd=1e9; for (const x of (GW||[])){ const dd=pdDist(x.f,g.fp); if (dd<gd){gd=dd;gb=x;} }
+    let hit=gb && gd<=30 && LUCK_DB[gb.i] ? gb.i : '';
+    // ラッキーポポロンとセブンは、スクショの小さなアイコンでは絵が近すぎる → 帽子の赤（セブンは赤い帽子）で見分ける
+    if (!hit){ const dd=i=>{ const x=(GW||[]).find(y=>y.i===i); return x ? pdDist(x.f,g.fp) : 1e9; }, d1=dd('0479'), d7=dd('2457');
+      if (Math.min(d1,d7)<=45 && Object.keys(LUCK_DB).every(i=>i==='0479'||i==='2457'||dd(i)>Math.min(d1,d7))) hit=redHat(g.canvas)>=.06 ? '2457' : '0479'; }
+    if (hit){ g.name=LUCK_DB[hit][0]; if (!g.known){ g.w=LUCK_DB[hit][1]; g.known=true; g.auto=true; } } }
+  return gs; }
+// アイコンの上の方（帽子のあたり）の、はっきりした赤の割合
+function redHat(c){ const W=c.width,H=c.height, d=c.getContext('2d').getImageData(0,0,W,H).data, top=H-W*.98; let red=0,n=0;
+  for (let y=Math.max(0,Math.round(top+W*.12));y<top+W*.45;y++) for (let x=Math.round(W*.1);x<W*.9;x++){ const i=(y*W+x)*4; n++; if (d[i]>150&&d[i+1]<90&&d[i+2]<90) red++; } return n?red/n:0; }
 const luckTotal=()=>luckGroups().reduce((s,g)=>s+g.n*g.w,0);
 function fillUnup(){ if (!lucky.length || $('unup').dataset.typed) return; const t=luckTotal(); $('unup').value=t>=10 ? Math.floor(t/10)*10 : t; }
 function setLuck(fp,w){ const e=LUCK.find(x=>pdDist(x.fp,fp)<30); if (e) e.w=w; else LUCK.push({fp,w}); saveLuck(); $('unup').dataset.typed=''; fillUnup(); renderAll(); }
 function renderLucky(){ const box=$('lucky'), gs=luckGroups(); $('luckyCard').hidden=!lucky.length; box.innerHTML='';
   gs.forEach(g=>{ const d=document.createElement('div'); d.className='lk'+(g.known?'':' need'); const im=document.createElement('img'); im.src=g.canvas.toDataURL('image/jpeg',.85); d.appendChild(im);
-    const t=document.createElement('div'); t.className='mid'; t.innerHTML=`<b>${g.n}体</b>　`;
+    const t=document.createElement('div'); t.className='mid'; t.innerHTML=(g.name?`<div class="lkn">${esc(g.name)}</div>`:'')+`<b>${g.n}体</b>　`;
     for (const w of [1,7,0]){ const b=document.createElement('button'); b.type='button'; b.className='wb'+(g.w===w&&g.known?' on':''); b.textContent=w?'+'+w:'数えない'; b.onclick=()=>setLuck(g.fp,w); t.appendChild(b); }
     if (!g.known) t.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent:'初めて見るモンスターです。ラッキーセブンポポロンなら「+7」、ラッキーポポロン・ラッキーじじいなどは「+1」、運アップ用でない素材なら「数えない」を押してください（次からは覚えます）'}));
     d.appendChild(t); box.appendChild(d); });
