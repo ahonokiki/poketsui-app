@@ -381,7 +381,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='73'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='74'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -1973,6 +1973,8 @@ function titleText(){ // タイトル用：アイテム名×数だけ
 async function copyText(t){
   try{ await navigator.clipboard.writeText(t); return true; }
   catch(e){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(_){} ta.remove(); return ok; } }
+// v74：「押したらすぐコピーする」は一度だけ必ずオフに戻す（このあと自分でオンにしたらそのまま）
+try{ if(!localStorage.getItem('promo_autoCopyOff1')){ localStorage.setItem('promo_autoCopy','0'); localStorage.setItem('promo_autoCopyOff1','1'); } }catch(e){}
 try{ const v=localStorage.getItem('promo_autoCopy'); if(v!==null) $('autoCopy').checked=v==='1'; }catch(e){}
 $('autoCopy').addEventListener('change',()=>{ try{ localStorage.setItem('promo_autoCopy',$('autoCopy').checked?'1':'0'); }catch(e){} });
 async function showCopy(t,label){
