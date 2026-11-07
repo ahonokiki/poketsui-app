@@ -1,0 +1,2009 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ポケツイ画像加工アプリ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=M+PLUS+Rounded+1c:wght@900&family=Zen+Maru+Gothic:wght@900&family=Kiwi+Maru:wght@500&family=Hachi+Maru+Pop&family=Dela+Gothic+One&family=Potta+One&family=Rampart+One&family=Yusei+Magic&family=Kosugi+Maru&family=Cherry+Bomb+One&family=Mochiy+Pop+P+One&family=RocknRoll+One&family=Reggae+One&family=Stick&family=DotGothic16&text=%E8%A8%88%E7%82%B9%E5%90%88%E5%80%8B%E5%93%81%E3%82%BB%E3%83%83%E3%83%88%200123456789%C3%97&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Baloo+2:wght@800&family=Nunito:wght@900&family=Fredoka:wght@700&family=Sniglet:wght@800&family=Titan+One&family=Paytone+One&family=DynaPuff:wght@700&family=Coiny&family=Cherry+Bomb+One&family=Rampart+One&family=Rubik+Bubbles&family=Modak&family=Chango&family=Lilita+One&family=Grandstander:wght@900&family=Varela+Round&family=Kosugi+Maru&family=Potta+One&family=Chewy&family=Bubblegum+Sans&family=Luckiest+Guy&family=Rubik:wght@900&family=M+PLUS+Rounded+1c:wght@900&family=Zen+Maru+Gothic:wght@900&family=Hachi+Maru+Pop&family=Yusei+Magic&family=Mochiy+Pop+P+One&family=Rounded+Mplus+1c:wght@800&family=Kiwi+Maru:wght@500&family=Dela+Gothic+One&family=Bowlby+One&family=Carter+One&family=Gluten:wght@900&family=Fuzzy+Bubbles:wght@700&text=%C3%97%200123456789&display=swap" rel="stylesheet">
+<style>
+  :root{--pink:#ff6fae;--pink2:#ff9cc8;--lav:#a98be0;--lav2:#7f63c9;--ink:#5a4a5e;--sub:#9a8a9e;--line:#f6d6e6;--green1:#8fe8b9;--green2:#4fd08f}
+  *{box-sizing:border-box}
+  body{margin:0;background-color:#fff0f6;font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif;color:var(--ink);
+    background:#fff0f6 radial-gradient(circle at 10px 10px,#ffe0ee 3px,transparent 4px) 0 0/22px 22px;min-height:100vh}
+  header{background:linear-gradient(135deg,#9d86d8,#c38fd8 55%,#f59ac8);color:#fff;
+    text-align:center;padding:14px 16px 12px;font-size:18px;font-weight:900;letter-spacing:.06em;box-shadow:0 3px 10px #b07ad044;border-radius:0 0 22px 22px}
+  header small{display:block;font-size:11px;font-weight:700;opacity:.9;letter-spacing:0}
+  main{max-width:560px;margin:0 auto;padding:14px 16px 110px}
+  .preview{background:#fff;border-radius:26px;padding:10px;box-shadow:0 6px 18px #ff8fc033;border:3px solid #fff}
+  canvas{width:100%;border-radius:18px;display:block}
+  .card{background:#fff;border-radius:22px;margin:14px 0;box-shadow:0 4px 14px #e7a3c833;overflow:hidden}
+  .card h2{margin:0;font-size:14px;font-weight:900;color:#fff;padding:9px 16px;background:linear-gradient(90deg,var(--pink),var(--pink2));display:flex;align-items:center;gap:6px}
+  .card h2::before{content:"♡";font-size:13px}
+  .card .in{padding:12px 16px 14px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:6px 0}
+  label{font-size:14px;font-weight:700}
+  input[type=number]{width:74px;border:2px solid var(--line);border-radius:14px;padding:7px 10px;font:inherit;color:var(--ink);background:#fffafd;text-align:center}
+  input[type=number]:disabled{opacity:.55}
+  select{width:100%;border:2px solid var(--line);border-radius:16px;padding:10px 12px;font:inherit;font-size:16px;font-weight:700;color:var(--ink);background:#fffafd}
+  input[type=checkbox]{accent-color:var(--pink);width:18px;height:18px;vertical-align:-3px}
+  input[type=color]{width:44px;height:34px;border:2px solid var(--line);border-radius:12px;padding:2px;background:#fff}
+  .note{font-size:11.5px;color:var(--sub);line-height:1.6;margin-top:6px}
+  .pill{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:999px;padding:12px 20px;font:inherit;font-weight:900;font-size:15px;color:#fff;cursor:pointer;
+    background:linear-gradient(180deg,#ff9fcb,var(--pink));box-shadow:0 4px 0 #e0579a,0 6px 12px #ff6fae44}
+  .pill:active{transform:translateY(3px);box-shadow:0 1px 0 #e0579a}
+  .pill.lav{background:linear-gradient(180deg,#c3b0f0,var(--lav));box-shadow:0 4px 0 var(--lav2),0 6px 12px #a98be044}
+  .pill.wide{width:100%}
+  .sw{display:flex;flex-direction:column;align-items:center;gap:3px;background:#fff;border:3px solid #f3eef5;border-radius:16px;padding:6px 8px;font:inherit;font-size:11px;font-weight:700;color:var(--ink);cursor:pointer}
+  .sw.on{border-color:var(--pink);background:#fff3f9}
+  .tcRow{gap:6px}.tcRow .sw{padding:5px 6px}.tcRow .sw i{width:26px;height:26px}
+  .sw i{width:34px;height:34px;border-radius:50%;box-shadow:0 0 10px currentColor;border:2px solid #fff}
+  #sets{display:grid;grid-template-columns:repeat(5,1fr);gap:12px 10px;margin:4px 0 8px}
+  .set{position:relative;aspect-ratio:1;border-radius:18px;border:4px solid var(--slot);background:#fff center/cover;cursor:pointer;padding:0;box-shadow:0 2px 8px #0002}
+  .set.empty{background:color-mix(in srgb,var(--slot) 14%,#fff);border-style:dashed}
+  .set.on{outline:3px solid var(--slot);outline-offset:3px}
+  .set i{font-style:normal;font-size:22px;font-weight:900;color:var(--slot)}
+  .set em{position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);font-style:normal;font-size:9px;font-weight:900;color:#fff;background:var(--slot);border-radius:99px;padding:1px 6px;white-space:nowrap}
+  .set b{position:absolute;right:-6px;top:-6px;width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 4px #0003}
+  .set .del{position:absolute;left:-7px;top:-7px;width:20px;height:20px;border-radius:50%;background:#c9b8cf;color:#fff;font-size:11px;line-height:20px;text-align:center;border:2px solid #fff}
+  .bar{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:#ffffffe8;backdrop-filter:blur(8px);border-top:2px solid #fde3ef}
+  .bar .inner{max-width:560px;margin:0 auto;display:flex;gap:10px}
+  header{position:relative}
+  .gear{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:2px solid #ffffffaa;background:#ffffff33;color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:0}
+  .lrn{display:flex;align-items:center;gap:6px;background:#fff;border:2px solid #f6e4ee;border-radius:14px;padding:6px 6px 6px 10px;margin:6px 0;font-size:13px}
+  .lrn span{flex:1;min-width:0;overflow-wrap:anywhere}.lrn s{color:#b39ab3}.lrn b{color:var(--ink)}
+  .lrn button{flex:none;border:0;border-radius:99px;background:#ffe3f0;color:#d0508a;font:inherit;font-weight:900;font-size:12px;padding:6px 10px;cursor:pointer}
+  a.gear.left{right:auto;left:12px;text-decoration:none}
+  .gear svg{width:62%;height:62%;display:block;transform:translateY(1.5px)} /* 下の影のぶん少し下げて見た目の中心に */
+  .sheet{position:fixed;inset:0;z-index:20;background:#5a3a6a55;display:flex;align-items:flex-end;justify-content:center}
+  .sheet[hidden]{display:none}
+  .sheetIn{width:100%;max-width:560px;max-height:88vh;max-height:88dvh;overflow:auto;background:#fff0f6 radial-gradient(circle at 10px 10px,#ffe0ee 3px,transparent 4px) 0 0/22px 22px;border-radius:26px 26px 0 0;padding:0 16px 30px}
+  .sheetHead{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#fff;margin:0 -16px;padding:14px;background:linear-gradient(135deg,#9d86d8,#c38fd8 55%,#f59ac8);border-radius:26px 26px 0 0}
+  .close{position:absolute;right:12px;width:34px;height:34px;border-radius:50%;border:0;background:#ffffff44;color:#fff;font-size:16px;cursor:pointer}
+  .set .del{display:none}
+  .delBtn{border:0;border-radius:99px;padding:8px 14px;font:inherit;font-weight:900;font-size:13px;color:#fff;background:var(--slot);cursor:pointer}
+  #jfontGrid{display:flex;flex-direction:column;gap:8px;margin-top:8px;max-height:300px;overflow:auto;padding:4px}
+  #fontGrid{display:flex;flex-direction:column;gap:8px;margin-top:8px;max-height:340px;overflow:auto;padding:4px}
+  .fontOpt{display:flex;align-items:center;gap:10px;border:3px solid #f6e4ee;border-radius:18px;background:linear-gradient(135deg,#ff7aa0,#ffb880);padding:6px 10px;cursor:pointer;text-align:left}
+  .fontOpt.on{border-color:#fff;outline:3px solid var(--pink)}
+  .fn{flex:none;width:30px;height:30px;border-radius:50%;background:#fff;color:var(--pink);font-weight:900;font-size:14px;line-height:30px;text-align:center}
+  .fs{font-size:26px;color:#f82da1;white-space:nowrap;overflow:hidden;text-shadow:2px 0 #fff,-2px 0 #fff,0 2px #fff,0 -2px #fff,2px 2px #fff,-2px -2px #fff,2px -2px #fff,-2px 2px #fff,0 0 8px #e85fd8}
+  .save{flex:1;background:linear-gradient(180deg,var(--green1),var(--green2));box-shadow:0 4px 0 #36a872,0 6px 12px #4fd08f55}
+  .save:active{box-shadow:0 1px 0 #36a872}
+
+  /* ---- かわいさ強化（アプリ画面の配色：ラベンダー×ピンク×ミント、キラキラ柄） ---- */
+  body{background:
+    radial-gradient(circle at 20% 10%,#ffffffcc 0 2px,transparent 3px) 0 0/46px 46px,
+    conic-gradient(from 45deg at 50% 50%,#ffe3f0 0 25%,#fff4f9 0 50%,#ffe3f0 0 75%,#fff4f9 0) 0 0/28px 28px,
+    #fff0f6;background-attachment:fixed}
+  body.wall::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(#fff0f6aa,#fff0f6aa),var(--wall) center/cover no-repeat,#fff0f6}
+  body.wall{background:#fff0f6}
+  header{background:linear-gradient(135deg,#b59cf0 0%,#e3a3e6 50%,#ffb3d1 100%);padding:16px 60px 14px;border-radius:0 0 30px 30px;
+    font-size:21px;text-shadow:0 2px 0 #c46fb4,0 0 10px #ffffffaa;border-bottom:4px solid #fff}
+  header::before,header::after{content:"✦";position:absolute;color:#fff;opacity:.9;font-size:14px}
+  header::before{left:18px;top:14px} header::after{left:40px;bottom:12px;font-size:10px}
+  header small{font-weight:800;text-shadow:none;margin-top:2px}
+  .preview{border:4px solid #fff;border-radius:30px;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#ffb3d1,#c9b2f5) border-box;border:4px solid transparent;position:relative}
+  .preview::after{content:"♡";position:absolute;right:-6px;top:-12px;font-size:26px;color:#ff7eb6;text-shadow:0 0 0 #fff,0 2px 0 #fff}
+  .card{border-radius:26px;border:3px solid #fff;box-shadow:0 5px 0 #f6cfe2,0 8px 18px #e7a3c833}
+  .card h2{justify-content:center;font-size:15px;letter-spacing:.08em;background:linear-gradient(90deg,#ff8dc0,#ffb0d4,#ff8dc0);
+    text-shadow:0 1px 0 #e0579a;border-radius:0 0 18px 18px;margin:0 18px;padding:7px 12px}
+  .card h2::before{content:"♡"} .card h2::after{content:"♡";font-size:13px}
+  .card .in{padding:14px 16px 16px}
+  .pill.lav{background:linear-gradient(180deg,#d6c6ff,#a98be0);box-shadow:0 5px 0 #8a6bd0,0 8px 14px #a98be044;font-size:16px}
+  #fontGrid{display:flex;flex-direction:column;gap:8px;margin-top:8px;max-height:340px;overflow:auto;padding:4px}
+  .fontOpt{display:flex;align-items:center;gap:10px;border:3px solid #f6e4ee;border-radius:18px;background:linear-gradient(135deg,#ff7aa0,#ffb880);padding:6px 10px;cursor:pointer;text-align:left}
+  .fontOpt.on{border-color:#fff;outline:3px solid var(--pink)}
+  .fn{flex:none;width:30px;height:30px;border-radius:50%;background:#fff;color:var(--pink);font-weight:900;font-size:14px;line-height:30px;text-align:center}
+  .fs{font-size:26px;color:#f82da1;white-space:nowrap;overflow:hidden;text-shadow:2px 0 #fff,-2px 0 #fff,0 2px #fff,0 -2px #fff,2px 2px #fff,-2px -2px #fff,2px -2px #fff,-2px 2px #fff,0 0 8px #e85fd8}
+  .save{font-size:17px;letter-spacing:.06em;box-shadow:0 5px 0 #36a872,0 8px 14px #4fd08f55}
+  .bar{border-top:3px solid #ffd6e8;border-radius:24px 24px 0 0}
+  .gear{background:#fff;color:#c38fd8;border:3px solid #ffd6ec;box-shadow:0 3px 0 #c9a3dd}
+  input[type=number]{border-color:#ffd0e6;border-radius:99px;background:#fff}
+  label{color:#8a5a86}
+  .set{border-radius:22px}
+  .set.on::after{content:"★";position:absolute;left:50%;top:-14px;transform:translateX(-50%);color:#ffd23f;font-size:16px;text-shadow:0 0 3px #fff,0 0 3px #fff}
+
+  /* ---- iPhone 1画面レイアウト ---- */
+  header{padding:8px 56px 8px;font-size:17px;border-radius:0 0 20px 20px;border-bottom-width:3px}
+  header::before,header::after{display:none}
+  .gear{width:34px;height:34px;font-size:18px}
+  main.one{padding:8px 12px calc(76px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;align-items:center}
+  main.one .preview{width:min(100%,calc(100dvh - 330px));padding:5px;border-radius:22px}
+  main.one .preview::after{display:none}
+  canvas{border-radius:16px}
+  #sets{width:100%;display:grid;grid-template-columns:repeat(10,1fr);gap:5px;margin:2px 0 0}
+  .set{border-width:3px;border-radius:12px}
+  .set i{font-size:15px}
+  .set em{display:none}
+  .set b{width:12px;height:12px;border-width:2px;right:-4px;top:-4px}
+  .set.on::after{top:-12px;font-size:12px}
+  .ctrl{width:100%;display:flex;flex-direction:column;gap:8px}
+  .pick{width:100%;padding:11px 16px}
+  .nums{display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .own{display:flex;align-items:center;gap:6px;font-size:13px;background:#fff;border-radius:99px;padding:4px 6px 4px 12px;box-shadow:0 2px 0 #f6cfe2}
+  .own small{font-size:9px;color:var(--sub);min-width:0}
+  .own input{width:58px;padding:6px}
+  .step{display:flex;align-items:center;gap:6px;background:#fff;border-radius:99px;padding:4px;box-shadow:0 2px 0 #f6cfe2}
+  .step span{min-width:54px;text-align:center;font-weight:900;font-size:20px;color:#f82da1}
+  .step button{width:40px;height:40px;border-radius:50%;border:0;font-size:22px;font-weight:900;color:#fff;background:linear-gradient(180deg,#ff9fcb,var(--pink));box-shadow:0 3px 0 #e0579a;cursor:pointer}
+  .step button:active{transform:translateY(2px);box-shadow:0 1px 0 #e0579a}
+  .bar{padding:8px 12px calc(8px + env(safe-area-inset-bottom))}
+  .save{padding:12px}
+
+  /* iPhoneの連打ズーム・入力時ズームを防ぐ */
+  html,body,button,label,input{touch-action:manipulation}
+  input[type=number]{font-size:16px}
+
+  /* お知らせ：長い文（受け取ったスクショの時刻など）でも画面の幅いっぱいまで使い、角で文字が欠けないように */
+  #toast{white-space:pre-line;position:fixed;left:16px;right:16px;margin:0 auto;width:fit-content;max-width:520px;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateY(20px);z-index:30;
+    background:#5a3a6aee;color:#fff;font-weight:800;font-size:13px;padding:10px 16px;border-radius:18px;opacity:0;transition:.25s;pointer-events:none;text-align:center}
+  #toast.show{opacity:1;transform:translateY(0)}
+  .row[hidden],.pill[hidden]{display:none} /* .row の display:flex で hidden が効かなくならないように */
+  /* 下から出る画面（名前を直す など）を開いている間は、お知らせを上に出す（ボタンに重ねない） */
+  body:has(.sheet:not([hidden])) #toast{bottom:auto;top:calc(12px + env(safe-area-inset-top))}
+  /* 名前を直す画面：入力欄のすぐ下に「決定」。候補は「ちがうとき」用に下へ */
+  #fixSheet .sheetIn,#txtSheet .sheetIn{max-height:min(88dvh,calc(100% - 8px))}
+  #fixInput{display:block;width:100%;border:2px solid var(--pink);border-radius:14px;padding:10px;font:inherit;font-size:16px;font-weight:800;color:var(--ink);background:#fff}
+  #fixSheet .fixGo{width:100%;margin-top:8px}
+  #fixMsg{white-space:pre-line} #fixMsg.err{color:#d0304f}
+  #fixSheet .candHead{font-size:12.5px;font-weight:900;color:#8a5a86;margin:16px 2px 0}
+  .set.shared::before{content:"☁";position:absolute;left:-5px;bottom:-6px;font-size:12px;background:#fff;border-radius:50%;width:18px;height:18px;line-height:18px;text-align:center;box-shadow:0 0 3px #0003}
+
+  /* 複数アイテム */
+  #multi{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:2px 0 4px}
+  body.isMulti .nums{display:none}
+  .safe{width:100%;font-size:11.5px;color:var(--sub);background:#fff;border-radius:14px;padding:6px 10px;box-shadow:0 2px 0 #f6cfe2}
+  .safe summary{font-weight:800;color:#3c8a5f;cursor:pointer}.safe ul{margin:6px 0 2px;padding-left:18px;line-height:1.55}
+  .defBar{width:100%;display:flex;gap:4px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:11px;color:var(--sub);font-weight:800}
+  .defBar button{border:0;border-radius:99px;padding:4px 9px;font:inherit;font-size:11px;font-weight:900;background:#f3eef5;color:#8a7a8e;cursor:pointer}
+  .defBar button.on{background:var(--pink);color:#fff}
+  .chip{display:flex;align-items:center;justify-content:space-between;gap:3px;min-width:0;background:#fff;border-radius:99px;padding:3px 6px 3px 3px;box-shadow:0 2px 0 #f6cfe2}
+  .chip .no{width:18px;height:18px;border-radius:50%;background:var(--pink);color:#fff;font-size:11px;font-weight:900;line-height:18px;text-align:center}
+  .chip img{width:30px;height:30px;object-fit:cover;object-position:50% 30%;border-radius:8px}
+  .chip b{min-width:30px;text-align:center;color:#f82da1;font-weight:900}
+  .chip button{width:28px;height:28px;border-radius:50%;border:0;color:#fff;font-weight:900;font-size:16px;background:linear-gradient(180deg,#ff9fcb,var(--pink));box-shadow:0 2px 0 #e0579a}
+  #ownSnap{display:block;margin:0 auto;height:30px;border-radius:8px;border:2px solid #ffd0e6;background:#fff}
+  #ownSnap[hidden],body.isMulti #ownSnap{display:none}
+  .chip img.snap{width:auto;height:20px;max-width:70px;object-fit:contain;border-radius:6px;background:#fff}
+  .nosnap{font-size:10px;color:var(--sub);font-weight:800}
+  .copy{flex:none;padding:12px 10px;font-size:14px;background:linear-gradient(180deg,#c3b0f0,var(--lav));box-shadow:0 4px 0 var(--lav2)}
+  /* 読み取った名前の一覧（辞書と一致＝緑、不一致＝赤） */
+  #names{width:100%;display:flex;flex-direction:column;gap:4px}
+  .nmRow{display:flex;align-items:center;gap:6px;background:#fff;border-radius:14px;padding:5px 8px;box-shadow:0 2px 0 #f6cfe2;font-size:13px;cursor:pointer;border:2px solid transparent}
+  .nmRow .no{flex:none;width:18px;height:18px;border-radius:50%;background:var(--pink);color:#fff;font-size:11px;font-weight:900;line-height:18px;text-align:center}
+  .nmRow{flex-wrap:wrap}
+  .nmRow .t{flex:1 1 55%;min-width:55%;overflow-wrap:anywhere;font-weight:800}
+  .nmRow .orig{flex:0 0 auto;height:24px;width:auto;max-width:calc(100% - 19px);object-fit:contain;object-position:left;border-radius:4px;margin:-3px 0 0 19px}
+  .nmRow .t[contenteditable]{cursor:text;border-bottom:1.5px dashed #d9c6e6;outline:none;padding:1px 2px;border-radius:4px}
+  .nmRow .t[contenteditable]:focus{background:#fff;box-shadow:0 0 0 2px #b79be0;border-bottom-color:transparent}
+  .nmRow .ck{flex:none;border:0;border-radius:99px;padding:6px 10px;font:inherit;font-size:11px;font-weight:900;cursor:pointer;background:#ffd23f;color:#5a4300;white-space:nowrap}
+  .nmRow.ng.low{background:#fff3b0;border-color:#f2c200} /* 自信のない字がある行は黄色 */
+  /* 名前一覧の配置（1〜10） */
+  body.cntInRows #multi{display:none}
+  #names .cr{line-height:0}#names .cr:empty{display:none}#names .orig{margin:0}
+  #names .ic,#names .btns,#names .bot,#names .rb{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+  #names .ic button.cp,#names .ic button.tx,#names .rb button.cp,#names .rb button.tx,#names .bot button.cp,#names .bot button.tx,.r8 button.cp,.r8 button.tx,.r5 .btns button.cp,.r5 .btns button.tx{padding:6px 8px}
+  .nmRow.r1,.nmRow.r9{display:block}.r1 .top{display:flex;gap:6px;align-items:center}.r1 .top .t{flex:1}.r1 .cr{margin:3px 0 2px 24px}.r1 .btns{margin-top:4px}.r1 .ng-gift{margin-left:24px}
+  .nmRow.r2,.nmRow.r4{flex-wrap:nowrap}.r2 .mid,.r4 .mid{flex:1;min-width:0}.r2 .cr,.r4 .cr{margin-top:3px}.r2 .ic,.r4 .ic{flex:none;flex-wrap:nowrap}
+  .nmRow.r3{flex-wrap:nowrap;align-items:center}.r3 .l{flex:1;min-width:0;border-right:2px dashed #eee;padding-right:6px;line-height:0}.r3 .l .orig{max-width:100%}.r3 .r{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-start}#names .r3 .rb{flex-wrap:nowrap}#names .r3 .rb button{padding:4px 8px;min-width:0}#names .r3 .rb .rm{width:28px;height:28px;line-height:28px;padding:0}
+  .nmRow.r4{border-left:8px solid #4fd08f}.nmRow.r4.ng{border-left-color:#ff8aa0}.nmRow.r4.iph{border-left-color:#ffd66b}.nmRow.r4.low{border-left-color:#f2c200}.nmRow.r4.wait{border-left-color:#ddd}.r4 .st{display:none}
+  .g5{display:grid;grid-template-columns:1fr 1fr;gap:6px}.nmRow.r5{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:flex-start;gap:3px;min-width:0}.r5 > *{flex:none !important;min-width:0 !important;max-width:100%}.r5 .top{display:flex;gap:6px;align-items:center}.r5 .t{font-size:12px}.r5 .cr{max-width:100%}.r5 .orig{max-width:100%}
+  .nmRow.r6{flex-wrap:nowrap;align-items:flex-start;gap:8px}.r6 .th{flex:none;width:62px;height:62px;border-radius:10px;object-fit:cover;background:#f6eef3}.r6 .mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.r6 .top{display:flex;gap:6px;align-items:flex-start}.r6 .top .t{flex:1}.r6 .cr{margin-left:24px}
+  #names .cnt{display:inline-flex;align-items:center;gap:3px}#names .cnt button{width:26px;height:26px;padding:0;border:0;border-radius:50%;background:var(--pink);color:#fff;font-weight:900;font-size:15px;line-height:26px;cursor:pointer}#names .cnt b{min-width:30px;text-align:center;color:var(--pink);font-weight:900}
+  .nmTable{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;font-size:13px}.nmTable th{font-size:11px;color:var(--sub);text-align:left;padding:4px;background:#fdf1f7}.nmTable td{padding:5px 4px;border-top:1px solid #f6e3ee;vertical-align:middle;cursor:pointer}
+  .nmTable tr.ng td{background:#fff4f6}.nmTable tr.iph td{background:#fffbea}.nmTable tr.low td{background:#fff3b0}.nmTable tr.skip .t{color:#b3a6b6;text-decoration:line-through}.nmTable td.n{white-space:nowrap;font-weight:900;color:var(--pink)}.nmTable td.b{white-space:nowrap}.nmTable .cr{margin-top:2px}.okm{color:#1f9a57;font-weight:900}
+  .nmTable button.ck,.nmTable button.rm{padding:4px 8px;border:0;border-radius:99px;font:inherit;font-size:11px;font-weight:900}
+  .nmTable button.ck{background:#ffd23f;color:#5a4300;cursor:pointer}.nmTable button.rm{background:#f3eef5;color:#8a7a8e;cursor:pointer}.nmTable button.rm.sure{background:#ff5a6e;color:#fff}.nmTable .t{font-weight:800}
+  #names .sec{font-weight:900;font-size:12px;margin:6px 0 0}#names .sec.y{color:#a87400}#names .sec.g{color:#1f9a57}
+  .nmRow.r8{flex-wrap:nowrap;padding:3px 8px}.r8 .t{flex:1;min-width:0;font-size:12px}
+  .r9{text-align:center}.r9 .pg{color:var(--sub);font-weight:900}.r9 .th{width:110px;height:110px;border-radius:14px;margin:6px auto;display:block;object-fit:cover}.r9 .cap{font-size:11px;color:var(--sub);margin-top:6px}.r9 .cr{display:flex;justify-content:center}.r9 .orig{max-width:100%}
+  .r9 .big .t{font-size:19px}.r9 .tags{display:flex;gap:4px;justify-content:center;margin-top:3px}.r9 .nav{display:flex;gap:8px;justify-content:center;margin-top:10px}.r9 .nav button{border:0;border-radius:99px;padding:10px 14px;font:inherit;font-size:13px;font-weight:900;background:#f3eef5;color:#8a7a8e;cursor:pointer}.r9 .nav button.ck{background:#ffd23f;color:#5a4300}.r9 .btns{justify-content:center;margin-top:8px}
+  #names .dots{display:flex;gap:7px;justify-content:center;margin-top:6px;flex-wrap:wrap}#names .dots span{width:12px;height:12px;border-radius:50%;background:#8fe8b9;cursor:pointer}#names .dots span.need{background:#f2c200}#names .dots span.wait{background:#ddd}#names .dots span.on{outline:2.5px solid var(--pink);outline-offset:1px}
+  .nmRow.r10{flex-wrap:nowrap}.r10 .box{flex:none;width:28px;height:28px;border-radius:8px;border:2.5px solid #d9c6e6;background:#fff;color:#fff;font-weight:900;padding:0;cursor:pointer}.r10 .box.on{background:#4fd08f;border-color:#4fd08f}.r10 .mid{flex:1;min-width:0}.r10 .cr{margin-top:3px}.r10 .ic{flex:none}.r10 .nn{font-weight:900;color:var(--pink);font-size:12px;margin-right:2px}.r10 .st{display:none}
+  #names .foot10{text-align:center;font-weight:900;font-size:12px;color:var(--sub);margin-top:2px}
+  .layPick{display:grid;grid-template-columns:1fr 1fr;gap:8px}.layPick button{border:2.5px solid #f3e3ee;background:#fff;border-radius:14px;padding:5px;font:inherit;font-size:11.5px;font-weight:900;color:var(--ink);cursor:pointer;text-align:left}.layPick button.on{border-color:var(--pink);background:#fff0f7}
+  .layPick img{display:block;width:100%;height:auto;border-radius:9px;margin-top:4px;background:#fff6fa}
+  .nmRow .t mark{background:#ffe066;color:inherit;border-radius:3px;padding:0 1px}
+  .nmRow .st{flex:none;font-size:11px;font-weight:900;border-radius:99px;padding:2px 8px;white-space:nowrap}
+  .nmRow .tx{white-space:nowrap}
+  .nmRow .cp{flex:none;border:0;border-radius:99px;padding:6px 10px;font:inherit;font-size:11px;font-weight:900;cursor:pointer;background:#efe9ff;color:#7f63c9;white-space:nowrap}
+  .nmRow.ok .st{background:#dff7e8;color:#1f9a57}.nmRow.ng{border-color:#ff8aa0;background:#fff4f6}.nmRow.ng .st{background:#ffd9e0;color:#d0304f}
+  .nmRow.wait .st{background:#f3eef5;color:var(--sub)}
+  .nmRow.iph{border-color:#ffd66b;background:#fffbea}.nmRow.iph .st{background:#fff0b8;color:#a87400}
+  .nmRow .rm{flex:none;width:30px;height:30px;border-radius:50%;border:0;background:#f3eef5;color:#8a7a8e;font-size:16px;font-weight:900;cursor:pointer;line-height:30px;padding:0}
+  .nmRow .rm.sure{background:#ff5a6e;color:#fff;width:auto;padding:0 10px;font-size:12px}
+  .nmRow .tx{flex:none;border:0;border-radius:99px;padding:6px 8px;font:inherit;font-size:11px;font-weight:900;cursor:pointer;background:#e9f9ef;color:#1f9a57}
+  .nmRow .tx.off{background:#f3eef5;color:#9a8a9e;text-decoration:line-through}
+  .nmRow.skip .t{color:#b3a6b6;text-decoration:line-through}
+  .cand{display:flex;align-items:center;gap:8px;width:100%;border:2px solid #f6e4ee;border-radius:14px;background:#fff;padding:9px 12px;margin-top:6px;font:inherit;font-size:14px;font-weight:800;color:var(--ink);text-align:left;cursor:pointer}
+  .cand small{flex:none;color:var(--sub);font-weight:700}
+  .cand.best{border-color:var(--pink)}
+</style>
+</head>
+<body>
+<header>ポケツイ画像加工アプリ<small id="verLabel" style="position:absolute;right:56px;bottom:2px;font-size:9px;opacity:.75;font-weight:700;text-shadow:none"></small>
+  <a class="gear left" id="openRank" href="ranking.html" aria-label="売れ筋ランキング"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.5 21H2V9h5.5v12zm7.25-18h-5.5v18h5.5V3zM22 11h-5.5v10H22V11z"/></svg></a>
+  <button class="gear" id="openSet" type="button" aria-label="設定"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg></button></header>
+<main class="one">
+<div class="preview"><canvas id="cv" width="1254" height="1254"></canvas></div>
+
+<div id="sets"></div><input type="file" id="bg" accept="image/*" hidden>
+
+<div class="ctrl">
+  <label class="pill lav pick">📷 アイテム画像を選ぶ<input type="file" id="shot" accept="image/*" multiple hidden></label>
+  <details class="safe"><summary>🔒 読み取りはすべてこのiPhoneの中で行い、写真はどこにも送信していません</summary>
+    <ul>
+      <li>選んだ写真の文字（アイテム名・所持数）は、このiPhoneのSafariの中で読み取ります。読み取りの仕組みはアプリを開いたときにiPhoneに読み込まれ、そのあとはiPhoneの中だけで動きます。</li>
+      <li>写真そのものは、インターネット（サーバー・GitHubなど）に送信も保存もしません。読み取った名前と数の文字だけを使って、画像と文字を作ります。</li>
+      <li>ショートカットを使うときも、iPhoneの「テキストを抽出」で読んだ文字だけがアプリに渡ります（写真は渡しません）。</li>
+      <li>アプリがインターネットから受け取るのは、アプリ本体・読み取りの仕組み・アイテム名の一覧・壁紙だけです。</li>
+      <li>できた画像は「画像を保存」を押したときだけ、このiPhoneに保存されます。</li>
+      <li>※ 設定の「全端末で共有（GitHub）」に鍵を入れて背景を共有したときだけ、その背景画像を送ります（アイテムの写真は送りません）。</li>
+    </ul></details>
+  <div class="nums">
+    <label class="own">所持数<small id="ownState"></small><input type="number" id="owned" min="1" inputmode="numeric" placeholder="−"></label>
+    <div class="step"><button type="button" id="minus" aria-label="1減らす">−</button>
+      <span>×<b id="countView">3</b></span><button type="button" id="plus" aria-label="1増やす">＋</button></div>
+    <input type="hidden" id="count">
+  </div>
+  <img id="ownSnap" alt="元画像の所持数" hidden>
+  <div class="defBar" role="group" aria-label="×数をまとめて変える"><span>×数をまとめて：</span><button type="button" data-m="own">所持数−1</button><button type="button" data-m="one">全部×1</button><button type="button" data-m="none">全部表示なし</button></div>
+  <div id="pendNote" class="note" style="width:100%;text-align:center;font-weight:800;margin:0" hidden></div>
+  <div id="multi"></div>
+  <div id="names"></div>
+</div>
+</main>
+
+<div id="settings" class="sheet" hidden><div class="sheetIn">
+  <div class="sheetHead">⚙ 設定<button class="close" id="closeSet" type="button">✕</button></div>
+
+  <section class="card"><h2>×数字</h2><div class="in">
+    <div class="row"><label><input type="checkbox" id="showCount" checked> ×数字を表示する</label></div>
+    <div class="row"><label><input type="checkbox" id="showOwnedChk"> 画像に「所持数」の行を入れる</label></div>
+    <div class="row"><div style="width:100%"><b style="color:#8a5a86;font-size:14px">数字の書体（タップで選択）</b>
+<input type="hidden" id="font" value="10"><div id="fontGrid"></div></div></div>
+    <div class="row"><div style="width:100%"><b style="color:#8a5a86;font-size:14px">文字の書体（「計」「点」など）</b>
+<input type="hidden" id="jfont" value="1"><div id="jfontGrid" class="fgrid"></div></div></div>
+    <div class="row"><div style="width:100%"><b style="color:#8a5a86;font-size:14px">×数字の色</b>
+<div class="row tcRow" id="numColorRow"></div><label>自由に指定 <input type="color" id="numColor" value="#f82da1"></label></div></div>
+    <div class="row"><div style="width:100%"><b style="color:#8a5a86;font-size:14px">「計○点」の色</b>
+<div class="row tcRow" id="totalColorRow"></div><label>自由に指定 <input type="color" id="totalColor" value="#f82da1"></label></div></div>
+  </div></section>
+
+  <section class="card"><h2>覚えた名前</h2><div class="in">
+    <div class="note">「名前を直す」で決めた名前や、文字起こしで直して「もう一度コピー」した名前です。同じ読み取りになったら右の名前に自動で直します（この端末だけ）。</div>
+    <div id="learnedList"></div>
+    <a class="pill wide" href="shikumi.pdf" target="_blank" rel="noopener" style="margin-top:8px;text-decoration:none;display:flex">📄 アプリのしくみ（PDF）</a>
+    <a class="pill wide" href="ranking.html" style="margin-top:8px;text-decoration:none;display:flex">📈 売れ筋ランキング</a>
+    <a class="pill wide" href="items.html" style="margin-top:8px;text-decoration:none;display:flex">📖 アイテム名一覧を見る</a>
+  </div></section>
+
+  <section class="card"><h2>名前一覧の配置</h2><div class="in">
+    <div class="note" style="margin-top:0">読み取った名前の並べ方です。見本は実際のスクショ4枚（1番が要確認）。押すとすぐ変わります</div>
+    <div class="layPick" id="layPick"></div>
+  </div></section>
+
+  <section class="card"><h2>×数の最初の数</h2><div class="in">
+    <div class="row"><select id="defCount">
+      <option value="own">所持数−1（今まで通り）</option>
+      <option value="one">全部 ×1</option>
+      <option value="none">全部 表示なし</option>
+    </select></div>
+    <div class="note">アイテムを選んだときの×数です。そのあと＋−で1つずつ直せます。「表示なし」は画像に数を出さず、文字は名前だけ（1個として数えます）</div>
+  </div></section>
+
+  <section class="card"><h2>文字起こしの書式</h2><div class="in">
+    <div class="row"><select id="txtStyle">
+      <option value="num">1. 名前×2（×1は省略）</option>
+      <option value="numAll">1. 名前 ×1（全部に数）</option>
+      <option value="dot">・名前×2（×1は省略）</option>
+      <option value="heart">♡ 名前 ×2（×1は省略）</option>
+      <option value="plain">名前×2（記号なし）</option>
+    </select></div>
+    <div class="row"><label>題名の×1 <select id="titleOne"><option value="show">×1も付ける</option><option value="hide">×1は省く</option></select></label></div>
+    <div class="row"><label>題名の名前の区切り <select id="titleSep"><option value="nl">改行（1行に1つ）</option><option value="sp">空白（1行にまとめる）</option></select></label></div>
+    <div class="row"><label><input type="checkbox" id="titleTotal" checked> 題名に「計○点」を付ける（2個以上のとき）</label></div>
+    <div class="row"><label><input type="checkbox" id="autoCopy" checked> 「題名」「文字」を押したらすぐコピーする</label></div>
+    <div class="note">オフにすると、押したときは文字を表示するだけで、確認してから「コピー」を押します。赤い名前（一覧にない名前）があるときは、先に名前を確かめる画面が出ます（閉じたあとは、確認してそのままコピーもできます）。</div>
+    <div class="row"><label style="width:100%">最初の行（空欄なら入れない）<input type="text" id="txtHead" placeholder="例：【即購入OK】" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font-size:16px"></label></div>
+    <div class="row"><label style="width:100%">合計の書き方<input type="text" id="txtTotal" value="計{n}点" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font-size:16px"></label></div>
+    <div class="row"><label style="width:100%">最後の行（空欄なら入れない）<textarea id="txtFoot" rows="3" placeholder="例：購入後にマイコードとお名前をお知らせください" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font:inherit;font-size:16px"></textarea></label></div>
+    <div class="note">{n} が合計の数に置き換わります。変えた書式は次回も使われます。</div>
+  </div></section>
+
+  <section class="card"><h2>ショートカット連携（iPhone）</h2><div class="in">
+    <div class="note">iPhoneの「ショートカット」にスクショの文字を読ませて、このアプリに渡せます。背面タップで起動すれば、スクショを撮って背面を3回たたくだけで名前と所持数が入ります。</div>
+    <a class="pill wide" href="shortcut.html" style="margin-top:8px;text-decoration:none;display:flex">📱 ショートカットの作り方</a>
+    <div class="row" style="margin-top:10px"><label>受け取るスクショ：直近 <select id="shotWin" style="width:auto;display:inline-block;padding:6px 10px"><option value="15">15</option><option value="30">30</option><option value="60">60</option><option value="120">120</option></select> 分</label></div>
+    <div class="note">この時間に撮ったスクショの名前を、画像を選んだときに当てはめます。これより前に撮ったスクショは、名前だけ覚えておき、あとでそのスクショを選ぶと黄色で出します（撮った時刻が分かるときだけ）。ショートカットの「写真を検索」の期間（おすすめ：1時間）と同じにしてください（はじめは60分）。</div>
+    <div class="note" id="recvLog" style="white-space:pre-line;margin-top:8px"></div>
+    <button class="pill wide" id="rawCopy" type="button" hidden style="margin-top:8px">📋 最後に受け取った文字をコピー</button>
+    <button class="pill wide" id="unreadCopy" type="button" hidden style="margin-top:8px">📋 読めなかったアイテム画面の文字をコピー</button>
+    <div class="note" id="appVer" style="text-align:right"></div>
+  </div></section>
+
+  <section class="card"><h2>フチの色</h2><div class="in">
+    <div class="row" id="swatches"></div>
+    <div class="row"><label>自由に指定 <input type="color" id="edgeColor" value="#ec5fd0"></label></div>
+    <div class="note" id="edgeNote">「おすすめ」は背景から浮き上がる同系色のネオンカラー。選んだ色は今の背景セットに保存されます。</div>
+  </div></section>
+
+  <section class="card"><h2>全端末で共有（GitHub）</h2><div class="in">
+    <div class="row"><input type="password" id="ghToken" placeholder="GitHubの鍵（github_pat_…）" autocomplete="off" style="flex:1;min-width:0;border:2px solid #ffd0e6;border-radius:14px;padding:9px 12px;font-size:16px"></div>
+    <div class="row"><button type="button" class="delBtn" id="ghSave" style="--slot:#a98be0">鍵を保存</button><button type="button" class="delBtn" id="ghClear" style="--slot:#a8a3ad">鍵を消す</button><span class="note" id="ghState" style="margin:0"></span></div>
+    <div class="note">鍵を入れた端末では、背景の登録・フチ色の変更・削除が全端末に反映されます（反映まで1〜2分）。鍵はこの端末の中だけに保存されます。</div>
+  </div></section>
+
+  <section class="card"><h2>背景セットの管理</h2><div class="in">
+    <div class="row" id="delList"></div>
+  </div></section>
+
+  <section class="card"><h2>複数アイテムの並び順</h2><div class="in">
+    <img src="img/layouts.png" alt="1〜12個の並べ方の案" style="width:100%;border-radius:14px">
+    <div class="note">写真を選んだ順に、左上から番号の順で並びます。並べ方は、画像がいちばん大きくなるように自動で選びます（横に最大4個・できるだけ均等に）。たとえば3個はふつう2＋1、7個は3＋2＋2、8個は3＋3＋2になり、縦長の画像のときは4＋3・4＋4のように行を減らします。下に入れる「計○点」の数字は大きく使います。</div>
+  </div></section>
+
+  <section class="card"><h2>切り抜き位置</h2><div class="in">
+    <div class="row">
+      <label>上端 <input type="number" id="ct" value="54" step="0.5"></label>
+      <label>一辺 <input type="number" id="cs" value="100" step="0.5" max="100"></label>
+    </div>
+    <div class="note">スクショの幅を100とした値（正方形）。元画像のピクセルを切り抜いて同じ比率で拡大するだけで、描き直し・補正はしません。</div>
+  </div></section>
+</div></div>
+
+
+<div id="out" class="sheet" hidden><div class="sheetIn" style="text-align:center">
+  <div class="sheetHead">🎁 完成！<button class="close" id="outClose" type="button">✕</button></div>
+  <p style="font-weight:900;color:#8a5a86;margin:14px 0 10px">画像を長押しして「"写真"に保存」を選んでね</p>
+  <img id="outImg" alt="完成画像" style="-webkit-user-select:none;user-select:none;width:100%;border-radius:20px;box-shadow:0 4px 14px #0002;-webkit-touch-callout:default">
+</div></div>
+<div id="txtSheet" class="sheet" hidden><div class="sheetIn">
+  <div class="sheetHead">📋 文字起こし<button class="close" id="txtClose" type="button">✕</button></div>
+  <p class="note" id="txtMsg" style="font-weight:800;margin:12px 0 8px"></p>
+  <!-- キーボードが出ていても押せるように、コピーのボタンは文字の欄の上 -->
+  <button class="pill wide" id="txtCopy" type="button" style="margin-bottom:10px">もう一度コピー</button>
+  <textarea id="txtBox" rows="10" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:10px;font:inherit;font-size:16px;background:#fff"></textarea>
+</div></div>
+<div id="fixSheet" class="sheet" hidden><div class="sheetIn">
+  <div class="sheetHead">✏️ 名前を直す<button class="close" id="fixClose" type="button">✕</button></div>
+  <p class="note" id="fixMsg" style="font-weight:800;margin:12px 0 6px"></p>
+  <form id="fixForm" autocomplete="off" action="#"><input type="text" id="fixInput" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="名前">
+  <button class="pill fixGo" id="fixUse" type="submit">✓ この名前で決定</button></form>
+  <div class="note">上の欄は書き直せます。決めた名前はこの端末が覚えて、次から緑で出ます（一覧にない新しいアイテムでもOK）。</div>
+  <div class="candHead">ちがうときは下の候補から選ぶ</div>
+  <div id="fixCands"></div>
+</div></div>
+<div class="bar"><div class="inner"><button class="pill copy" id="copyTitle" type="button">🏷 題名</button><button class="pill copy" id="copyTxt" type="button">📋 文字</button><button class="pill save" id="dl">🎁 画像を保存</button></div></div>
+
+<script src="ocr/tesseract.min.js"></script>
+<script>
+const APP_VER='70'; // 変えたら上げる（古いページを読み直すための目印）
+const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
+document.getElementById('verLabel').textContent='v'+APP_VER;
+const S = 1254;
+// アイテム画像の位置・サイズは常に固定（正方形）
+const BOX = {x:127, y:128, size:1000};
+const R = 44;        // 四隅の丸み（アイテム画像とフチで共通）
+const EDGE_IN = 6, EDGE_CORE = 8; // フチ：内側ピンク6px＋白い芯8px＋外側の光（常に同じ太さ）
+const FONT_LIST = [["Mochiy Pop One", "400"], ["Baloo 2", "800"], ["Nunito", "900"], ["Fredoka", "700"], ["Sniglet", "800"], ["Titan One", "400"], ["Paytone One", "400"], ["DynaPuff", "700"], ["Coiny", "400"], ["Cherry Bomb One", "400"], ["Rampart One", "400"], ["Rubik Bubbles", "400"], ["Modak", "400"], ["Chango", "400"], ["Lilita One", "400"], ["Grandstander", "900"], ["Varela Round", "400"], ["Kosugi Maru", "400"], ["Potta One", "400"], ["Chewy", "400"], ["Bubblegum Sans", "400"], ["Luckiest Guy", "400"], ["Rubik", "900"], ["M PLUS Rounded 1c", "900"], ["Zen Maru Gothic", "900"], ["Hachi Maru Pop", "400"], ["Yusei Magic", "400"], ["Mochiy Pop P One", "400"], ["Rounded Mplus 1c", "800"], ["Kiwi Maru", "500"], ["Dela Gothic One", "400"], ["Bowlby One", "400"], ["Carter One", "400"], ["Gluten", "900"], ["Fuzzy Bubbles", "700"]];
+const FONTS = {}; FONT_LIST.forEach(([f,w],i)=>FONTS[i+1]=`${w} 300px "${f}"`);
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+let bgImg = null, shotImg = null;
+
+const store = {get:k=>{try{return localStorage.getItem('promo_'+k)}catch(e){return null}},
+               set:(k,v)=>{try{localStorage.setItem('promo_'+k,v)}catch(e){}}};
+
+// 設定の記憶
+if (!FONTS[store.get('font')] || store.get('fontDefault')!=='10'){ store.set('font','10'); store.set('fontDefault','10'); } // 初期書体を10番に
+['ct','cs','font'].forEach(id=>{
+  const v = store.get(id); if (v!==null) $(id).value = v;
+  $(id).addEventListener('input',()=>{ store.set(id,$(id).value); draw(); });
+});
+$('owned').addEventListener('input',()=>{ $('count').value=''; shotOwnTyped=true; draw(); }); // 所持数を変えたら「所持数−1」に戻す
+$('minus').onclick=()=>{ $('count').value=Math.max(0,(countValue()??1)-1); draw(); };
+$('plus').onclick=()=>{ $('count').value=(countValue()??0)+1; draw(); };
+const JFONTS=[["Mochiy Pop One", "400"], ["M PLUS Rounded 1c", "900"], ["Zen Maru Gothic", "900"], ["Kiwi Maru", "500"], ["Hachi Maru Pop", "400"], ["Dela Gothic One", "400"], ["Potta One", "400"], ["Rampart One", "400"], ["Yusei Magic", "400"], ["Kosugi Maru", "400"], ["Cherry Bomb One", "400"], ["Mochiy Pop P One", "400"], ["RocknRoll One", "400"], ["Reggae One", "400"], ["Stick", "400"], ["DotGothic16", "400"]];
+try{ const v=localStorage.getItem('promo_jfont'); if(v) $('jfont').value=v; }catch(e){}
+const jfontCss=()=>{ const [f,w]=JFONTS[($('jfont').value|0)-1]||JFONTS[0]; return {f,w}; };
+function renderJFonts(){ const g=$('jfontGrid'); g.innerHTML='';
+  JFONTS.forEach(([f,w],i)=>{ const n=i+1, b=document.createElement('button'); b.type='button'; b.className='fontOpt'+(String(n)===$('jfont').value?' on':'');
+    b.innerHTML=`<span class="fn">${n}</span><span class="fs" style="font-family:'${f}',sans-serif;font-weight:${w}">計 7 点　合計 12 個</span>`;
+    b.onclick=()=>{ $('jfont').value=n; try{localStorage.setItem('promo_jfont',n);}catch(e){} renderJFonts(); document.fonts.load(`${w} 100px "${f}"`,'計点').then(draw,draw); }; g.appendChild(b); }); }
+renderJFonts();
+setTimeout(()=>{ const {f,w}=jfontCss(); document.fonts.load(`${w} 100px "${f}"`,'計点').then(()=>draw(),()=>{}); },0);
+function renderFonts(){ const g=$('fontGrid'); g.innerHTML='';
+  FONT_LIST.forEach(([f,w],i)=>{ const n=i+1, b=document.createElement('button'); b.type='button'; b.className='fontOpt'+(String(n)===$('font').value?' on':'');
+    b.innerHTML=`<span class="fn">${n}</span><span class="fs" style="font-family:'${f}',sans-serif;font-weight:${w}">×1 2 3 4 5 6 7 8 9 10</span>`;
+    b.onclick=()=>{ $('font').value=n; store.set('font',n); renderFonts(); draw(); }; g.appendChild(b); }); }
+renderFonts();
+$('openSet').onclick=()=>{ $('settings').hidden=false; renderLearned(); renderRecv(); $('appVer').textContent='アプリの版：'+APP_VER; document.querySelector('.fontOpt.on')?.scrollIntoView({block:'nearest'});  };
+const closeSet=()=>{ $('settings').hidden=true;  };
+$('closeSet').onclick=closeSet; $('settings').addEventListener('click',e=>{ if(e.target.id==='settings') closeSet(); });
+$('showCount').addEventListener('change',draw);
+// ×数字・「計○点」の色（この端末に保存）
+const TEXT_COLORS=[['ピンク','#f82da1'],['レッド','#f0304f'],['オレンジ','#ff7a1a'],['イエロー','#f2b300'],['グリーン','#22b35e'],
+  ['ミント','#12b8a6'],['ブルー','#2f86ff'],['パープル','#8a5cf0'],['ブラウン','#9a5b3c'],['ブラック','#3a2f3f']];
+function colorPicker(id){
+  const inp=$(id), row=$(id+'Row'); try{ const v=localStorage.getItem('promo_'+id); if(v) inp.value=v; }catch(e){}
+  const render=()=>{ row.innerHTML=''; TEXT_COLORS.forEach(([name,hex])=>{ const b=document.createElement('button'); b.type='button';
+    b.className='sw'+(hex===inp.value?' on':''); b.innerHTML=`<i style="background:${hex};color:${hex}"></i>${name}`;
+    b.onclick=()=>{ inp.value=hex; save(); }; row.appendChild(b); }); };
+  const save=()=>{ try{ localStorage.setItem('promo_'+id,inp.value); }catch(e){} render(); draw(); };
+  inp.addEventListener('input',save); render();
+}
+colorPicker('numColor'); colorPicker('totalColor');
+
+// 人から送られてきた画像：まわりの帯や枠（iPad・別の機種で表示したスクショの黒い帯、写真の枠、暗い写真ビューアの余白など）を切り落とし、ゲームの画面だけにする
+// 帯と見るのは、端からほぼ同じ色（98%）の列が画像の幅の0.5%以上続き、そこで画面にはっきり変わる（2つ内側の列は8割未満）ときだけ
+// 列は、端の色が続く上下の範囲だけで見る（写真ビューアの上下のツールバー（字・ボタン）は除く）。その範囲が画像の高さの6割未満なら帯ではない
+// 上下は、左右を切ったときに同じ色の行なら切る（ツールバーがあれば、その内側から）
+// 黒っぽい帯は片側だけでも切る。明るい色の帯は、左右の両側に同じ色・同じくらいの幅であるとき。片側だけの明るい帯は、帯の中が一様で、切った画像で画面の位置がもっともらしい（detectLayout の ok）ときだけ
+// そのあと、ゲームの画面の左右の端が分かるとき（detectLayout の x0・x1：ピグパは見出しの下の線の両端）は、その外も切る（白い帯・白い枠）
+// 画面が画像の幅いっぱいと分かる画像（detectLayout の full）は何もしない。切った画像で画面の位置が前よりはっきり分からなければ、切らない（元の画像を使う）
+// （ただし、はっきりした黒い帯を切って画面の位置がもっともらしくなったときは、前と同じくらいでも切ったほうを使う。帯の境目のにじみで full にならないことがある）
+function trimBars(img){
+  const W=img.width, H=img.height; if (!W || !H || img.cut) return img; // cut：もう切った画像
+  const lay0=detectLayout(img), sc=l=>!l ? 0 : l.full ? 3 : l.ok ? 2 : 1; if (lay0?.full) return img;
+  const c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,0,0);
+  const near=(d,i,ref)=>Math.abs(d[i]-ref[0])<20 && Math.abs(d[i+1]-ref[1])<20 && Math.abs(d[i+2]-ref[2])<20;
+  const part=(d,ref)=>{ let n=0, all=0; const st=Math.max(1,Math.floor(d.length/4/300))*4; for (let i=0;i<d.length;i+=st){ all++; if (near(d,i,ref)) n++; } return n/all; };
+  const side=at=>{ const ref=[...g.getImageData(at(0),H>>1,1,1).data].slice(0,3), e=g.getImageData(at(0),0,1,H).data; let y0=H>>1, y1=H>>1;
+    while (y0>0 && near(e,(y0-1)*4,ref)) y0--; while (y1<H-1 && near(e,(y1+1)*4,ref)) y1++;
+    if (y1-y0+1<H*.6) return {n:0};
+    const colP=x=>part(g.getImageData(x,y0,1,y1-y0+1).data,ref); let n=0;
+    while (n<W*.3 && colP(at(n))>=.98) n++;
+    return n>=Math.max(2,W*.005) && colP(at(n+2))<.8 ? {n,ref,y0,y1,dark:.3*ref[0]+.59*ref[1]+.11*ref[2]<60} : {n:0}; };
+  let L=side(n=>n), R=side(n=>W-1-n);
+  const pair=L.n && R.n && Math.abs(L.n-R.n)<=Math.max(3,Math.max(L.n,R.n)*.2) && L.ref.every((v,i)=>Math.abs(v-R.ref[i])<20);
+  // 片側だけの明るい帯は、帯の中が一様（線・字が1つも横切らない）なときだけ。もう片側に黒っぽい帯があるときは使わない（画面の白い余白を帯と見ない）
+  const pure=(s,at)=>{ for (let k=0;k<s.n-2;k++){ const d=g.getImageData(at(k),s.y0,1,s.y1-s.y0+1).data; for (let i=0;i<d.length;i+=4) if (!near(d,i,s.ref)) return false; } return true; };
+  if (!pair){ if (L.n && !L.dark && (R.n && R.dark || !pure(L,n=>n))) L={n:0}; if (R.n && !R.dark && (L.n && L.dark || !pure(R,n=>W-1-n))) R={n:0}; }
+  const light=!pair && (L.n && !L.dark || R.n && !R.dark), strong=(L.n || R.n) && (!L.n || L.dark) && (!R.n || R.dark); // light：片側だけの明るい帯。strong：黒っぽい帯だけ
+  let o=img, cut=[0,0];
+  if (L.n || R.n){ const s=L.n?L:R, w=W-L.n-R.n, rowP=y=>part(g.getImageData(L.n,y,w,1).data,s.ref), end=(y,d)=>{ let n=0; while (n<H*.3 && rowP(y+d*n)>=.98) n++; return n; };
+    const T=s.y0+end(s.y0,1), B=H-1-s.y1+end(s.y1,-1); o=document.createElement('canvas'); o.width=w; o.height=H-T-B; o.getContext('2d').drawImage(img,L.n,T,w,o.height,0,0,w,o.height); cut=[L.n,T]; }
+  c.width=c.height=0;
+  const lay=detectLayout(o);
+  if (lay?.x1>lay?.x0){ const w=lay.x1-lay.x0+1, h=o.height, p=document.createElement('canvas'); p.width=w; p.height=h; p.getContext('2d').drawImage(o,lay.x0,0,w,h,0,0,w,h); if (o!==img) o.width=o.height=0; o=p; cut[0]+=lay.x0; }
+  if (o===img) return img;
+  const s1=sc(detectLayout(o)), s0=sc(lay0);
+  // 画面の位置が分からない画像は、黒っぽい帯を切ったときか、切ったら分かったときだけ
+  if (light && s1<2 || (lay0 ? s1<=s0 && !(strong && s1>=2 && s1>=s0) : !s1 && !strong)){ o.width=o.height=0; return img; } // 切っても良くならない：帯ではなかった
+  o.cut=cut; // cut：切り落とした左・上の幅（確かめる用）
+  return o; }
+function fromFile(f, cb){ const i=new Image(); i.onload=()=>{cb(i);draw();}; i.src=URL.createObjectURL(f); }
+// ---- アイテム画像：読み込み時に「所持数：○個」を文字認識して所持数に入れる（画像自体は一切変更しない） ----
+// 画像の色の並びから、アイテム欄の上端とピンク欄の下端を探す（文字を読まない方法・端末の画面サイズに左右されない）
+// 画像ごとに1回だけ探す（覚えておく）。大きな画像を何度も描かないよう、また描いた分のメモリはすぐ返す（iPhoneで12枚選んだとき）
+function detectLayout(img){
+  if (img._lay!==undefined) return img._lay;
+  const W=img.width, H=img.height, c=document.createElement('canvas'); c.width=W; c.height=H;
+  const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,0,0);
+  const lay=(()=>{
+  const col=x=>g.getImageData(Math.round(x),0,1,H).data;
+  const mid=col(W*.5), px=(d,y)=>[d[y*4],d[y*4+1],d[y*4+2]];
+  const lum=([r,g,b])=>.3*r+.59*g+.11*b;
+  // 明るさの基準：真ん中の列でいちばん明るい所との差（明るさを変えた・暗くした画像でも、白い欄を白として見る）
+  let wm=0; for (let y=0;y<H;y++) wm=Math.max(wm,lum(px(mid,y))); const dw=Math.min(60,255-wm);
+  // 1) 上から見て、暗い背景の後に明るい白っぽい欄（アイテムの小窓）が始まる所（送られてきた画像は上が切られていることがあるので、いちばん上から。暗い所を通ってから）
+  let sheetTop=null, dark=false;
+  for (let y=0; y<H*.7; y++){ const v=lum(px(mid,y));
+    if (v<190-dw) dark=true;
+    else if (dark && v>228-dw){ let ok=true; for(let k=1;k<W*.03;k+=2){ if(lum(px(mid,y+k))<215-dw){ok=false;break;} } if(ok){ sheetTop=y; break; } }
+  }
+  if (sheetTop==null) return null;
+  // 2) 左右の端の列で、ピンク欄が白（名前の欄）に変わる所。白はその列でいちばん明るい所が基準
+  //    （端を切った画像では左の列が紫の丸い印にかかって遅れるので、左の2本・右の1本のまん中の値を使う）
+  const pb=[.03,.015,.985].map(f=>{ const e=col(W*f); let wr=0; for (let y=Math.round(sheetTop+W*.2); y<H; y++) wr=Math.max(wr,Math.min(...px(e,y)));
+    let seenPink=false; const wh=y=>{ const [r,gg,b]=px(e,y); return r>wr-9 && gg>wr-9 && b>wr-9; };
+    for (let y=Math.round(sheetTop+W*.2); y<H; y++){ const [r,gg]=px(e,y);
+      if (r-gg>12) seenPink=true;
+      else if (seenPink && wh(y)){ let ok=true; for (let k=2;k<W*.05 && y+k<H;k+=2) if (!wh(y+k)){ ok=false; break; } if (ok) return y; } } // 白い欄は続く（ピンクの模様の明るい所では止まらない）
+    return null; }).filter(v=>v!=null).sort((a,b)=>a-b);
+  if (!pb.length) return null;
+  const pinkBottom=pb.length===3 ? pb[1] : pb[0];
+  // 小窓の上端〜ピンク欄の下端はどの画面でも幅の0.8265倍。それより長いときは、送った人が左右を切った画像なので、元の幅（Wf）で名前の行の下端を決める
+  // full：ゲームの画面が画像の幅いっぱい（比がほぼ1。左右に帯があると1より小さい）：trimBars は何も切らない
+  const rt=(pinkBottom-sheetTop)/W/.8265, Wf=W*(rt>1.015 ? Math.min(1.12,rt) : 1);
+  return {top:sheetTop, pinkBottom, cardBottom:pinkBottom+Wf*.2, full:Math.abs(rt-1)<.008, ok:Math.abs(rt-1)<.015}; // ok：比が1に近い（trimBars が比べる）
+  })();
+  c.width=c.height=0;
+  return img._lay=lay;
+}
+// 画像から「所持数」の行を探し、所持数・切り抜き位置を返す（画像そのものは変更しない）
+let ocrWorker=null, ocrReady=null, ocrSeq=0;
+const timeLimit=(p,ms)=>Promise.race([p,new Promise((_,ng)=>setTimeout(()=>ng(new Error('timeout')),ms))]);
+// 文字認識は1枚ずつ順番に（選び直した・外したときに、前の読み取りの途中の設定と混ざって読み違えないように）
+let ocrQ=Promise.resolve();
+const ocrOne=f=>{ const p=ocrQ.then(f,f); ocrQ=p.catch(()=>{}); return p; };
+// かなの後の「一」（漢字の いち）は伸ばす音「ー」（「と一緒」は漢字が続くのでそのまま）。iPhoneの読み取りの名前にも使う
+const kanaDash=t=>t.replace(/([ぁ-ゖァ-ヺー])一(?![一-龯々])/g,'$1ー').replace(/ー{2,}/g,'ー');
+// 読み間違えやすいカタカナの補正
+function fixKana(t){ return kanaDash(t.replace(/ン(?=[ャュョ])/g,'シ').replace(/ソ(?=[ャュョ])/g,'シ')
+  .replace(/([やゆよヤユヨ])([ゃゅょャュョ])/g,(m,a,b)=>({ゃ:'や',ゅ:'ゆ',ょ:'よ',ャ:'ヤ',ュ:'ユ',ョ:'ヨ'})[b]===a?b:m) // 大小2つに読んだ字（「やゃ」）は小さい字
+  .replace(/([ばびぶべぼ])([ぱぴぷぺぽ])|([ぱぴぷぺぽ])([ばびぶべぼ])/g,(m,a,b,c,d)=>(a||c).normalize('NFD')[0]===(b||d).normalize('NFD')[0]?(b||d):m)); } // 「ぼぽ」のように同じ字を2回読んだもの（ひらがなだけ。カタカナの「アップブーツ」は本当にある）
+// アイテム名一覧（items.json）と、この端末で直した名前（学習）で、読み取った名前をいちばん近い名前に置き換える
+let itemNames=null, dictExact=new Set(), itemMore=[];
+// 辞書：items.json（公式一覧サイト）＋ data/gametrade-names.json（出品の題名で見かけた名前）
+// itemMore：items.json の more（ガチャ・ショップのページの表から拾った、ページのないアイテムの名前）。一覧と完全に同じ名前のとき（緑）・名前を直す画面の候補・
+// 「同じくらい近い別の名前」の見張りにだけ使い、読み取った名前をこの名前に置き換えることはしない（拾い方がおおまかで、同じシリーズの別の色などもあるので）
+const loadItemNames=()=>itemNames ??= Promise.all(['items.json','data/gametrade-names.json'].map(u=>fetch(u,{cache:'no-cache'}).then(r=>r.ok?r.json():{}).catch(()=>({}))))
+  .then(([a,b])=>{ const names=[...new Set([...(Array.isArray(a?.names)?a.names:[]),...(Array.isArray(b?.names)?b.names:[])])]; if(!names.length) itemNames=null; // 読み込めなかったら次の読み取りでもう一度試す
+    const ns=new Set(names); itemMore=(Array.isArray(a?.more)?a.more:[]).filter(n=>typeof n==='string' && n && !ns.has(n));
+    dictExact=new Set([...names,...itemMore]); return names; }).catch(()=>{ itemNames=null; return []; });
+loadItemNames();
+const normMemo=new Map(); // 同じ名前を何度も比べるので、そろえた形を覚えておく
+const normName=t=>{ let v=normMemo.get(t); if (v==null){ v=t.normalize('NFKC').replace(/[\s・･「」『』【】（）()]/g,'').replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+96)); if (normMemo.size>20000) normMemo.clear(); normMemo.set(t,v); } return v; };
+// 保存形式：{正規化した読み取り: {from:読み取った文字, to:直した名前}}
+// 保存できなかったとき（端末の保存がいっぱい）も false を返すだけ。決めた名前は okNames に入れて、開いている間は緑にする
+const learned={ all(){ try{ const m=JSON.parse(localStorage.getItem(PFX+'learned')||'{}'); return m&&typeof m==='object'&&!Array.isArray(m)?m:{}; }catch(e){ return {}; } },
+  save(m){ try{ localStorage.setItem(PFX+'learned',JSON.stringify(m)); return true; }catch(e){ return false; } },
+  get(){ const m=this.all(), r={}; for (const k in m) r[k]=m[k]?.to ?? m[k]; return r; },
+  add(raw,fixed){ if (!raw || !fixed) return true; const m=this.all(); m[normName(raw)]={from:raw,to:fixed}; return this.save(m); },
+  remove(k){ const m=this.all(); delete m[k]; this.save(m); } };
+const okNames=new Set(); // この画面で決めた名前（端末に保存できなくても、開いている間は緑にする）
+// 文字認識で取り違えやすい文字どうし（小さい字・濁点・ー/一 など）は「小さな違い」として数える
+// 数字と形の似た英字（2とZ、1とl、0とO など）も、文字認識の読み違いとして小さな違いにする
+const SOFT=['アァ','イィ','ウゥ','エェ','オォ','ツッ','ヤャ','ユュ','ヨョ','カヵ','ケヶ','ワヮ','ー一','ー-','ロ口','ニ二','カ力','エ工','タ夕','ト卜','ハ八','ヘへ','ソン','シツ','ノ丿','メ×',
+  '2Z','1lI|','0Oo〇','5S','6b','8B','9g','オ才','チ千','ミ三'];
+const bare=c=>c.normalize('NFD').replace(/[゙゚]/g,'');
+const soft=(x,y)=>bare(x)===bare(y) || SOFT.some(p=>p.includes(x)&&p.includes(y));
+const lightIns=c=>'ァィゥェォッャュョヮー'.includes(c);
+// 漢字どうしの取り違えは「別の字」として重く数える（床と壁のような、同じシリーズの別アイテムに置き換えないため）
+const kanji=c=>/\p{Script=Han}/u.test(c);
+const subMemo=new Map(); // 文字の組ごとの重さは変わらないので覚えておく（一覧の全部の名前と比べても速いように）
+const subCost=(x,y)=>{ if (x===y) return 0; const k=x+'\u0000'+y; let v=subMemo.get(k); if (v==null){ v=soft(x,y)?.25:(kanji(x)||kanji(y))?2:1; subMemo.set(k,v); } return v; };
+function editCost(a,b){ let p=[0]; for (let j=1;j<=b.length;j++) p[j]=p[j-1]+(lightIns(b[j-1])?.25:1);
+  for (let i=1;i<=a.length;i++){ const q=[p[0]+(lightIns(a[i-1])?.25:1)];
+    for (let j=1;j<=b.length;j++) q[j]=Math.min(p[j]+(lightIns(a[i-1])?.25:1), q[j-1]+(lightIns(b[j-1])?.25:1), p[j-1]+subCost(a[i-1],b[j-1]));
+    p=q; }
+  return p[b.length]; }
+// 名前の違い（0＝同じ、1＝まったく違う。どちらかが空なら 9）
+const nameDist=(a,b)=>{ a=normName(String(a||'')); b=normName(String(b||'')); return a&&b ? editCost(a,b)/Math.max(a.length,b.length) : 9; };
+// 少しの読み違いと言える近さ（これより違う名前どうしは「読み違い」として覚えない・使わない）
+const nearName=(a,b)=>nameDist(a,b)<=.35;
+// 名前の中の数字（年号・番号）。「…(2023)」と「…(2022)」、「ばってんアイ」と「3ばってんアイ」は別アイテム
+const digitsOf=t=>(normName(String(t||'')).match(/\d+/g)||[]).join(',');
+// 本当にあるアイテムの名前（一覧と同じ・iPhoneで読んだことがある）。本当の名前は読み違いではないので、「読み取り→直した名前」の元にしない
+let histNames=null; // 前の記録の名前（毎回作らないよう覚えておく。histAdd で作り直す）
+const realName=t=>{ if (!t) return false; if (dictNorm().has(String(t).normalize('NFKC'))) return true; histNames ??= new Set(histAll().map(e=>normName(e.name))); return histNames.has(normName(t)); };
+// 文字認識のよくある読み違いだけの違い（小さい字・濁点・ー/一・形の似た字。漢字や数字は変わらない）
+const slip=(a,b)=>{ a=normName(String(a||'')); b=normName(String(b||'')); return !!a && !!b && a!==b && editCost(a,b)<1 && digitsOf(a)===digitsOf(b); };
+// 色の名前（同じシリーズの色ちがいのアイテム）。どちらの名前にも、もう一方にない色の名前があり、色の名前を除くとほとんど同じなら別のアイテム
+// （アプリ内の読み取りで「白」が「自」になるような、色でない字への読み違いは、片方にしか色がないので別のアイテムとは言わない）
+const HUES=['ラベンダー','ブラック','ホワイト','パープル','オレンジ','ブラウン','ベージュ','ネイビー','ゴールド','シルバー','グリーン','イエロー','クリーム','ピンク','ブルー','レッド','グレー','ミント',
+  '白','黒','茶','桃','水','紫','青','赤','緑','金','銀','紺','灰','黄','橙'];
+// 同じシリーズの別アイテムを分ける言葉（女/男、床/壁、上/下 など）。長い言葉を先に（「彼女」の「女」を別に数えない）
+const VARIANTS=['レディース','メンズ','ガール','ボーイ','彼氏','彼女','天井','女','男','床','壁','窓','上','下','左','右','前','後','表','裏','春','夏','秋','冬','朝','昼','夜','大','中','小','姉','妹','兄','弟'];
+// 名前の中の、決まった言葉（色の名前など）の数。同じ言葉が2回ある名前（「白うさぎ…/白」）は2と数える。rest：言葉を ◇ にした名前
+// （前の記録の全部と比べるので、名前ごとに覚えておく）
+const wordsMemo=new WeakMap();
+const wordsOf=(W,t)=>{ t=String(t||''); let M=wordsMemo.get(W); if (!M) wordsMemo.set(W,M=new Map()); let v=M.get(t);
+  if (!v){ let x=normName(t); const c=new Map(); for (const h of W){ const n=x.split(h).length-1; if (n){ c.set(h,n); x=x.split(h).join('◇'); } } v={c, rest:x}; if (M.size>20000) M.clear(); M.set(t,v); }
+  return v; };
+// どちらの名前にも、もう一方より多い言葉があり、その言葉を除くとほとんど同じ（「…/白」と「…/黒」、「白うさぎ…/白」と「白うさぎ…/黒」）
+const wordSwap=(W,a,b)=>{ const A=wordsOf(W,a), B=wordsOf(W,b), more=(P,Q)=>[...P.c].some(([h,n])=>n>(Q.c.get(h)||0)); return more(A,B) && more(B,A) && nameDist(A.rest,B.rest)<=.3; };
+// 同じ長さで、違う字がどれも漢字どうし（と小さい字・濁点くらいの違い）だけ（アプリ内の読み取りの漢字の読み違い）
+const kanjiSub=(a,b)=>{ const A=[...a], B=[...b]; return A.length===B.length && A.every((x,i)=>x===B[i] || soft(x,B[i]) || (kanji(x) && kanji(B[i]))); };
+const hueSwap=(a,b)=>wordSwap(HUES,a,b), variantSwap=(a,b)=>wordSwap(VARIANTS,a,b);
+// 違う所（前と後ろの同じ部分を除いた所）が、どちらも英字・数字1文字で、形の似た字（2とZ など）や大文字・小文字の違いではない（「…セットA」と「…セットB」）
+const letterSwap=(a,b)=>{ a=normName(String(a||'')); b=normName(String(b||'')); let i=0; while (i<a.length && i<b.length && a[i]===b[i]) i++;
+  let j=0; while (j<a.length-i && j<b.length-i && a[a.length-1-j]===b[b.length-1-j]) j++; const x=a.slice(i,a.length-j), y=b.slice(i,b.length-j);
+  return /^[A-Za-z0-9]$/.test(x) && /^[A-Za-z0-9]$/.test(y) && x.toLowerCase()!==y.toLowerCase() && !soft(x,y); };
+// 覚えてよい「読み取り → 直した名前」：近い名前で、数字が同じで、読み取りが本当にある別のアイテムの名前ではない（同じガチャの別アイテム・別の年に直したのは組み違いなので覚えない）
+// 色の名前・女/男のような言葉・A/B だけが違う（「…/黒」→「…/白」）のも、読み違いではなく組み違いを直したものなので覚えない・使わない
+const learnable=(from,to)=>typeof from==='string' && typeof to==='string' && !!from && !!to && normName(from)!==normName(to) && nearName(from,to) && digitsOf(from)===digitsOf(to) && !hueSwap(from,to) && !variantSwap(from,to) && !letterSwap(from,to) && (!realName(from) || slip(from,to));
+// 覚えた名前を使ってよいか（同じ名前どうし、または上の決まりに合うもの）。前の版で覚えてしまった組み違いもここで使わなくなる
+const learnUse=(from,to)=>typeof to==='string' && !!to && typeof from==='string' && (normName(from)===normName(to) || learnable(from,to));
+// 覚えた名前のうち、使ってよいものだけ
+function learnedPairs(){ const M=learned.all(), out=[];
+  for (const k in M){ const to=M[k]?.to ?? M[k], from=M[k]?.from ?? k; if (learnUse(from,to)) out.push([from,to]); } return out; }
+function learnedTo(raw){ const e=learned.all()[normName(String(raw||''))]; if (!e) return null; const to=e?.to ?? e, from=e?.from ?? raw;
+  return learnUse(from,to) ? to : null; }
+// 自分で決めた名前（緑にする名前）
+const learnedNames=()=>{ const M=learned.all(), s=new Set(); for (const k in M){ const to=M[k]?.to ?? M[k]; if (typeof to==='string' && to) s.add(to); } return s; };
+// 前の版で覚えた、使わない直し方（別のアイテムの名前 → 直した名前＝組み違いを直したもの）は、一覧と前の記録で別のアイテムと分かるうちに消しておく
+// （前の記録が古くなって消えると、別のアイテムの名前と分からなくなって、また使われてしまうので）。直した名前は「決めた名前」として残す
+loadItemNames().then(()=>{ if (!dictExact.size) return; const M=learned.all(); let ch=false;
+  for (const k in M){ const to=M[k]?.to ?? M[k], from=M[k]?.from ?? k; if (typeof to!=='string' || !to || typeof from!=='string' || learnUse(from,to)) continue;
+    delete M[k]; ch=true; const tk=normName(to); if (!dictExact.has(to) && !M[tk]) M[tk]={from:to,to}; }
+  if (ch) learned.save(M); }).catch(()=>{});
+// 一覧・覚えた名前の中で、読み取った名前にいちばん近いもの（組にするとき「もっと近い別の名前がある」を見つけるため）
+async function knownNear(raw){ const a=normName(raw||''); if (!a) return null; let best=null, bd=9;
+  const cmp=n=>{ const b=normName(n||''); if (!b || Math.abs(a.length-b.length)>Math.max(a.length,b.length)*.4+1) return; const d=editCost(a,b)/Math.max(a.length,b.length); if (d<bd){ bd=d; best=n; } };
+  (await loadItemNames()).forEach(cmp); itemMore.forEach(cmp); learnedNames().forEach(cmp); return best ? {name:best, nc:bd} : null; }
+function renderLearned(){
+  const box=$('learnedList'), m=learned.all(), keys=Object.keys(m); box.innerHTML='';
+  if (!keys.length){ box.innerHTML='<div class="note">まだありません</div>'; return; }
+  keys.forEach(k=>{ const v=m[k], from=v?.from ?? k, to=v?.to ?? v, d=document.createElement('div'); d.className='lrn';
+    const t=document.createElement('span'); t.innerHTML='<s></s> → <b></b><small></small>';
+    if (typeof from!=='string' || typeof to!=='string' || !to){ t.textContent='（こわれた記録）'; } // 手で書き換えた記録などでも⚙が開けるように（削除はできる）
+    else { t.querySelector('s').textContent=from; t.querySelector('b').textContent=to;
+      if (!learnUse(from,to)) t.querySelector('small').textContent='（別のアイテムの名前どうしなので、読み取りの直しには使いません）'; }
+    const b=document.createElement('button'); b.type='button'; b.textContent='削除';
+    b.onclick=()=>{ if (b.dataset.sure){ learned.remove(k); renderLearned(); } else { b.dataset.sure=1; b.textContent='もう一度'; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.textContent='削除'; } },3000); } };
+    d.append(t,b); box.appendChild(d); });
+}
+async function nearestItemName(name){
+  if (!name) return name;
+  const list=await loadItemNames(), ex=dictNorm().get(name.normalize('NFKC')); if (ex) return ex; // 一覧と同じ名前はそのまま（覚えた直し方より先に見る）
+  const a=normName(name), lt=learnedTo(name); if (lt) return lt;
+  // 比べる相手：[比べる文字, 置き換える名前]。一覧の名前・覚えた名前・覚えた「読み取り」（少し違う読み間違いも直す）
+  const cands=list.map(n=>[n,n]);
+  for (const [from,to] of learnedPairs()) cands.push([to,to], [from,to]);
+  let best=null, bc='', bd=Infinity, second=Infinity; // bc：いちばん近かった比べる文字
+  for (const [cmp,to] of cands){ const b=normName(cmp); if (Math.abs(a.length-b.length)>=second+4) continue;
+    const d=editCost(a,b);
+    if (d<bd){ if (to!==best) second=bd; bd=d; best=to; bc=b; } else if (d<second && to!==best) second=d; }
+  // はっきり違う文字は1文字まで・全体の3割まで（短い名前は取り違えやすい文字の違いだけ）
+  const lim=a.length<6 ? .75 : Math.min(1.5, a.length*.3);
+  // 同じくらい近い別の名前があるときは、どちらか決められないので読み取ったままにする
+  // 文字認識らしい違いのときだけ直す（ocrLike）。別の字に変わった・漢字や数字が足りない／多い名前は、同じシリーズの別アイテム
+  // （「まるアイ」と「クールアイ」、「茶」と「薄茶」、「(2023)」と「(2022)」）のことが多いので直さない（赤のまま。直す画面の候補の1番目に出る）
+  return best && bd<=lim && second-bd>=.5 && ocrLike(a,bc) ? best : name;
+}
+// 文字認識の読み違いらしい違いか：取り違えやすい字（小さい字・濁点・ー/一・2とZ など）のほかは、1文字多い／少ないだけ。
+// 数字・漢字が足りない（「茶」と「薄茶」）、数字・漢字が多い（「茶」と「濃茶」）のは別アイテム。ただし読み取りのごみで入りやすい形の字（口・人・入 など）が多いのはよい
+const kanaLike=c=>/[\p{Script=Hiragana}\p{Script=Katakana}ー♡♥☆★・]/u.test(c);
+function ocrLike(a,b){ const ins=c=>lightIns(c)?.25:1, n=a.length, m=b.length, D=[...Array(n+1)].map(()=>new Float64Array(m+1));
+  for (let j=1;j<=m;j++) D[0][j]=D[0][j-1]+ins(b[j-1]);
+  for (let i=1;i<=n;i++){ D[i][0]=D[i-1][0]+ins(a[i-1]); for (let j=1;j<=m;j++) D[i][j]=Math.min(D[i-1][j]+ins(a[i-1]), D[i][j-1]+ins(b[j-1]), D[i-1][j-1]+subCost(a[i-1],b[j-1])); }
+  let i=n, j=m, hard=0; const heavy=(c,extra)=>/\d/.test(c) || (kanji(c) && !(extra && '口入人一二八小'.includes(c)));
+  while (i>0 || j>0){ if (i>0 && j>0 && D[i][j]===D[i-1][j-1]+subCost(a[i-1],b[j-1])){ const sc=subCost(a[i-1],b[j-1]);
+      // カナ・記号1文字だけの読み違い（し→レ、ツ→ウ、♡→ソ）は直す（8文字以上の名前で、違いがそれだけのとき）。目の名前（○るアイ）の中は別アイテムなので直さない
+      if (sc>=1 && !(sc===1 && kanaLike(a[i-1]) && kanaLike(b[j-1]) && n>=8 && D[n][m]===1 && !/^.?アイ/.test(b.slice(j)) && ++hard<=1)) return false; i--; j--; }
+    else if (i>0 && D[i][j]===D[i-1][j]+ins(a[i-1])){ if (ins(a[i-1])>=1 && (heavy(a[i-1],true) || ++hard>1)) return false; i--; }
+    else { if (ins(b[j-1])>=1 && (heavy(b[j-1],false) || ++hard>1)) return false; j--; } }
+  return true; }
+// ---- 新しい読み取り（PP-OCRv5 の文字認識・16.5MB）：名前と所持数の行だけを読む。読み込めない・落ちたときは今までの読み取り（Tesseract）のまま ----
+// iOS 26.2 以降の Safari で新しい版の onnxruntime-web がメモリを使い切る不具合があるので、1.20.1 の wasm（1スレッド）を使う
+let ppReady=null, ppOff=false;
+function ppInit(){ if (ppOff) return Promise.resolve(null);
+  return ppReady ??= (async()=>{ const base=new URL('ocr/pp/',location.href).href;
+    if (!window.ort) await new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=base+'ort.min.js'; sc.onload=res; sc.onerror=()=>rej(new Error('ort')); document.head.appendChild(sc); });
+    ort.env.wasm.wasmPaths=base; ort.env.wasm.numThreads=1;
+    const D=await (await fetch(base+'dict.json')).json(), IDX=new Map(D.map((c,i)=>[c,i+1]));
+    const sess=await ort.InferenceSession.create(base+'rec.onnx',{executionProviders:['wasm']});
+    // 名前によく出る記号（♡☆♪・など）は、読み取りの自信が少し低くても落とさない
+    return {sess, D, boost:new Set(['♡','♥','☆','★','♪','♫','・','〜','～'].map(c=>IDX.get(c)).filter(Boolean))}; })()
+    .catch(e=>{ ppOff=true; ppReady=null; try{ noteErr('新しい読み取り：'+(e?.message||e)); }catch(_){} return null; }); }
+// ピンクの部分のすぐ下の濃い字の行（1行目＝名前、2行目＝所持数）。♪のはしのような細い線は行にしない
+function ppRows(img,lay){ const W=img.width,H=img.height,c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,0,0);
+  const d=g.getImageData(0,0,W,H).data, dark=(x,y)=>{ const i=(y*W+x)*4; return d[i]<100&&d[i+1]<100&&d[i+2]<100; };
+  const y0=Math.round(lay.pinkBottom), y1=Math.min(H-1,Math.round(lay.pinkBottom+W*.3)), runs=[]; let s0=-1;
+  for (let y=y0;y<y1;y++){ let n=0; for (let x=Math.round(W*.05);x<W*.95;x++) if (dark(x,y)) n++; if (n>2&&s0<0) s0=y; if (n<=2&&s0>=0){ runs.push([s0,y]); s0=-1; } }
+  return runs.filter(([a,b])=>b-a>=W*.012).slice(0,2).map(([a,b])=>{ let xa=W,xb=0; for (let y=a;y<b;y++) for (let x=Math.round(W*.03);x<W*.97;x++) if (dark(x,y)){ if(x<xa)xa=x; if(x>xb)xb=x; } return {x:xa,y:a,w:xb-xa+1,h:b-a}; }); }
+async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad), y0=Math.max(0,box.y-pad), w=Math.min(img.width-x0,box.w+pad*2), h=Math.min(img.height-y0,box.h+pad*2);
+  const H=48, Wd=Math.min(1600,Math.max(16,Math.round(w*H/h))), c=document.createElement('canvas'); c.width=Wd; c.height=H; const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,x0,y0,w,h,0,0,Wd,H);
+  const px=g.getImageData(0,0,Wd,H).data, f=new Float32Array(3*H*Wd);
+  for (let i=0;i<H*Wd;i++){ f[i]=(px[i*4+2]/255-.5)/.5; f[H*Wd+i]=(px[i*4+1]/255-.5)/.5; f[2*H*Wd+i]=(px[i*4]/255-.5)/.5; }
+  const o=(await pp.sess.run({[pp.sess.inputNames[0]]:new ort.Tensor('float32',f,[1,3,H,Wd])}))[pp.sess.outputNames[0]], [,T,C]=o.dims, P=o.data;
+  // 1文字ずつ、読み取りの自信（0〜1）も取っておく
+  const ch=[]; let prev=-1; for (let k=0;k<T;k++){ let m=0,mi=0; for (let j=0;j<C;j++){ const v=P[k*C+j]*(pp.boost.has(j)?8:1); if(v>m){m=v;mi=j;} } const raw=P[k*C+mi];
+    if (mi!==0){ if (mi!==prev) ch.push({c:mi<=pp.D.length?pp.D[mi-1]:' ', p:raw}); else ch[ch.length-1].p=Math.max(ch[ch.length-1].p,raw); } prev=mi; }
+  while (ch.length && /[「」□■ロ口\s]/u.test(ch[ch.length-1].c)) ch.pop(); while (ch.length && /\s/.test(ch[0].c)) ch.shift(); // 名前の横のコピーのマークは外す
+  return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
+async function ppRead(img){ const lay=detectLayout(img); if (!lay) return null; const pp=await timeLimit(ppInit(),90000).catch(()=>null); if (!pp) return null;
+  const rows=ppRows(img,lay); if (!rows.length) return null;
+  const nl=await timeLimit(ppLine(pp,img,rows[0]),20000), name=nl.t; let owned=null;
+  let crop=''; try{ const b=rows[0], pd=b.h*.4, x0=Math.max(0,b.x-pd), y0=Math.max(0,b.y-pd), w=Math.min(img.width-x0,b.w+pd*2), h=Math.min(img.height-y0,b.h+pd*2), k=Math.min(1,60/h), c=document.createElement('canvas');
+    c.width=Math.round(w*k); c.height=Math.round(h*k); c.getContext('2d').drawImage(img,x0,y0,w,h,0,0,c.width,c.height); crop={src:c.toDataURL('image/jpeg',.85), hr:h/b.h, pr:(b.x-x0)/b.h}; }catch(e){} // 見比べ用：元の画像の名前の行
+  if (rows[1]) try{ const m=(await timeLimit(ppLine(pp,img,rows[1]),20000)).t.match(/所持数\D{0,3}(\d{1,3})/); if (m) owned=+m[1]; }catch(e){}
+  return /\p{L}/u.test(name) && !/リリ.?ス日|所持数|欲しい/.test(name) ? {name, owned, low:nl.low, crop} : {name:'', owned, crop}; }
+async function analyzeShot(img){
+  const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.012, cardBottom:lay.cardBottom, nameBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
+  if (!window.Tesseract) return r0;
+  // 新しい読み取りを、今までの読み取り（別の作業場で動く）と同時に始める。名前が読めたら、今までの読み取りでの名前の読み直しは省く
+  let ppP=null, pp=null;
+  // 画面の下側（スクショ幅の60%より下・左右20〜80%）を読み取り用にコピーして「所持数」の行を探す
+  const W=img.width, sx=W*.2, sy=W*.6, sw=W*.6, sh=img.height-sy;
+  if (sh<=0) return null;
+  const c=document.createElement('canvas'), k=Math.max(1,900/sw); c.width=sw*k; c.height=sh*k;
+  c.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);
+  const base=new URL('ocr/',location.href).href;
+  // 通信が止まって「読取中…」のままにならないよう、時間を区切る（初回は文字認識のデータを読み込むので長め）
+  ocrReady ??= Tesseract.createWorker('jpn',1,{workerPath:base+'worker.min.js',corePath:base,langPath:base,workerBlobURL:false}).catch(e=>{ ocrReady=null; throw e; });
+  ocrWorker ??= await timeLimit(ocrReady, 90000);
+  ppP=ppRead(img).catch(()=>null); // 今までの読み取りの準備ができてから始める（初回のダウンロードを取り合って時間切れにならないように）
+  try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'3'}); }catch(e){} // 前の読み取りの1行の設定（7）のままにしない
+  const {data}=await timeLimit(ocrWorker.recognize(c,{},{text:true,blocks:true}), 30000);
+  const lines=(data.blocks||[]).flatMap(b=>b.paragraphs.flatMap(p=>p.lines));
+  const li=lines.findIndex(l=>/持数|所持/.test(l.text.replace(/\s/g,''))), line=lines[li];
+  // アイテム名：所持数の行のすぐ上の行（所持数の行がない画面は名前欄の位置の行）
+  const clean=t=>t.replace(/\s/g,'').replace(/[□口回ロ⑮Ⅱ|｜!！」』にに\[\]0-9]+$/,'');
+  let nameLine = li>0 ? lines[li-1] : null;
+  if (!nameLine && lay){ const target=(lay.cardBottom-sy)*k;
+    nameLine=lines.filter(l=>!/リリース|欲しい|ショップ|タイプ/.test(l.text)).sort((a,b)=>Math.abs(a.bbox.y1-target)-Math.abs(b.bbox.y1-target))[0]; }
+  const r={...r0}; pp=await ppP;
+  if (nameLine){
+    // 名前の行を切り出して読み直す：濃い文字だけを残す（薄い灰色のコピーマークは消える）→拡大→1行として読む
+    const b=nameLine.bbox, x0=sx+b.x0/k, y0=sy+b.y0/k, w=(b.x1-b.x0)/k, h=(b.y1-b.y0)/k, pad=h*.3, z=Math.max(1,96/h);
+    const nc=document.createElement('canvas'); nc.width=Math.round((w+pad*2)*z); nc.height=Math.round((h+pad*2)*z);
+    const ng=nc.getContext('2d',{willReadFrequently:true}); ng.imageSmoothingQuality='high';
+    ng.drawImage(img,x0-pad,y0-pad,w+pad*2,h+pad*2,0,0,nc.width,nc.height);
+    const id=ng.getImageData(0,0,nc.width,nc.height), d=id.data;
+    for (let i=0;i<d.length;i+=4){ const L=.3*d[i]+.59*d[i+1]+.11*d[i+2], v=L<150?0:255; d[i]=d[i+1]=d[i+2]=v; }
+    ng.putImageData(id,0,0);
+    if (!pp?.name) try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'7', preserve_interword_spaces:'0'});
+      const {data:d2}=await timeLimit(ocrWorker.recognize(nc),20000); r.name=clean(d2.text); }catch(e){}
+    try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'3'}); }catch(e){}
+    if (!r.name) r.name=clean(nameLine.text);
+    r.name=fixKana(r.name);
+  }
+  if (line){
+    r.squareBottom=sy+line.bbox.y1/k+W*.015;        // 1個のとき：所持数の行の少し下まで（正方形）
+    { // 確認用：元画像の「所持数」の行をそのまま切り出す（完成画像には入れない）
+      const y0=sy+line.bbox.y0/k-W*.01, y1=sy+line.bbox.y1/k+W*.01, x0=W*.33, x1=W*.67, cc=document.createElement('canvas');
+      cc.width=x1-x0; cc.height=y1-y0; cc.getContext('2d').drawImage(img,x0,y0,x1-x0,y1-y0,0,0,x1-x0,y1-y0); r.snap=cc.toDataURL(); }
+    r.ownedBottom=r.squareBottom; r.cardBottom=r.squareBottom; // 所持数の行まで入れる場合の下端
+  }
+  // 画面の位置が分からなかったとき：1個のときも名前の行の下で切る（所持数の行を出さない設定なら、所持数の行の上まで）
+  if (!lay && line){ r.nameBottom=sy+line.bbox.y0/k-W*.004; r.top=Math.max(0,r.nameBottom-W*1.014); }
+  const t=(line?line.text:data.text).replace(/\s/g,''), m=t.match(/持数[^0-9]*(\d+)/) || t.match(/(\d+)個/);
+  if (m){ r.owned=+m[1]; r.ownedSure=!!line && /持数/.test(m[0]); } // 「所持数」の行から読めた数は確か（組にするときの決め手にする）
+  if (NOGIFT.test((data.text||'').replace(/\s/g,''))) r.noGift=true;
+  r.sig=numSig(data.text);
+  // リリース日（名前の上の薄い灰色の行）も、読めなかったときはその行だけを拡大して読む（薄い字が消えないよう、しきい値は高め）
+  if (lay && !r.sig.some(x=>x[0]==='d')) for (const thr of [215,200]){ try{ const x0=W*.2, y0=lay.pinkBottom+W*.07, w=W*.6, h=W*.055, z=Math.max(1,96/h), nc=document.createElement('canvas'); nc.width=Math.round(w*z); nc.height=Math.round(h*z);
+    const ng=nc.getContext('2d',{willReadFrequently:true}); ng.imageSmoothingQuality='high'; ng.drawImage(img,x0,y0,w,h,0,0,nc.width,nc.height);
+    const id=ng.getImageData(0,0,nc.width,nc.height), d=id.data; for (let i=0;i<d.length;i+=4){ const v=.3*d[i]+.59*d[i+1]+.11*d[i+2]<thr ? 0 : 255; d[i]=d[i+1]=d[i+2]=v; } ng.putImageData(id,0,0);
+    await ocrWorker.setParameters({tessedit_pageseg_mode:'7'}); const ds=numSig((await timeLimit(ocrWorker.recognize(nc),20000)).data.text).filter(x=>x[0]==='d');
+    if (ds.length===1){ r.sig.push(ds[0]); break; } }catch(e){} }
+  // 「欲しい」の数（ピンクの丸の中の白い数字）：その所だけを白い字を黒にして拡大し、1行として読む（小さい・ぼやけた・圧縮された画像では、画面全体の読み取りで欠けたり読み違えたりする）
+  // 読めたら、日付の年だけの数は外す。画面全体の読み取りに「欲しい」の数（同じくらいの桁の数）がないときと、桁が欠けているとき（頭に1桁多く、末尾がこの数のときも）だけ、この数を使う
+  // 同じ桁数で違う数なら、画面全体の読みのまま（この所の読み違いで正しい数を消さない。ただし別のしきい値でも同じに読めたら、どちらも使わない）。
+  // 画面全体のほうが桁が多く末尾も違うときも、どちらが正しいか分からないので、どちらも使わない（ない数は安全、違う数は組み違いのもと）
+  // （縮小された画像では字のふちが白くなりきらないので、白さのしきい値は低め。読めなければ少し高くしてもう一度）
+  // rdH：「欲しい」の所を、白さのしきい値 thr・拡大の倍率 zs（ふつうは高さ96pxに。1.5なら1.5倍）で読む。数字だけと読めたときだけ（頭の字が「Z」「ア」になったときは、欠けた数を使わない）
+  const rdH=async(thr,zs)=>{ const x0=W*.675, y0=lay.pinkBottom+W*.002, w=W*.12, h=W*.048, z=Math.max(1,96/h)*zs, nc=document.createElement('canvas'); nc.width=Math.round(w*z); nc.height=Math.round(h*z);
+    const ng=nc.getContext('2d',{willReadFrequently:true}); ng.imageSmoothingQuality='high'; ng.drawImage(img,x0,y0,w,h,0,0,nc.width,nc.height);
+    const id=ng.getImageData(0,0,nc.width,nc.height), d=id.data; for (let i=0;i<d.length;i+=4){ const v=Math.min(d[i],d[i+1],d[i+2])>thr ? 0 : 255; d[i]=d[i+1]=d[i+2]=v; } ng.putImageData(id,0,0);
+    await ocrWorker.setParameters({tessedit_pageseg_mode:'7'}); const t2=(await timeLimit(ocrWorker.recognize(nc),20000)).data.text.replace(/\s/g,'').replace(/(\d),(\d{3})/g,'$1$2'), m2=t2.match(/^(\d{3,6})$/);
+    return m2 ? String(+m2[1]) : null; };
+  const noYear=()=>{ const yr=r.sig.filter(x=>x[0]==='d').map(x=>x.slice(1,5)); r.sig=r.sig.filter(x=>x[0]!=='h' || !yr.includes(x.slice(1))); };
+  let hv=null, hmode='', hs=[]; if (lay && W>=600) for (const thr of [150,170]){ try{ const v=await rdH(thr,1);
+    if (v==null) continue; const drop=()=>{ r.sig=r.sig.filter(x=>x[0]!=='h' || !hs.includes(x.slice(1))); };
+    if (hv!=null){ if (v===hv && hmode==='drop') drop(); break; } // 2回目（確かめる読み）。同じ桁で違う数を確かめて同じに読めたら、どちらが正しいか分からないので、どちらも使わない
+    noYear(); hs=r.sig.filter(x=>x[0]==='h').map(x=>x.slice(1)).filter(a=>Math.abs(a.length-v.length)<=1);
+    if (!hs.length) r.sig.push('h'+v);
+    else if (hs.includes(v)){}
+    else if (hs.every(a=>a.length<v.length || a.length>v.length && a.endsWith(v))){ drop(); r.sig.push('h'+v); }
+    else if (hs.every(a=>a.length>v.length)) drop();
+    else { hv=v; hmode='drop'; continue; } // 同じ桁で違う数：画面全体の読みのまま。もう一度別のしきい値で読んで確かめる
+    break; }catch(e){} }
+  // 小さい画像（幅600未満：縮小・再圧縮されて送られてきた画像）：読み違い（桁が欠ける・増える・1字違う）が多いので、2つの別々の読みがぴったり同じ数のときだけ使う
+  // （この所の読みが画面全体の読みと同じか、しきい値も倍率も変えて（160・1.5倍）もう一度読んで同じ）。そうでなければ「欲しい」の数は使わない（ない数は安全、違う数は組み違いのもと）
+  else if (lay){ let v=null; for (const thr of [150,170]){ try{ v=await rdH(thr,1); }catch(e){} if (v!=null) break; }
+    noYear(); let keep=null;
+    if (v!=null){ if (r.sig.includes('h'+v)) keep=v; else { let v2=null; try{ v2=await rdH(160,1.5); }catch(e){} if (v2===v) keep=v; } }
+    r.sig=r.sig.filter(x=>x[0]!=='h'); if (keep) r.sig.push('h'+keep); }
+  else if (W<600) r.sig=r.sig.filter(x=>x[0]!=='h'); // 小さい画像で画面の位置が分からないとき：画面全体の読みの数だけでは使わない
+  try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'3'}); }catch(e){}
+  // 新しい読み取りで名前が読めたら、そちらを使う（所持数は今までの読み取りで読めなかったときだけ）
+  try{ const p=pp; if (p?.name){ r.name=p.name; r.pp=true; r.ppLow=p.low||''; } if (p?.crop) r.nameCrop=p.crop; if (p?.owned!=null && !r.ownedSure){ r.owned=p.owned; r.ownedSure=true; } }catch(e){}
+  return await nameDone(r);
+}
+// 読み取った名前を一覧・覚えた名前に合わせ、組にするときに比べる「いちばん近い一覧の名前」も出しておく
+async function nameDone(r){ if (r.name){ r.raw=r.name;
+  // 新しい読み取りの名前はほぼ正確なので、一覧と同じ名前・前に直した名前のときだけ置き換える（「BR」を一覧にある「BE」に直してしまわない）
+  if (r.pp){ await loadItemNames(); r.name=dictNorm().get(r.name.normalize('NFKC')) || learnedTo(r.name) || r.name; ppSeen.set(r.name,r.ppLow||''); }
+  else r.name=await nearestItemName(r.name);
+  r.known=await knownNear(r.raw); } return r; }
+let picking=false, shotName='', shotRaw='', shotReading=false, shotIph=false, shotNoGift=false, shotFixed=false, shotGuess=false, shotCrop=null; // shotGuess：画像が読めず、受け取った名前を仮に入れた（赤にして確かめてもらう）
+let shotOcr=null, shotOwnTyped=false; // shotOcr：画像から読んだ所持数・プレゼント禁止（名前を選び直したときに戻す）。shotOwnTyped：所持数を手で入れた（自動で書き換えない）
+function setShot(i){ i=trimBars(i); shotName=''; shotCrop=null; shotRaw=''; shotIph=false; shotNoGift=false; shotFixed=false; shotGuess=false; shotOcr=null; shotOwnTyped=false; fixSeen.clear(); $('ownSnap').hidden=true; items=[]; renderItems(); shotImg=i; $('owned').value=''; $('count').value=''; shotReading=true; renderNames(); readOwned(i); }
+// 1枚のとき：読み取りが終わってから、受け取った名前（または前の記録）と同じ画面かを確かめて当てはめる
+// （先に受け取りの名前を入れておくと、選んだのが別のスクショだったときに、その別アイテムの名前・所持数になってしまう）
+async function readOwned(img){
+  const seq=++ocrSeq; $('ownState').textContent='読取中…'; let placed=false;
+  // 切り抜きの下の端（sb）から上の端を決める。画面の位置が分からないときは、前の画像の切り抜き位置を使わない（保存した位置か、はじめの位置）
+  const place=sb=>{ if (sb) $('ct').value=Math.max(0,+(((sb-img.width)/img.width)*100).toFixed(1));
+    else $('ct').value=store.get('ct')??$('ct').defaultValue; placed=true; };
+  try{
+    const r=await ocrOne(()=>seq===ocrSeq ? analyzeShot(img) : null); if (seq!==ocrSeq) return;
+    if (!r) throw 0;
+    place(showOwned()? r.squareBottom : (r.nameBottom??r.squareBottom));
+    $('ownSnap').src=r.snap||''; $('ownSnap').hidden=!r.snap;
+    const pend=pendingList(), m=shotInfo(r);
+    const c=pend.length ? matchPending(m,pend) : null, h=c ? null : histMatch(m), p=c?.p || h?.p || null;
+    if (pend.length) markPendingUsed();
+    if (proven(c||h)) relearn([r.name,r.raw],p.name);
+    const own=c ? pickOwned(m,p,proven(c)) : h ? histOwned(m,h) : (r.owned||null);
+    if (!shotFixed){ shotName=(p ? fullName(p,r.raw) : r.name)||''; shotIph=!!p; shotGuess=false; } // 手で直した名前はそのまま
+    shotRaw=r.raw||''; shotCrop=r.nameCrop||null; shotNoGift=!!(p?.noGift||r.noGift); shotOcr={owned:r.owned||null, sure:!!r.ownedSure, noGift:!!r.noGift};
+    // 読み取り中に手で決めた名前が、組になった受け取り・前の記録と別のアイテム（組にならなかったときも）：所持数・プレゼント禁止はその名前のもの（読み終わってから選んだときと同じ）
+    const mine=shotFixed && !(p && sameItem(p.name,shotName)) ? ownFor(shotName,shotOcr) : null, own2=mine ? mine.own : own; if (mine) shotNoGift=mine.ng;
+    // 読み取り中に手で入れた所持数は書き換えない
+    if (shotOwnTyped) $('ownState').textContent=''; else if (own2){ $('owned').value=own2; $('count').value=''; $('ownState').textContent='自動'; } else $('ownState').textContent='読取×';
+    shotReading=false; renderNames(); draw();
+    keepRetry(pend.length && !p && !shotFixed ? [m] : []); if (retried && p) toast('前に選んだ画像に、届いた名前を当てはめました'); retried=false;
+    if (pend.length && !p) toast(shotFixed ? 'このスクショは、ショートカットで読んだ中にありませんでした' : r.name ? 'このスクショは、ショートカットで読んだ中にありませんでした。画像から読んだ名前と所持数を使います（名前がちがうときは、名前をタップして直せます）\n撮ってすぐ背面タップしたときは、もう一度背面タップすると、選び直さなくても名前が入ります'
+      : '画像から名前を読めませんでした。名前をタップして入れてください（ショートカットの名前が候補に出ます）');
+    warnNoGift();
+  }catch(e){ if(seq!==ocrSeq) return; $('ownState').textContent=shotOwnTyped ? '' : '読取×';
+    if (!placed) place(detectLayout(img)?.cardBottom); // 読めなかったとき：画面の位置が分かればそこで、分からなければ前の画像の位置を使わない
+    // 画像が読めなかった（文字認識が動かない・時間切れ）：受け取りがちょうど1枚分（まだ使っていない）なら、その名前・所持数を入れておく（確かめてもらう）
+    // （読み取り中に手で決めた名前が、その受け取りと別のアイテムのときは、受け取りの所持数・プレゼント禁止を入れない）
+    const pi=pendingInfo(), p=pi.list.length===1 && !pi.used ? pi.list[0] : null;
+    if (p && !(shotFixed && !sameItem(p.name,shotName))){ if (!shotFixed){ shotName=p.name; shotIph=true; shotGuess=true; } shotNoGift=!!p.noGift; if (p.owned && !$('owned').value){ $('owned').value=p.owned; $('count').value=''; $('ownState').textContent='自動'; } }
+    if (p) markPendingUsed();
+    if (shotFixed){ if (p) toast('画像を読めませんでした（決めた名前はそのままです）'); }
+    else if (p) toast('画像を読めなかったので、ショートカットの名前を入れました。合っているか確かめてください');
+    else if (pi.list.length) toast('画像から名前を読めませんでした。名前をタップして入れてください（ショートカットの名前が候補に出ます）');
+    shotReading=false; renderNames(); draw(); }
+}
+// プレゼント禁止のアイテム（画面に「プレゼント禁止」「プレゼント不可」などの表示がある）
+// 画面の数字（「欲しい」の数・リリース日など）で、ショートカットの読み取りと選んだ画像を組にする
+// アプリ内の読み取りは文字が苦手でも数字はよく読めるので、名前より確実に合わせられる
+// 数字には欄の印を付ける（別の欄の数どうしは比べない）：d＝リリース日、w＝ダブり数（「個」が付く数・ダブりの行の数）、h＝ほしい／「欲しい」の数（そのほかの3桁以上の数）
+// （前の版の記録の n は、どの欄の数か分からない数）
+function numSig(text){ const t=(text||'').normalize('NFKC'), out=new Set(), D=/(\d{4})\s*[年/.\-]\s*(\d{1,2})\s*[月/.\-]\s*(\d{1,2})\s*日?/g;
+  for (const m of t.matchAll(D)) if (+m[1]>=2000 && +m[1]<2040 && +m[2]>=1 && +m[2]<=12 && +m[3]>=1 && +m[3]<=31) out.add(`d${+m[1]}-${+m[2]}-${+m[3]}`); // リリース日（「11月0日」「2920年」のような読み違いは使わない）
+  // 3桁以上の数（ほしいの数・ダブり数）。日付を外してから数え、「2023年」のような年だけは使わない（♥1919 やダブり数2048個は使う）
+  // 1900〜2099 の4桁は、名前の中の年号（「…/2016」「…(2023)」「HALLOWEEN 2015」）のことがあるので、すぐ前が字・数字・「/」「(」のときは使わない
+  // （♥・「:」のあと、行の頭、「の数」のあと、「個」が付くものは数として使う）
+  const r=t.replace(D,' ').replace(/(\d),(\d{3})/g,'$1$2');
+  for (const line of r.split('\n')) for (const m of line.matchAll(/\d{3,}/g)){ const v=m[0], after=line.slice(m.index+v.length), before=line.slice(0,m.index).replace(/\s+$/,'');
+    if (/^\s*年/.test(after)) continue;
+    if (/^(19|20)\d\d$/.test(v) && !/^\s*個/.test(after) && /[\p{L}\d/(（]$/u.test(before) && !/数$/.test(before)) continue;
+    out.add((/^\s*個/.test(after) || /ダブり/.test(line) ? 'w' : 'h')+(+v)); }
+  return [...out]; }
+// 受け取った中で1枚にしか出てこない数字だけを手がかりにする（同じガチャのリリース日など、共通の数字では決めない）
+// （数は欄の印を外して数える：別の欄でも同じ数が2枚にあれば、1枚だけの数とは言わない）
+const sigKey=x=>x[0]==='d' ? x : '#'+x.slice(1);
+function uniqSigs(pend,imgs){ const cnt=new Map(), ci=new Map(); pend.forEach(p=>new Set((p.sig||[]).map(sigKey)).forEach(x=>cnt.set(x,(cnt.get(x)||0)+1)));
+  (imgs||[]).forEach(it=>new Set((it.sig||[]).map(sigKey)).forEach(x=>ci.set(x,(ci.get(x)||0)+1)));
+  // 受け取った中で1枚にしかなく、選んだ画像の中でも1枚にしかない数字だけ（同じガチャのリリース日のような共通の数字は使わない）
+  return s=>(s||[]).filter(x=>cnt.get(sigKey(x))===1 && (!imgs || (ci.get(sigKey(x))||0)<=1)); }
+// ゲームの表示は「ギフト不可」（「ギフト出来ません」はマスターの段階で出るだけなので含めない）
+const NOGIFT=/ギフト\s*不可|プレゼント\s*(禁止|不可|できません|できない|NG)|贈(り物不可|与不可)|譲渡不可/;
+// ---- ショートカット（iPhoneの文字認識）から受け取った文字：URLの #t= に「=====」区切りで1枚ずつ入っている ----
+const PENDING_KEY='promo_pendingOcr';
+// iPhoneの読み取りはほぼ正確なので、名前の行はそのまま使う（一覧と完全一致・覚えた名前があればそちら）
+// 一覧の名前を NFKC でそろえた形から元の表記を引く（全角の！などを含む名前も一致させる）
+let dictNormMap=null, dictNormSize=-1;
+const dictNorm=()=>{ if (dictNormSize!==dictExact.size){ dictNormMap=new Map(); for (const n of dictExact) dictNormMap.set(n.normalize('NFKC'),n); dictNormSize=dictExact.size; } return dictNormMap; };
+// このアプリ自身の画面のスクショ（所持数などの文字が写る・名前を直す画面など）は、アイテムの画面として使わない
+const APP_SCREEN=/ポケツイ画像加工アプリ|アイテム画像を選ぶ|画像を保存|ショートカットから\d*枚分|ショートカットの名前|枚を使います|名前を直す|この名前で決定|この名前にする|一覧にないけど|iPhoneで読んだ|文字に入れる|一覧と一致|ちがうときは下の候補|ショートカットの作り方|ショートカット連携|受け取るスクショ|最後に受け取った|覚えた名前|決めた名前|画像を長押しして|写真"?”?に保存」/;
+// 写真に保存した完成画像（「計○点」が入る・「所持数」「リリース日」「「欲しい」の数」が2つ以上写る＝2つ以上のアイテムが並ぶ）は、ゲームのスクショではないので使わない
+// （写真アプリやLINEで完成画像を開いたスクショは、上の時計が写り「計○点」がないこともあるので、2つ並びかで見る）
+const savedImage=flat=>/計\d+点/.test(flat) || [/所持数/g,/リリース日/g,/欲しい」?の数/g].some(r=>(flat.match(r)||[]).length>=2);
+// もう一方のゲーム（ピグパ）の画面は使わない（同じ時間に両方のスクショを撮ったとき）
+const OTHER_GAME=/アイテム詳細|ダブり数|ほしい[!！]|使ったコーデ|復刻リクエスト|ピグパ/;
+// 名前の横のコピーのマーク（□）を iPhone が「ロ」「口」と読むことがあるので外す
+// （「〜の口」のような本当に「口」で終わる名前は、口の前が漢字・ひらがななので残る）
+function stripIcon(l){ let x=l.normalize('NFKC').replace(/[\s©®□■◻︎⧉📋]+$/u,'').trim();
+  if (/[ロ回]$/.test(x) && x.length>2) x=x.slice(0,-1).trim();
+  else if (/[\p{Script=Katakana}ーA-Za-z0-9)]口$/u.test(x)) x=x.slice(0,-1).trim();
+  return x; }
+// iPhoneの読み取りで、英字・数字とかな・漢字の間や「/」の前後に入った空白を外す（「PP ギザ…」→「PPギザ…」。英単語どうしの空白「MINT vol.18」はそのまま）
+const tidyName=x=>x.replace(/\s*\/\s*/g,'/').replace(/([A-Za-z0-9])\s+(?=[^\x00-\x7F])/g,'$1').replace(/([^\x00-\x7F])\s+(?=[A-Za-z0-9])/g,'$1');
+// 2行に分かれた名前をつなげる（英字・数字どうしの間は空白を入れる）
+const joinWrap=(a,b)=>a+(/[A-Za-z0-9]$/.test(a) && /^[A-Za-z0-9]/.test(b) ? ' ' : '')+b;
+// ポケツイのアイテム画面の目印：「欲しい」の数・リリース日○年・所持数○個。2つ以上あるものだけ使う（LINE・Xの「欲しい人いる？」「所持数が1」などは1つまで）
+const POKE_MARK=[/欲しい」?の数/, /リリース日\D{0,2}\d{4}年/, /所持数\D{0,3}\d{1,3}個/];
+// 本物のスクショには、カードの外の文字（試着・ギフト出来ません・〜でもらえるアイテム など）か画面の上の時計がある。写真に保存した完成画像（カードだけ）にはない
+const POKE_FRAME=/もらえるアイテム|試着|贈れるようになります|ギフト出来ません|ギフト不可|複数所持しているアイテム|ロックすると/;
+// iPhoneの読み取りの文字をそろえる：全角の数字（「３個」「２０２５年」）を半角に。
+// 改行のない1行の文字（ショートカットや iPhone によって行が分かれずに届く）は、欄の字の前で行を分ける（そうしないと名前の行が見つからない）
+const halfDigits=t=>t.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+function prepText(t){ t=halfDigits(t||'');
+  if (t.split(/\n/).filter(l=>l.trim()).length<4 && t.length>60)
+    t=t.replace(/\s*(?=リリ.?ス\s*日|所持数|「?欲しい」?\s*の数|ショップ情報|タイプ\s*[:：]|タイトル\s*[:：]|公開期間|話題をさがす|コーデ例をみる|ギフトを贈る)/g,'\n');
+  return t; }
+// アイテムの画面（「欲しい」の数・リリース日・所持数のうち2つ）なのに名前が読めなかったか（⚙の記録で「保存した完成画像」と分ける）
+// （ゲームの画面の字（ショップ情報・ギフトを贈る など）があるときだけ。LINEの会話などで「所持数」「リリース日」と書いただけのものは入れない）
+const itemLike=f=>POKE_MARK.filter(r=>r.test(f)).length>=2 && (POKE_FRAME.test(f) || /ショップ情報|ギフトを贈る|話題をさがす|コーデ例をみる/.test(f)) && !APP_SCREEN.test(f) && !OTHER_GAME.test(f) && !savedImage(f);
+// 辞書を待たずにすぐ読む（辞書がまだなら、iPhoneが読んだ行をそのまま使う）
+function parseBlock(t){ t=prepText(t);
+  const lines=t.split(/\n/).map(l=>l.trim()).filter(Boolean), flat=t.replace(/\s/g,'');
+  // ゲームのアイテム画面ではないスクショ（このアプリの画面・保存した完成画像・ピグパの画面・LINEなど）は使わない
+  if (POKE_MARK.filter(r=>r.test(flat)).length<2 || APP_SCREEN.test(flat) || OTHER_GAME.test(flat) || savedImage(flat)) return null;
+  if (!clockOf(t) && !POKE_FRAME.test(flat)) return null;
+  // 所持数：「所持数」のすぐ後ろの数（離れた所の数、「ポケツイマスター7」などは取らない）
+  const m=flat.match(/所持数[^0-9]{0,3}(\d{1,3})(?!\d)/)||flat.match(/(?<!複数所)持数[^0-9]{0,3}(\d{1,3})(?!\d)/)||flat.match(/(?<!\d)(\d{1,3})個/), owned=m?+m[1]:null;
+  const noGift=NOGIFT.test(flat), sig=numSig(t), DN=dictNorm();
+  // 名前の行がある所：リリース日（読めなければ「欲しい」の数）の行と、「所持数」の行の間（「複数所持しているアイテムです」のお知らせの行は所持数の行ではない）
+  // （画面の上の「SET」「©'26 SANRIO」のような、後ろの一覧の字は名前にしない。リリース日の行の後ろ・所持数の行の前にくっついた名前も入れる）
+  const fl=l=>l.replace(/\s/g,''), li=lines.findIndex(l=>/所持数|持数/.test(fl(l)) && !/複数所持/.test(l));
+  const ri=lines.findIndex(l=>/リリ.?ス日/.test(fl(l))), wi=lines.findIndex(l=>/欲しい」?の数/.test(fl(l))), from=ri>=0 ? ri : wi;
+  const after=ri>=0 ? lines[ri].replace(/^.*リリ.?ス\s*日[^\d]{0,3}\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日?/,'').trim() : '', before=li>from ? lines[li].replace(/\s*(所持数|持数).*$/,'').trim() : '';
+  const win=from<0 ? [] : [after, ...lines.slice(from+1, li>from ? li : from+2), before].filter(Boolean);
+  const exact=l=>DN.get(l.normalize('NFKC'))||DN.get(stripIcon(l))||DN.get(tidyName(stripIcon(l)))||DN.get(kanaDash(tidyName(stripIcon(l))));
+  // 長い名前は画面で2行になり、iPhoneの読み取りも2行に分かれるので、となりの2行をつなげたものも一覧と比べる（1行ずつより先に）
+  const two=win.slice(0,-1).map((l,i)=>joinWrap(l,win[i+1]));
+  const ex=two.map(exact).find(Boolean) || win.map(exact).find(Boolean) || lines.map(exact).find(Boolean); if (ex) return {name:ex, owned, iph:true, noGift, sig};
+  // 名前らしい行（数だけの行・日付・「欲しい」「所持数」などの欄の字・ギフト不可やカードの外のお知らせ（試着・〜でもらえるアイテム）は除く）
+  // （リリース日の字が少し違って読めた行・日付や3桁以上の数のある行も名前にしない）
+  const nameLike=l=>{ const x=fl(l); return [...x].length>=2 && /\p{L}/u.test(x) && !/リリース|リリ.?ス日|欲しい|所持数|持数|未作成|複数所持/.test(x) && !NOGIFT.test(x) && !POKE_FRAME.test(x) && !/^[\p{Nd}:：.,/年月日%個×]+$/u.test(x)
+    && !/\d{4}年|\d{1,2}月\d{1,2}日/.test(x) && !/[\p{Nd}]{3,}/u.test(x); };
+  // 名前の行がない（iPhoneが名前の行を読み落とした）ときは、ほかの行（画面の上の「SET」など）を名前にしないで使わない
+  const nm=win.filter(nameLike); if (!nm.length) return null;
+  let hint=nm.length>1 ? nm.reduce((a,b)=>joinWrap(a,b)) : nm[0]; // 2行に分かれた長い名前はつなげる
+  hint=kanaDash(tidyName(stripIcon(hint).replace(/^[\s・]+/,'').trim())); // iPhoneが「ー」を漢字の「一」と読んだもの（「パ一カ一」）も直す
+  // 覚えた直し方は、小さい字・濁点くらいの違いのときだけ使う（iPhoneの読み取りは正確なので、それより大きな違いは別のアイテム）
+  const lt=learnedTo(hint); return {name:lt && slip(hint,lt) ? lt : hint, owned, iph:true, noGift, sig};
+}
+// 受け取った記録（設定の「ショートカット連携」に表示。うまくいかないときに画面で原因が分かるように）
+const RECV_KEY='promo_lastRecv', UNREAD_KEY='promo_unread', LASTRAW_KEY='promo_lastRaw';
+document.addEventListener('click',async e=>{ if (e.target?.id!=='rawCopy') return; let j=null; try{ j=JSON.parse(localStorage.getItem(LASTRAW_KEY)||'null'); }catch(_){}
+  if (!j){ toast('まだショートカットから受け取っていません'); return; }
+  const t=`ポケツイ画像加工アプリ（版${j.ver}）が最後に受け取った文字\nURLの長さ${j.hash}・Base64の長さ${j.b64}（余り${j.b64mod}${j.bad?'・ほかの字あり':''}）\n`+j.t;
+  toast(await copyText(t) ? 'コピーしました。LINEなどに貼り付けて送ってください' : 'コピーできませんでした'); });
+// 読めなかったアイテム画面の文字をコピー（LINEなどで送ってもらい、読めなかったわけを調べる）
+document.addEventListener('click',async e=>{ if (e.target?.id!=='unreadCopy') return; let j=null; try{ j=JSON.parse(localStorage.getItem(UNREAD_KEY)||'null'); }catch(_){}
+  if (!j?.t?.length){ toast('読めなかったアイテムの画面はありません'); $('unreadCopy').hidden=true; return; } const t=`ポケツイ画像加工アプリ（版${j.ver}）で読めなかった画面の文字 ${j.t.length}枚\n`+j.t.map((x,i)=>`--- ${i+1} ---\n${x}`).join('\n');
+  toast(await copyText(t) ? 'コピーしました。LINEなどに貼り付けて送ってください' : 'コピーできませんでした'); });
+function saveRecv(o){ try{ localStorage.setItem(RECV_KEY,JSON.stringify({at:Date.now(),ver:APP_VER,...o})); }catch(e){} renderRecv(); }
+function renderRecv(){ const el=$('recvLog'); if(!el) return; try{ $('unreadCopy').hidden=!localStorage.getItem(UNREAD_KEY); $('rawCopy').hidden=!localStorage.getItem(LASTRAW_KEY); }catch(e){} let j=null; try{ j=JSON.parse(localStorage.getItem(RECV_KEY)||'null'); }catch(e){}
+  if(!j){ el.textContent='まだショートカットから受け取っていません'; return; }
+  const d=new Date(j.at), skip=[j.junk?`アイテム以外 ${j.junk}枚`:'', j.same?`同じ画面 ${j.same}枚`:''].filter(Boolean), why=(j.why||[]).filter(w=>!/^アイテム以外\d+$/.test(w));
+  const how=[j.byDate?`作成日${j.byDate}枚`:'',j.byClock?`画面の時計${j.byClock}枚`:''].filter(Boolean).join('・');
+  el.textContent=`最後に受け取った：${d.getMonth()+1}/${d.getDate()} ${hhmm(j.at)}（版${j.ver}）\n`+
+    `届いたスクショ${j.blocks??0}枚分・使った${j.kept??0}枚・文字数${j.len??0}`+(j.via?`（${j.via}）`:'')+
+    // 撮った時刻：1枚でも分かれば範囲を出す（使ったものがなければ、届いた全部の範囲）
+    // （使ったものがあるのに、どれも時刻が分からないときは「どれも使いませんでした」としない）
+    (j.win==null ? '' : (j.byDate||j.byClock) ? `\n撮った時刻：`+(j.range ? j.range+(j.undated?`・ほかに時刻の分からないもの${j.undated}枚`:'') : j.kept ? `使った${j.kept}枚は分かりませんでした` : j.rangeAll ? j.rangeAll+'（どれも使いませんでした）' : '—')+`（直近${j.win}分を使う。時刻は${how}）`
+      : j.blocks ? `\n撮った時刻：分かりませんでした（ショートカットに「@@作成日」の行を足すと、直近${j.win}分より前のスクショを外せます）` : '')+
+    (j.win!=null && j.byClock && !j.atLines ? '\n（「@@作成日」の行が届いていません。ショートカットの作り方の「1. のくり返しの中の『テキスト』」を確かめてください）' : '')+
+    (j.noAt ? `\n（「@@」の後ろに作成日が入っていません。「1. のくり返しの中の『テキスト』」で、@@ のすぐ後ろに「繰り返し項目」の「作成日」を入れてください）` : '')+
+    (j.noTime ? `\n（作成日に時刻が入っていません。「1. のくり返しの中の『テキスト』」で「作成日」をタップし、「時刻を含める」をオンにしてください）` : '')+
+    (j.badFmt ? `\n（作成日の形が読めませんでした。「1. のくり返しの中の『テキスト』」で「作成日」をタップし、日付の形式を「ISO 8601」にしてください）` : '')+
+    (j.oldKept ? `\n${j.win??''}分より前のスクショ ${j.oldKept}枚は、名前だけ覚えました（あとで選ぶと黄色で出ます）` : '')+
+    // ⚙の時間の2倍より前のスクショまで届いた：ショートカットの期間が長い（前の作り方の1日・1週間など）。iPhoneは毎回その全部を読むので遅くなる
+    (j.oldKept && j.span>2*(j.win||60) ? `\n（ショートカットの「写真を検索」の期間が⚙の${j.win??60}分より長いようです。おすすめは「過去1時間」で、⚙は60分です）` : '')+
+    (skip.length?`\n使わなかった：${skip.join('・')}`+(why.length?`（${why.join('・')}）`:''):'')+
+    (j.mem?'\n端末の保存がいっぱいで、受け取った名前はこの画面を開いている間だけ使えます':'')+
+    (j.err?`\nエラー：${j.err}`:'')+(j.names?.length?`\n名前：${j.names.join(' / ')}`:'')+(lastErr()?`\n最近のエラー：${lastErr()}`:'')+`\n保存しているiPhoneの読み取り：${histAll().length}件`; }
+// 予期しないエラーを記録しておく（設定の記録に出す）
+const lastErr=()=>{ try{ return localStorage.getItem('promo_lastErr')||''; }catch(e){ return ''; } };
+const noteErr=m=>{ try{ localStorage.setItem('promo_lastErr',new Date().toLocaleTimeString()+' '+String(m).slice(0,120)); }catch(e){} };
+window.addEventListener('error',e=>noteErr((e.message||'error')+(e.lineno?' 行'+e.lineno:'')));
+window.addEventListener('unhandledrejection',e=>noteErr('promise: '+(e.reason?.message||e.reason)));
+// URLの文字を戻す：壊れた %xx があっても、その部分だけ残して他は読む
+function softDecode(x){ return x.replace(/(?:%[0-9A-Fa-f]{2})+/g,run=>{ try{ return decodeURIComponent(run); }catch(e){
+  try{ return new TextDecoder('utf-8').decode(new Uint8Array(run.match(/%[0-9A-Fa-f]{2}/g).map(h=>parseInt(h.slice(1),16)))); }catch(_){ return run; } } }); }
+const RAW_KEY='promo_rawIn';
+// ---- 撮った時刻：ショートカットが各スクショの文字の前に入れる「@@作成日」の行。なければ画面のいちばん上の時計（9:14 など） ----
+const hhmm=t=>{ const d=new Date(t); return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0'); };
+// 受け取るスクショの時間（⚙で選ぶ。ショートカットの「直近○分」と同じにする）
+const shotWin=()=>{ let v=60; try{ v=+(localStorage.getItem(PFX+'shotWin')||60); }catch(e){} return [15,30,60,120].includes(v)?v:60; };
+// 「@@2026-10-08T09:12:33+09:00」「@@2026/10/08 9:12」「@@2026年10月8日 午後9:12」などを時刻にする（読めなければ null）
+// 時刻のない日付だけ（「時刻を含める」がオフ）は、その日の0時（9時）にしてしまうので使わない（null＝撮った時刻が分からない）
+// 曜日の入った形（日付の形式「フル」：「2026年10月8日 木曜日 11:40:00」）や「Oct 8, 2026 at 11:40 AM」も読む
+function shotTime(x){ x=(x||'').normalize('NFKC').trim(); if (!x || !/\d[:時]\d{2}/.test(x)) return null; const t=Date.parse(x); if (!isNaN(t)) return t;
+  if (/\sat\s/i.test(x)){ const e=Date.parse(x.replace(/\s+at\s+/i,' ')); if (!isNaN(e)) return e; }
+  const m=x.match(/(\d{4})\D{1,2}(\d{1,2})\D{1,2}(\d{1,2})\D{0,2}\s*(?:[(（]?[日月火水木金土]曜?日?[)）]?\s*)?(午前|午後|AM|PM)?\s*(\d{1,2})[:時](\d{2})(?::(\d{2}))?\s*(午前|午後|AM|PM)?/i); if (!m) return null;
+  const ap=m[4]||m[8]||''; let h=+m[5]; if (/午後|PM/i.test(ap) && h<12) h+=12; if (/午前|AM/i.test(ap) && h===12) h=0;
+  return new Date(+m[1],+m[2]-1,+m[3],h,+m[6],+(m[7]||0)).getTime(); }
+// 画面のいちばん上の時計（1〜3行目の「9:14」だけの行）
+function clockOf(t){ for (const l of t.split('\n').slice(0,3)){ const m=l.normalize('NFKC').trim().match(/^(\d{1,2})[:：](\d{2})(?!\d)/); if (m && +m[1]<24 && +m[2]<60) return {h:+m[1], mi:+m[2]}; } return null; }
+// 時計の時刻を、今から24時間以内のいちばん近い過去の時刻にする（日付は写らないので）。h12：12時間表示かもしれない（9:14 が21:14のことも）
+function clockTime(c,now,h12){ const d=new Date(now); let best=null;
+  for (const H of (h12 && c.h<=12 ? [c.h%12, c.h%12+12] : [c.h])){ let t=new Date(d.getFullYear(),d.getMonth(),d.getDate(),H,c.mi).getTime(); if (t>now+3*60e3) t-=864e5; if (best==null || t>best) best=t; }
+  return best; }
+// 撮った時刻の範囲（9:01〜9:14）
+const timeRange=ts=>{ ts=ts.filter(t=>t!=null); if (!ts.length) return ''; const a=hhmm(Math.min(...ts)), b=hhmm(Math.max(...ts)); return a===b ? a : `${a}〜${b}`; };
+// 使わなかったわけ（⚙の記録用。スクショの文字そのものは残さない）
+const whyJunk=t=>{ const f=prepText(t).replace(/\s/g,''); return APP_SCREEN.test(f)?'このアプリの画面':OTHER_GAME.test(f)?'ほかのゲーム':itemLike(f)?'アイテムの画面（名前が読めず）':savedImage(f)||/所持数/.test(f)&&/リリース日/.test(f)?'保存した完成画像など':'アイテム以外'; };
+// 届いた文字（撮った順）から受け取りの一覧を作る：アイテムの画面だけ・同じ画面は新しいほう1つだけ（新しいほうに所持数が読めていなければ古いほうの数を使う）
+// again：辞書が読めたあとに読み直すとき（先に読んだ結果 s.r は使わない）
+function buildPending(shots,again){ const parsed=[], why=new Map();
+  for (const s of shots){ const r=again||s.r===undefined ? parseBlock(s.t) : s.r && {...s.r}; if (r?.name){ if (s.at!=null) r.at=s.at; parsed.push(r); } else { const w=whyJunk(s.t); why.set(w,(why.get(w)||0)+1); } }
+  const key=r=>normName(r.name)+'|'+(r.sig||[]).filter(x=>x[0]!=='d').sort().join(','), last=new Map();
+  parsed.forEach((r,i)=>{ const k=key(r), j=last.get(k); if (j!=null && r.owned==null && parsed[j].owned!=null) r.owned=parsed[j].owned; last.set(k,i); });
+  const list=parsed.filter((r,i)=>last.get(key(r))===i);
+  return {list, junk:shots.length-parsed.length, same:parsed.length-list.length, why:[...why].map(([w,n])=>`${w}${n}`)}; }
+// 使うスクショの数と撮った時刻（お知らせ・⚙の記録用）。時刻の分からないものは分けて数える
+function useText(list,why,timed){ const dated=list.filter(x=>x.at!=null), range=timeRange(dated.map(x=>x.at)), nd=list.length-dated.length;
+  if (!timed) return `ショートカットから${list.length}枚分の名前を受け取りました${why}。\n（撮った時刻が分からないので、時間では選んでいません）`;
+  return (dated.length ? `${range}に撮ったスクショ ${dated.length}枚`+(nd?`と、撮った時刻の分からないスクショ ${nd}枚`:'') : `撮った時刻の分からないスクショ ${nd}枚`)+`を使います${why}`; }
+// 受け取った文字を名前に直して保存する（辞書を待たない）。now：受け取った時刻（読み直し後に処理するときは受け取ったときの時刻）
+function processRaw(raw,via,now=Date.now(),share=false){
+  const blocks=raw.replace(/\s+/g,'').split(/(?:%0A|%0D|%20)*(?:=|%3D){3,}(?:%0A|%0D|%20)*/i).map(b=>softDecode(b).trim()).filter(Boolean);
+  if(!blocks.length){ saveRecv({blocks:0,kept:0,len:raw.length,via}); toast(raw.length ? 'ショートカットのスクショから文字が読めませんでした。\nゲームのアイテム画面のスクショか確かめてください' : 'ショートカットから文字が届きませんでした。\nURLの「#b=」（または「#t=」）のすぐあとに、エンコードした文字が入っているか確かめてください'); return; }
+  // 撮った時刻：「@@作成日」の行（新しいショートカット。全角の＠＠でもよい）→ なければ画面の時計
+  // @@ の後ろが空（作成日が入っていない）・時刻のない日付（「時刻を含める」がオフ）・時刻はあるが読めない形 は、⚙の記録でそれぞれ直し方を出す
+  const win=shotWin(), shots=blocks.map((b,k)=>{ const m=b.match(/^[@＠]{2}([^\n]*)(?:\n|$)/), v=m?m[1].normalize('NFKC').trim():'', at=m?shotTime(v):null, t=m?b.slice(m[0].length):b, tm=/\d[:時]\d{2}/.test(v);
+    return {k, t, at, c:clockOf(t), by:at!=null?'date':'', hd:!!m, ne:!!m && !v, nt:!!m && !!v && !tm, nf:!!m && tm && at==null, r:parseBlock(t)}; });
+  // アイテムの画面なのに名前が読めなかったスクショの文字（3枚まで・この端末だけに残す）。⚙の「読めなかった画面の文字をコピー」で送ってもらい、直すのに使う
+  try{ const un=shots.filter(s=>!s.r?.name && itemLike(prepText(s.t).replace(/\s/g,''))).slice(0,3).map(s=>s.t.slice(0,2000));
+    if (un.length) localStorage.setItem(UNREAD_KEY,JSON.stringify({at:now,ver:APP_VER,t:un})); else localStorage.removeItem(UNREAD_KEY); }catch(e){}
+  // 12時間表示か：アイテムの画面の時計だけで決める（13時以降・0時の表示があれば24時間表示。LINEなどほかの画面の時計は見ない）
+  // どれも12時台までで分からないときは、この端末の時刻の表示のふつう（日本語の端末は24時間表示）に合わせる
+  const h12=!shots.some(s=>s.r && s.c && (s.c.h>=13 || s.c.h===0)) && hour12();
+  // 作成日がおかしそうなとき（2枚以上の作成日が、受け取った今と2分以内で、しかも互いに5秒以内＝撮った時刻ではなく今の時刻が入った）で、画面の時計と合わないときだけ、画面の時計を使う
+  // （作成日はふつう正しい。画面の時計は読み違える（11:46 を 1:46）ことがあるので、作成日があればそちらを使う。撮ってすぐ動かしたスクショの作成日も今に近いが、正しい）
+  const nowish=shots.filter(s=>s.at!=null && Math.abs(now-s.at)<=2*60e3).map(s=>s.at), suspect=nowish.length>=2 && Math.max(...nowish)-Math.min(...nowish)<=5e3;
+  shots.forEach(s=>{ if (!s.c) return;
+    if (s.at!=null){ if (!suspect || Math.abs(now-s.at)>2*60e3) return;
+      const d=new Date(s.at), am=d.getHours()*60+d.getMinutes(), hs=s.c.h<=12 ? [s.c.h%12, s.c.h%12+12] : [s.c.h]; // 9:14 は 21:14 のことも
+      if (hs.some(h=>{ const x=Math.abs(am-(h*60+s.c.mi))%1440; return Math.min(x,1440-x)<=2; })) return; }
+    // 作成日のあるスクショは、画面の時計（読み違えかもしれない）で決めた時間より前・先の時刻になるなら作成日のまま（撮ったばかりのスクショを外さない）
+    const ct=clockTime(s.c,now,h12); if (s.at!=null && (now-ct>(win+1)*60e3 || ct>now+3*60e3)) return;
+    s.at=ct; s.by='clock'; });
+  // 決めた時間（直近○分）より前に撮ったものは使わない（時刻の分からないものは使う）
+  // 共有から：自分で選んだ写真なので、前の日の画像・送られてきた画像も全部使う
+  const lim=(win+1)*60e3, isOld=s=>!share && s.at!=null && now-s.at>lim, old=shots.filter(isOld), use=shots.filter(s=>!isOld(s));
+  // それより前に撮ったアイテムの画面も、名前と数字だけ前の記録に残す（受け取りには入れない。あとでそのスクショを選ぶと、iPhoneで読んだ名前が黄色で出る）
+  const oldSorted=old.slice().sort((a,b)=>a.at-b.at), ob=buildPending(oldSorted), oldList=ob.list; histAdd(oldList);
+  // 撮った順（古い順）に並べる。新しい順に届いても、同じ時刻なら届いた順の逆にする。時刻の分からないものは元の位置のまま
+  const dl=use.filter(s=>s.at!=null); let up=0, down=0; dl.forEach((s,i)=>{ if (i){ if (s.at>dl[i-1].at) up++; else if (s.at<dl[i-1].at) down++; } });
+  const sorted=dl.slice().sort((a,b)=>a.at-b.at || (down>up ? b.k-a.k : a.k-b.k)); let di=0;
+  const ordered=use.map(s=>s.at!=null ? sorted[di++] : s);
+  const b=buildPending(ordered), list=b.list, byDate=shots.filter(s=>s.by==='date').length, byClock=shots.filter(s=>s.by==='clock').length, timed=byDate+byClock>0;
+  // お知らせの（）：前のスクショは名前だけ覚えたこと（あとで選ぶと黄色）と、使わなかったもの（アイテム以外・同じ画面の重なり。前のスクショの分も入れて数える）
+  const junkN=b.junk+ob.junk, sameN=b.same+ob.same, skip=[junkN?`アイテム以外 ${junkN}枚`:'', sameN?`同じ画面 ${sameN}枚`:''].filter(Boolean);
+  const whyParts=[oldList.length?`${win}分より前の${oldList.length}枚は名前だけ覚えました`:'', skip.length?`${skip.join('・')}は使いません`:''].filter(Boolean), why=whyParts.length?`（${whyParts.join('。')}）`:'';
+  // 使わなかったわけ（「アイテム以外2」など）を、前のスクショの分と合わせて数える
+  const whyOf=ws=>{ const m=new Map(); ws.forEach(w=>{ const k=w.replace(/\d+$/,''); m.set(k,(m.get(k)||0)+(+(w.match(/\d+$/)||[0])[0])); }); return [...m].map(([k,n])=>k+n); };
+  const recv={blocks:blocks.length,kept:list.length,len:raw.length,via,names:list.map(x=>x.name),win,old:old.length,junk:junkN,same:sameN,why:whyOf([...b.why,...ob.why]),
+    range:timeRange(list.map(x=>x.at)),rangeAll:timeRange(shots.map(s=>s.at)),undated:timed?list.filter(x=>x.at==null).length:0,byDate,byClock,
+    atLines:shots.filter(s=>s.hd).length,noTime:shots.filter(s=>s.nt).length,noAt:shots.filter(s=>s.ne).length,badFmt:shots.filter(s=>s.nf).length,oldKept:oldList.length,
+    span:old.length ? Math.round((now-Math.min(...old.map(s=>s.at)))/60e3) : 0}; // span：いちばん前に撮ったスクショが何分前か
+  // 「@@作成日」の行のない古いショートカット：前の日の同じ時刻ごろのスクショは外せないので、足し方を知らせる
+  const atHint=share ? '' : (byClock && !recv.atLines ? '\n（ショートカットに「@@作成日」を足すと、前の日のスクショも分けられます）' : '')
+    +(dl.length>=3 && up>down ? '\n（ショートカットの「写真を検索」の並び順が「古い順」です。「新しい順」にしないと、たくさん撮ったとき最後のスクショが届きません）' : '');
+  // 辞書がまだ読み込めていなければ、読み込めたあとで一覧の表記に合わせ直す（受け取りは、まだ画像に使っていない間だけ。辞書で読めて増えたときも入れ直す）
+  const again=at0=>{ if (dictExact.size) return; loadItemNames().then(()=>{ if(!dictExact.size) return;
+    if (oldList.length){ const a=buildPending(oldSorted,true).list; histDrop(oldList); histAdd(a); } // 前のスクショの記録も、一覧の書き方で入れ直す
+    if (at0==null) return; const j=pendRead();
+    if (!j?.list?.length || j.used || j.at!==at0) return; const a=buildPending(ordered,true); if (a.list.length<j.list.length) return;
+    pendWrite({...j,list:a.list}); histDrop(j.list); histAdd(a.list); renderPendNote(); // 辞書の前の書き方の記録は消して、一覧の書き方で入れ直す
+    saveRecv({...recv,kept:a.list.length,names:a.list.map(x=>x.name),junk:a.junk+ob.junk,same:a.same+ob.same,why:whyOf([...a.why,...ob.why]),range:timeRange(a.list.map(x=>x.at)),undated:timed?a.list.filter(x=>x.at==null).length:0}); },()=>{}); };
+  if (!list.length){ saveRecv(recv); again(null); const pi=pendingInfo(), j=pendRead(), left=j ? Math.max(0,30-Math.round((Date.now()-j.at)/60e3)) : 0;
+    // 前に受け取った名前（30分以内）はそのまま使えることも書く（何が使われるか分かるように）
+    toast((old.length && !use.length ? `直近${win}分に撮ったスクショはありませんでした`+(oldList.length ? `。\n前に撮ったスクショ${oldList.length}枚の名前は覚えました（そのスクショを選ぶと黄色で出ます）` : `（${old.length}枚は${win}分より前）`)
+      : `ショートカットから受け取ったスクショに、アイテムの画面がありませんでした${why}`)+(pi.list.length?`\n（前に受け取った${pi.list.length}枚分は、あと${left}分使えます）`:'')+atHint); return; }
+  const at0=Date.now(), stored=pendWrite({at:at0,list,ver:APP_VER}); recv.mem=!stored; saveRecv(recv); renderPendNote(); histAdd(list);
+  toast((share ? `共有した写真 ${list.length}枚の名前を受け取りました${why}` : useText(list,why,timed))+`\n同じスクショを「アイテム画像を選ぶ」で選んでください`+(stored?'':'\n（端末の保存がいっぱいです。この画面を開いている間だけ使えます）')+atHint);
+  again(at0); setTimeout(()=>useRetry(list),0);
+}
+// この端末の時刻の表示が12時間表示か（分からなければ12時間表示かもしれないとする）
+const hour12=()=>{ try{ const o=new Intl.DateTimeFormat(undefined,{hour:'numeric'}).resolvedOptions(); return o.hourCycle ? /h1[12]/.test(o.hourCycle) : o.hour12!==false; }catch(e){ return true; } };
+// Base64 で届いた文字を戻す（ショートカットの「Base64エンコード」。URLと間違われる「.」などが入らない）
+function b64ToText(x){ x=x.replace(/%2B/gi,'+').replace(/%2F/gi,'/').replace(/%3D/gi,'=').replace(/\s+|%0A|%0D|%20/gi,'').replace(/-/g,'+').replace(/_/g,'/');
+  // 途中で切れて届いた（長さが4の倍数にならない）ときも、切れる前までは読む
+  let bin; try{ while (x.length%4) x+='='; bin=atob(x); }catch(e){ x=x.replace(/=+$/,''); x=x.slice(0,x.length-x.length%4); bin=atob(x); } return new TextDecoder('utf-8').decode(Uint8Array.from(bin,c=>c.charCodeAt(0))); }
+function takeHashText(){
+  // #s=：写真の共有から（選んだ写真を全部使う）。#b=：写真を探すショートカットから（直近○分だけ使う）
+  let raw=null; const mb=location.hash.match(/^#\s*([bs])\s*(?:=|%3D)([\s\S]*)$/i), share=!!mb && mb[1].toLowerCase()==='s';
+  if (mb) mb[1]=mb[2];
+  if (mb){ try{ raw=encodeURIComponent(b64ToText(mb[1])); }catch(e){ raw=''; } }
+  else { const m=location.hash.match(/^#\s*t\s*(?:=|%3D)([\s\S]*)$/i); if(!m) return; raw=m[1]; }
+  // 最後に受け取った文字（調べる用。この端末だけに残す）：URLの長さ・Base64の長さと、読み直した文字
+  try{ const b=mb?mb[1]:'', dec=raw==null?'':(()=>{ try{ return decodeURIComponent(raw); }catch(_){ return raw; } })();
+    localStorage.setItem(LASTRAW_KEY,JSON.stringify({at:Date.now(),ver:APP_VER,hash:location.href.length,b64:b.length,b64mod:b.replace(/\s|%0A|%0D|%20/gi,'').length%4,bad:/[^A-Za-z0-9+/=_%-]/.test(b.replace(/\s/g,'')),t:dec.slice(0,30000)})); }catch(e){}
+  try{ localStorage.setItem(RAW_KEY,JSON.stringify({at:Date.now(),raw,share})); }catch(e){} // 先に保存（途中で読み直しになっても失わない）
+  history.replaceState(null,'',location.pathname); // ?sc=1 なども外す（次のショートカットは別のURLになり、新しく読み込まれる）
+  try{ processRaw(raw,share?'共有':'URL',Date.now(),share); }catch(e){ saveRecv({err:String(e?.message||e),len:raw.length}); toast('ショートカットの文字を読み込めませんでした：'+(e?.message||e)); }
+  try{ localStorage.removeItem(RAW_KEY); }catch(e){}
+}
+// 受け取った直後に読み直しなどで処理が終わらなかった文字があれば、ここで処理する（10分以内のものだけ）
+function recoverRaw(){ if (location.hash) return; let j=null; try{ j=JSON.parse(localStorage.getItem(RAW_KEY)||'null'); }catch(e){}
+  try{ localStorage.removeItem(RAW_KEY); }catch(e){}
+  if (j?.raw && Date.now()-j.at<10*60e3) try{ processRaw(j.raw,(j.share?'共有':'URL')+'（読み直し後）',j.at,!!j.share); }catch(e){} }
+// 前の版の作り方（おすすめは15分）で⚙を15分にしていたときは、一度だけ60分にする（ショートカットの期間をおすすめの1時間にしても、
+// ⚙が15分のままだと16〜60分前のスクショが当てはまらないので。ショートカットが15分のままでも、60分にして困ることはない）
+// 前の版で受け取ったことがある端末だけ（この版で選んだ15分はそのまま）
+try{ if (!localStorage.getItem(PFX+'winMoved')){ const r=JSON.parse(localStorage.getItem(RECV_KEY)||'null');
+  if (localStorage.getItem(PFX+'shotWin')==='15' && r?.ver && +r.ver<+APP_VER) localStorage.setItem(PFX+'shotWin','60'); localStorage.setItem(PFX+'winMoved','1'); } }catch(e){}
+// 受け取るスクショの時間（⚙）：選んだ分を覚える
+$('shotWin').value=String(shotWin());
+$('shotWin').addEventListener('change',()=>{ try{ localStorage.setItem(PFX+'shotWin',$('shotWin').value); }catch(e){} });
+// 受け取った名前の保存。端末の保存がいっぱいのときは、前の記録を半分に減らしてもう一度。それでもだめなら、この画面を開いている間だけ覚えておく
+let memPend=null;
+function pendRead(){ if (memPend) return memPend; try{ return JSON.parse(localStorage.getItem(PENDING_KEY)||'null'); }catch(e){ return null; } }
+function pendWrite(j){ const s=JSON.stringify(j);
+  try{ localStorage.setItem(PENDING_KEY,s); memPend=null; return true; }catch(e){}
+  try{ localStorage.removeItem(RAW_KEY); const h=JSON.parse(localStorage.getItem(HIST_KEY)||'[]'); if (Array.isArray(h)) localStorage.setItem(HIST_KEY,JSON.stringify(h.slice(-Math.floor(h.length/2)))); histNames=null; }catch(e){}
+  try{ localStorage.setItem(PENDING_KEY,s); memPend=null; return true; }catch(e){}
+  try{ localStorage.removeItem(PENDING_KEY); }catch(e){} memPend=j; return false; } // 前の受け取りが残って使われないように消しておく
+// ショートカットから受け取った名前があるかを、画像を選ぶボタンの下に出しておく（受け取れているか目で分かるように）
+function renderPendNote(){ const el=$('pendNote'), j=pendRead();
+  const ok=j?.ver && Date.now()-j.at<30*60e3 && j.list?.length;
+  el.hidden=!ok; if (ok){ const min=Math.max(0,Math.round((Date.now()-j.at)/60e3));
+    // 当てはめるのは「撮ったあとに背面タップした」スクショだけ（ショートカットのあとに撮ったスクショは入っていない）
+    el.textContent= j.used ? `📱 ショートカットの名前（${j.list.length}枚分・${min}分前）は、あと${Math.max(0,30-min)}分使えます。撮ったあとに背面タップしたスクショだけ当てはめます`
+      : `📱 ショートカットから${j.list.length}枚分の名前を受け取っています（${min}分前）。画像を選ぶと当てはめます`; } }
+setInterval(renderPendNote,30000); setTimeout(renderPendNote,0);
+// 受け取った名前は30分のあいだ何度でも使える（画像を選び直しても当てはめる）。2回目からは、画面の数字か名前が合うものだけに使う
+function pendingInfo(){ const j=pendRead(); return j?.ver && Date.now()-j.at<30*60e3 && j.list?.length ? {list:j.list, used:!!j.used} : {list:[],used:false}; }
+function pendingList(){ return pendingInfo().list; }
+// iPhoneで読んだ名前を残しておく（古いスクショを選んだときも、同じ画面の数字と名前の近さで探して使う）。名前と数字だけなので軽い
+const HIST_KEY='promo_iphHist', HIST_MAX=3000;
+function histAll(){ try{ const h=JSON.parse(localStorage.getItem(HIST_KEY)||'[]'); return Array.isArray(h) ? h.filter(e=>e?.name) : []; }catch(e){ return []; } }
+// 同じ画面の記録か（名前は表記ゆれ「＆/&」をそろえて比べる。辞書が読めたあとの書き直しで、同じ画面の記録が2つにならないように）
+const histKey=e=>normName(e?.name||'')+'|'+(e?.sig||[]).slice().sort().join(',');
+function histAdd(list){ const h=histAll(), seen=new Map(h.map((e,k)=>[histKey(e),k]));
+  for (const e of list){ if (!e?.name) continue; const o={name:e.name, owned:e.owned??null, noGift:!!e.noGift, sig:e.sig||[], at:Date.now()};
+    const k=seen.get(histKey(o)); if (k!=null) h[k]=o; else { seen.set(histKey(o),h.length); h.push(o); } }
+  h.sort((a,b)=>a.at-b.at); histNames=null; try{ localStorage.setItem(HIST_KEY,JSON.stringify(h.slice(-HIST_MAX))); }catch(e){} }
+function histDrop(list){ const ks=new Set(list.map(histKey)), h=histAll(), k=h.filter(e=>!ks.has(histKey(e))); if (k.length===h.length) return; histNames=null; try{ localStorage.setItem(HIST_KEY,JSON.stringify(k)); }catch(e){} }
+function markPendingUsed(){ const j=pendRead(); if (j){ j.used=true; pendWrite(j); } renderPendNote(); }
+function clearPending(){ memPend=null; try{ localStorage.removeItem(PENDING_KEY); }catch(e){} renderPendNote(); }
+// ---- 選んだ画像と、iPhoneで読んだ1枚分（受け取った名前・前の記録）が同じ画面かを決める（ピグパ・ポケツイ共通） ----
+// m：選んだ画像をアプリで読んだもの {raw:読んだ名前, sig:数字, owned:所持数, ownedSure:「所持数」の字と一緒に読めた数, known:一覧・覚えた名前でいちばん近いもの}
+const shotInfo=r=>({raw:r?.raw||'', sig:r?.sig||[], owned:r?.owned||null, ownedSure:!!r?.ownedSure, known:r?.known||null});
+// 合い方：nn＝数字（ほしいの数・ダブり数など3桁以上）の一致、nd＝リリース日の一致、nc＝名前の違い（0＝同じ。画像から名前が読めなければ 9）
+// u を渡すと、受け取った中で1枚にしかない数字だけを「一致」と数える。old：前の記録（日がたつと ほしい・ダブり数が少し変わる）
+// 数字は同じ欄（リリース日・ダブり数・ほしいの数）どうしだけ比べる。前の版の記録の n（欄の分からない数）は、どの欄の数とも比べる
+const sameNum=(x,y)=>x===y || (x[0]!=='d' && y[0]!=='d' && (x[0]==='n' || y[0]==='n') && x.slice(1)===y.slice(1));
+// 1桁だけの読み違い（1文字ちがう・多い・少ない）の数は、合うとも食い違うとも言わない
+const near1=(a,b)=>{ if (a===b) return true; if (Math.abs(a.length-b.length)>1) return false; let i=0; while (i<a.length && a[i]===b[i]) i++;
+  return a.slice(i+1)===b.slice(i+1) || a.slice(i+1)===b.slice(i) || a.slice(i)===b.slice(i+1); };
+// 前の記録の数の、日がたったぶんの変わり方（同じアイテムの別の日のスクショ）：だいたい1.4倍まで
+const drift=(a,b)=>{ const x=+a, y=+b; return Math.max(x,y)<=Math.min(x,y)*1.4+30; };
+// 同じ欄に、どちらにも数があるのに、合う数（読み違い・日がたったぶんも含む）が1つもない欄（はっきり別の画面）
+function fieldClash(mine,his,old){ for (const f of 'dwh'){ const a=mine.filter(x=>x[0]===f).map(x=>x.slice(1)), b=his.filter(x=>x[0]===f).map(x=>x.slice(1));
+    if (a.length && b.length && !a.some(x=>b.some(y=>x===y || (f!=='d' && (near1(x,y) || (old && drift(x,y))))))) return f; }
+  return ''; }
+function pairInfo(m,p,u,old){ const mine=m.sig||[], his=p.sig||[], um=u?u(mine):mine, hit=(u?u(his):his).filter(y=>um.some(x=>sameNum(x,y)));
+  const N=mine.filter(x=>x[0]!=='d'), H=his.filter(x=>x[0]!=='d'), nc=nameDist(m.raw,p.name), legacy=his.some(x=>x[0]==='n') || N.some(x=>x[0]==='n');
+  const fx=fieldClash(mine,his,old), shared=f=>N.some(x=>x[0]===f) && H.some(x=>x[0]===f), big=hit.some(x=>/^[nhw]\d{4,}$/.test(x));
+  const look=nc<=.6 || hit.some(x=>x[0]!=='d'), vr=look && variantSwap(m.raw,p.name); // 名前が近いか数字が合うときだけ見る
+  return {p, nn:hit.filter(x=>x[0]!=='d').length, nd:hit.filter(x=>x[0]==='d').length, nc, big, // big：4桁以上の数（ほしいの数など）が合った
+    both:legacy ? N.length>0 && H.length>0 : shared('h') || shared('w'),                        // 同じ欄の数字がどちらにもある（数字の食い違いを確かめられる）
+    xc:fx,                                                                                       // 同じ欄の数が食い違う（ほしいの数・ダブり数・リリース日のどれか）＝別の画面
+    clash:legacy && N.length>0 && H.length>0 && !N.some(x=>H.some(y=>sameNum(x,y))),           // (a) 前の版の記録：どちらにも数字があるのに1つも合わない
+    part:H.length>0 && N.some(x=>!H.some(y=>sameNum(x,y))),                                     // 画像の数字のうち、受け取りにないものがある（数字が1つだけ合ったときに見る）
+    extra:H.filter(y=>!N.some(x=>sameNum(x,y))).length,                                         // 受け取り（記録）の数字のうち、画像にないものの数
+    legacy,
+    eq:N.some(x=>H.some(y=>sameNum(x,y))),                                                      // 同じ欄の数が1つでもぴったり合う（1桁ちがいは数えない）
+    like:nc===0 || (nc<=.35 && ocrLike(normName(m.raw),normName(p.name||''))),                  // 名前の違いが文字認識の読み違いらしい（「…A」と「…B」のような別の字ではない）
+    kj:nc>0 && nc<=.35 && kanjiSub(normName(m.raw),normName(p.name||'')),                        // 漢字の読み違い（宝鐘→玉鐘）だけの違い（かなの違い「まるアイ」「クールアイ」は別のアイテム）
+    // 色の名前だけが入れ替わっている（「…/白」と「…/黒」）＝同じシリーズの別の色。
+    // 女/男・床/壁・上/下のような言葉だけが違うのも別のアイテム（4桁以上の数が合ったときは、アプリ内の漢字の読み違いのこともあるので見ない）
+    hue:look && (hueSwap(m.raw,p.name) || (!big && vr)), vr,
+    blind:!N.length && !(m.ownedSure && m.owned),                                               // 画像から数字も所持数も読めていない（食い違いを確かめられない）
+    ownClash:!!(m.ownedSure && m.owned && p.owned && +m.owned!==+p.owned),                     // (b) 画像の「所持数」の枠の数と違う
+    ownSame:!!(m.ownedSure && m.owned && p.owned && +m.owned===+p.owned),                      // 画像の「所持数」の枠の数と同じ
+    ds:mine.some(x=>x[0]==='d' && his.includes(x)),                                             // リリース日が同じ（ほかの受け取りと同じ日でもよい）
+    dig:digitsOf(m.raw)===digitsOf(p.name),                                                     // 名前の中の数字（年号・番号）が同じ
+    // (c) 一覧・覚えた名前に、同じくらい近い別の名前がある（その名前が、この名前の小さい字・濁点くらいの読み違いのとき（赤のまま決めた読み違いなど）は別の名前と数えない）
+    rival:!!(m.known && normName(m.known.name)!==normName(p.name||'') && m.known.nc<=nc+.05 && !slip(m.known.name,p.name)) }; }
+// はっきり別の画面と言えるとき。同じ欄の数の食い違いはいつも見る（前の記録は日がたったぶんの変わり方を許す）。
+// 前の記録は所持数が変わり、前の版の記録は欄が分からないので、(a)(b) は受け取りのときだけ見る
+const pairVeto=(c,old)=>!!c.xc || (!old && (c.clash || c.ownClash)) || c.rival || c.hue || (c.nc>.6 && c.nc<9);
+// 数字が1つだけ合ったとき（リリース日だけの一致では決めない。同じガチャの別アイテムは同じ日に出るので）。どの場合も、同じ欄の数が食い違わないこと
+//  受け取り：4桁以上の数（ほしいの数など）は、名前が大きく違わなければ決める。所持数の枠と違うとき（同じアイテムの別のときのスクショか、
+//    たまたま同じ数の別アイテム）は、名前がほとんど同じ（.15まで）ときだけ。
+//    3桁の数（ダブり数など）は同じガチャの別アイテムとたまたま同じこともあるので、名前が近く（.2まで。違いは読み違いらしいものか漢字の読み違いだけ）、画像のほかの数字も所持数も食い違わず、
+//    一覧にもっと近い別の名前もないときだけ。画像から名前が読めなかったとき（nc＝9）は、4桁以上の数が合い、所持数が食い違わず、
+//    リリース日か所持数も同じときだけ（3桁の数1つと所持数1〜3は、別アイテムとたまたま同じことが多い）
+//  前の記録：同じスクショなら画像の数字はみな記録にある。画像の数字が全部記録にあり、所持数も食い違わず、名前が近い（4桁以上の数なら .35、3桁なら .15）ときだけ
+//    （前の版の記録で、画像にない数が2つ以上あるもの＝何枚分もの数が入った記録は使わない）
+//    （前の版の記録は、写真に保存した2つ並びの完成画像を読んだもの（同じリリース日の別アイテムの数が入る）もあるので、名前が近い（.15まで）か読み違いらしいときだけ。
+//      画像にない数が記録にあるとき（2つ並びの記録らしい）は、名前の違いが読み違いらしい（漢字の読み違いも）ときだけ（「…セットA」と「…セットB」、「…ブーツ」と「…ワンピ」は別）
+//  どの場合も、色の名前だけが違う（同じシリーズの別の色）ときと、3桁の数だけが合って女/男のような言葉だけが違うときは決めない
+// 前の版の記録で、画像にない数があるもの（写真に保存した2つ並びの完成画像を読んだ記録のことがある：名前・所持数は1つ目のアイテムのもの）を使ってよいか：名前の違いが読み違いらしいときだけ
+const legacyOk=c=>!c.legacy || c.extra===0 || ((c.like || c.kj) && !c.hue && !c.vr);
+const oneNum=(c,old)=>{ if (c.xc || c.hue) return false;
+  // （前の版の記録で画像にない数がないもの：4桁以上の数とリリース日が合えば、漢字1字の読み違い（宝鐘→玉鐘）もよい）
+  if (old) return !c.part && !c.ownClash && !c.rival && c.nc<=(c.big?.35:.15) && (c.big || c.like || c.kj) && (!c.legacy || (c.extra===0 && (c.nc<=.15 || c.like || (c.kj && c.big && c.nd>0 && !c.vr))) || (c.extra===1 && legacyOk(c)));
+  if (c.nc===9) return !c.ownClash && c.big && (c.ds || c.ownSame);
+  return c.big ? c.nc<=.6 && (!c.ownClash || c.nc<=.15) : !c.rival && !c.part && !c.ownClash && c.nc<=.2 && (c.like || c.kj); };
+// 名前だけで決めるときの近さ：受け取りで、画像と受け取りの両方に同じ欄の数字があって食い違わないときは .15。数字の食い違いを確かめられないとき
+// （どちらかに数字がない）・同じ欄の数がぴったり合うものが1つもない（1桁ちがいだけ）と、前の記録（数字・所持数が日ごとに変わる）は、
+// 小さい字・濁点くらいの違い（.05）まで（「まるアイ」と「クールアイ」のような同じシリーズの別アイテムにしない）
+const nameLim=(c,old)=>old || c.blind || !c.both || !c.eq ? .05 : .15;
+// 同じ画面と言えるとき：同じ欄の数が食い違わず、数字が2つ合う（前の記録では名前も大きくは違わない。前の版の記録は、一覧にもっと近い名前がなく所持数も同じで、画像にない数があれば名前が読み違いらしいとき）
+// ／数字が1つ合い上の決まりに合う／名前がほぼ同じで、名前の中の数字も同じで、食い違いがない（違いは読み違いらしいときだけ。「…セットA」と「…セットB」、
+// 「まるアイ」と「クールアイ」は別。.05より大きい違いは漢字の読み違いだけのときもよい）
+const samePair=(c,old)=>!c.xc && ((c.nn>=2 && (!old || ((c.nc<=.6 || c.nc===9) && (!c.legacy || (!c.rival && !c.ownClash && legacyOk(c)))))) || (c.nn===1 && oneNum(c,old)) || (c.nc<=nameLim(c,old) && (c.like || (c.nc>.05 && c.kj)) && c.dig && !pairVeto(c,old)));
+// 3桁の数1つだけで決めた候補よりも、名前がほとんど同じ別の候補を信じる
+const weakNum=c=>c.nn===1 && !c.big;
+// 候補の中からいちばん合うものを選ぶ。名前だけで決めるときに、同じくらい近い別の名前があれば決めない（null）
+// （前の記録で同じくらい合うものが2つ以上あるとき（同じアイテムの別の日の記録）は、2つ並びかもしれない前の版の記録より1枚の記録、古い記録より新しい記録を使う）
+const mixRec=c=>c.legacy && c.extra>0 ? 1 : 0;
+function bestPair(cs,old){ const ok=cs.filter(c=>samePair(c,old)).sort((x,y)=>(y.nn-x.nn)||(y.nd-x.nd)||(x.nc-y.nc)||(old ? (mixRec(x)-mixRec(y))||((y.p.at||0)-(x.p.at||0)) : 0)); let b=ok[0]; if (!b) return null;
+  const other=c=>normName(c.p.name||'')!==normName(b.p.name||'');
+  if (weakNum(b) && cs.some(c=>other(c) && c.nc<=.05)){ b=ok.find(c=>other(c) && c.nc<=.05); if (!b) return null; }
+  if (ok.some(c=>other(c) && c.nn===b.nn && c.nd===b.nd && Math.abs(c.nc-b.nc)<.05)) return null;
+  if (!b.nn && cs.some(c=>other(c) && c.nc<=b.nc+.05)) return null;
+  return b; }
+// 受け取った中から、選んだ画像と同じ画面を探す（言い切れなければ null → 前の記録か、アプリ内で読んだ名前を使う）
+function matchPending(m,pend,imgs){ const u=uniqSigs(pend,imgs); return bestPair(pend.map(p=>pairInfo(m,p,u)),false); }
+function nearestPending(m,pend){ return matchPending(m,pend)?.p || null; }
+// 前にiPhoneで読んだ記録から探す：同じスクショ（数字が2つ合う・数字が全部記録にある）か、名前がほとんど同じ（.05まで）でほかに近い名前がないときだけ
+// 今の受け取りに入っている分は、受け取りのほうで（1枚にしかない数字か・食い違いがないかを）もう見て決めなかったので、ここでは使わない
+// 数字は、前の記録の中で1つの名前にしか出てこないものだけを一致と数える（ほかの日の別アイテムと同じ数のことがある）
+// 1枚の画面の記録と言えるもの：リリース日が2つ以上ある記録・前の版の記録で数が4つ以上あるものは、写真に保存した完成画像（何個分も写る）を読んだものなので使わない
+const oneScreen=e=>{ const s=e.sig||[]; return new Set(s.filter(x=>x[0]==='d')).size<=1 && !(s.some(x=>x[0]==='n') && s.filter(x=>x[0]!=='d').length>3); };
+function histMatch(m){ const pk=new Set(pendingList().map(histKey)), h=histAll().filter(e=>!pk.has(histKey(e)) && oneScreen(e)); if (!h.length) return null;
+  const by=new Map(); h.forEach(e=>new Set((e.sig||[]).filter(x=>x[0]!=='d').map(sigKey)).forEach(x=>{ const s=by.get(x)||new Set(); s.add(normName(e.name)); by.set(x,s); }));
+  const u=s=>(s||[]).filter(x=>x[0]==='d' || (by.get(sigKey(x))?.size||0)<=1);
+  return bestPair(h.map(e=>pairInfo(m,e,u,true)),true); }
+// 数字で同じ画面と確かめられた（4桁以上の数か数字2つが合い、所持数の枠とも、同じ欄の数とも食い違わない。前の版の記録で画像にない数があるもの＝2つ並びかもしれない記録は除く）
+const proven=c=>!!c && (c.big || c.nn>=2) && !c.ownClash && !c.xc && !(c.legacy && c.extra>0);
+// 前に赤のまま「この名前で決定」した読み違い（自分で決めた名前）は、数字で同じ画面と確かめられたiPhoneの名前に覚え直す
+// （小さい字・濁点・ー/一くらいの違いのときだけ。次からは同じ読み違いも正しい名前になり、読み違いが緑で出なくなる）
+function relearn(names,to){ if (!to) return; const M=learned.all();
+  for (const k of names){ if (!k) continue; const e=M[normName(k)], v=e?.to ?? e, from=e?.from ?? k;
+    if (typeof v==='string' && typeof from==='string' && v!==to && normName(v)===normName(from) && !dictExact.has(v) && slip(v,to)) learned.add(from,to); } }
+// ★の行（レア度の★）の読み違いらしい短い語：★☆*や見分けの決まりにある字だけか、女/大/★/* を含み、かなが2字続かない4文字まで（「/女」のような色・種類の後ろは別）
+const starish=w=>{ const x=String(w||'').normalize('NFKC').replace(/\s/g,''), n=[...x].length;
+  return n>0 && n<=4 && !/^\//.test(x) && (/^[★☆✩✪✫✬✭✮✯✰⭐️*・.·女大食ナ十安ネ太犬丈文火木本メ×xX✕?!]+$/u.test(x) || (/[女大★☆✩*]/.test(x) && !/[ぁ-ゖァ-ヺー]{2}/.test(x))); };
+// iPhoneの読み取りで長い名前の2行目が落ちた（「…ウエハース」まで）ときは、画像から読んだ一覧の名前（「…ウエハースソファ」）を使う
+// （画像から読んだ名前が一覧と同じで、iPhoneの名前（8文字以上・一覧にない）で始まって、それより長いときだけ）
+// 空白・小さい字・濁点だけの違い（「…セット アップ」「だあく…」）や、後ろに★の行の読み違い（「…ボトムス 女」）が付いただけのときも、画像から読んだ一覧の名前にする
+const fullName=(p,raw)=>{ const n=p?.name||'', d=raw && dictNorm().get(String(raw).normalize('NFKC')); if (!d || !n || dictExact.has(n)) return n;
+  const a=normName(d), b=normName(n); return (b.length>=8 && a.length>b.length && a.startsWith(b)) || a===b || slip(n,d) || (a.length>=8 && b.startsWith(a) && starish(b.slice(a.length))) ? d : n; };
+// 所持数：数字で同じ画面と確かめられたときはiPhoneの数。そうでなければ、選んだ画像の「所持数」の枠から確かに読めた数を先に使う
+const pickOwned=(m,p,proven)=>(proven ? (p?.owned||m.owned) : ((m.ownedSure&&m.owned) || p?.owned || m.owned)) || null;
+// 前の記録の所持数は古い（売ったり増えたりする）ので、画像から確かに読めた数をいつも先に使う。c：前の記録との合い方（pairInfo）
+// 前の版の記録で画像にない数があるもの（2つ並びの完成画像を読んだ記録かもしれない）の所持数は、別のアイテムの数のことがあるので使わない
+const histOwned=(m,c)=>{ const h=c?.p, mix=!!c?.legacy && c.extra>0; return ((m.ownedSure&&m.owned) || (proven(c)&&h?.owned) || m.owned || (!mix && h?.owned)) || null; };
+// 前の版のページが保存した受け取り（版の印がない）は使わない（名前の読み方も⚙の時間も前の版のまま）。新しい版が出た直後は、前の版のページが受け取ってから
+// この版に読み直すことがあるので、受け取ったばかり（まだ画像に使っていない）なら、もう一度ショートカットを使ってもらう（前の版が同じ受け取りから入れた前の記録も消す）
+// 新しい版に読み直したとき（?v=）・前の版の受け取りを捨てたときは、ショートカットが開くページ（?sc=1）がブラウザに前の版のまま残っていることがあるので、
+// 取り直しておく（「もう一度ショートカット」で、また前の版が開かないように）
+try{ const j=pendRead(), old=!!j && !j.ver; if (old){ const again=!location.hash && !j.used && j.list?.length && Date.now()-j.at<30*60e3; if (again) histDrop(j.list); clearPending();
+  if (again) toast('アプリが新しい版になりました。さっきのスクショを当てはめるには、もう一度ショートカット（背面タップ）を使ってください'); }
+  if (old || /[?&]v=\d/.test(location.search)) fetch(location.pathname+'?sc=1',{cache:'reload'}).catch(()=>{}); }catch(e){}
+window.addEventListener('hashchange',takeHashText); takeHashText(); recoverRaw();
+// 前に開いていたページが戻ってきたとき（Safariの「戻る」やタブの復元）も受け取る
+window.addEventListener('pageshow',()=>{ takeHashText(); renderPendNote(); });
+document.addEventListener('visibilitychange',()=>{ if (!document.hidden){ takeHashText(); renderPendNote(); } });
+window.addEventListener('storage',e=>{ if (e.key===PENDING_KEY) renderPendNote(); });
+// ---- 新しい版の確認：古いページのままだとショートカットの文字を受け取れないので、開いたときに新しい版があれば読み直す ----
+(async()=>{ try{
+  const r=await fetch(location.pathname+'?vc='+Date.now(),{cache:'no-store'}); if(!r.ok) return;
+  const v=((await r.text()).match(/const APP_VER='([^']+)'/)||[])[1]; if(!v || !(+v > +APP_VER)) return; // 新しい版のときだけ
+  let tried=null; try{ tried=sessionStorage.getItem('promo_reloadFor'); }catch(e){}
+  if (tried===v) return; // 同じ版のために何度も読み直さない
+  try{ sessionStorage.setItem('promo_reloadFor',v); }catch(e){}
+  if (!picking && !shotImg && items.length===0){ location.replace(location.pathname+'?v='+v); } // まだ画像を選んでいなければ自動で読み直す（受け取った名前は端末に保存済み）
+  else toast('新しい版があります。画面を下に引っぱって読み直してください');
+}catch(e){} })();
+// ---- 読み取った名前の確認（一覧・決めた名前と一致＝緑、iPhoneで読んだ＝黄、どちらでもない＝赤。赤はコピーの前に一度確かめてもらう） ----
+const nameOk=n=>!!n && (dictExact.has(n) || okNames.has(n) || learnedNames().has(n));
+// 'ok'＝一覧・覚えた名前と一致（緑）、'iph'＝一覧にないがiPhoneで読んだ名前（黄・コピーできる）、'ng'＝赤
+// 画像が読めずに仮に入れた名前（guess）は、一覧にある名前でも赤（コピーの前に確かめてもらう）
+// 新しい読み取りで読んだ名前（一覧になくても）：自信があれば緑「読み取りOK」、自信の低い字があれば赤「要確認」（その字に印をつける）
+const ppSeen=new Map(), ppOk=n=>!!n && ppSeen.get(n)==='';
+const nameStatus=e=>e.guess&&e.name?'ng':nameOk(e.name)||ppOk(e.name)?'ok':(e.iph&&e.name?'iph':'ng');
+// reading：読み取り中（撮った順に仮に入れた名前も、確かめ終わるまでは読み取り中）
+function nameEntries(){ return items.length>1 ? items.map((it,i)=>({i, name:it.name||'', raw:it.raw||'', reading:!!(it.reading||it.prov), iph:it.iph, noGift:it.noGift, skip:!!it.skip, fixed:!!it.fixed, guess:!!it.guess && !it.fixed, crop:it.nameCrop||null}))
+  : (shotImg ? [{i:0, name:shotName, raw:shotRaw, reading:shotReading, iph:shotIph, noGift:shotNoGift, skip:false, fixed:shotFixed, guess:shotGuess && !shotFixed, crop:shotCrop}] : []); }
+function warnNoGift(){ const ng=nameEntries().filter(e=>e.noGift); if (ng.length) toast(`⚠ プレゼント禁止のアイテムがあります\n${ng.map(e=>`${e.i+1}. ${e.name||'（名前なし）'}`).join('\n')}`); }
+// 手で決めた名前：あとで読み取り・組み合わせ・前の記録が終わっても書き換えない（fixed）
+function setEntryName(i,v){ if (items.length>1){ items[i].name=v; items[i].iph=false; items[i].fixed=true; } else { shotName=v; shotIph=false; shotFixed=true; } renderNames(); }
+// 名前をその場で直す：書き直して確定（Enter・欄の外をタップ）すると「この名前で決定」と同じ。「✓確認」は今の名前のまま決める
+function inlineFix(i,v){ v=(v||'').trim(); const e=nameEntries()[i]; if (!e) return renderNames(); if (!v){ toast('名前を入れてください（空のままでは決められません）'); return renderNames(); }
+  fixIdx=i; fixThen=null; fixTyped=true; applyFix(v,true); renderNames(); }
+let namesLater=false; // 名前を書き直している間に届いた読み取りは、書き終わってから表示する
+// ---- 名前一覧の配置（設定で1〜10。はじめは6：アイテムの絵つき＋×数） ----
+const LAYOUTS=['今の形','コンパクト1行','左右で見比べ','色の帯','2列カード','アイテムの絵つき＋×数','表（一覧表）','要確認を上にまとめる','1件ずつ大きく','チェックリスト'];
+const nameLayout=()=>{ try{ const v=+localStorage.getItem('promo_nameLayout'); return v>=1&&v<=10 ? v : 6; }catch(e){ return 6; } };
+let oneIdx=0; // 9番（1件ずつ）で今見ている番号
+// アイテムの絵（一覧の左に出す小さい正方形）。同じ画像は1回だけ作る
+function thumbOf(img,top){ if (!img) return ''; if (img._th) return img._th; try{ const c=document.createElement('canvas'); c.width=c.height=120; const W=img.width; c.getContext('2d').drawImage(img,0,Math.max(0,top||0),W,Math.min(W,img.height-(top||0)),0,0,120,120*Math.min(1,(img.height-(top||0))/W)); img._th=c.toDataURL('image/jpeg',.8); }catch(e){ return ''; } return img._th; }
+function entryThumb(e){ return items.length>1 ? thumbOf(items[e.i]?.img, items[e.i]?.top) : thumbOf(shotImg, shotImg ? shotImg.width*$('ct').value/100 : 0); }
+const stLabel=(e,st)=>e.reading?'読取中':e.guess&&e.name?'仮の名前':st==='ok'?(dictExact.has(e.name)?'一覧と一致':nameOk(e.name)?'決めた名前':'読み取りOK'):st==='iph'?'iPhoneで読んだ':e.name&&ppSeen.has(e.name)?'要確認':e.name?'一覧にない':'読めず';
+const el=(tag,cls,txt)=>{ const x=document.createElement(tag); if (cls) x.className=cls; if (txt!=null) x.textContent=txt; return x; };
+const btn=(cls,txt,fn,aria)=>{ const b=el('button',cls,txt); b.type='button'; if (aria) b.setAttribute('aria-label',aria); b.onclick=ev=>{ ev.stopPropagation(); fn(b); }; return b; };
+// 1件分の部品（どの配置でも同じ動き）
+function nameParts(e){ const st=nameStatus(e), low=st==='ng' && !e.reading && !e.guess && ppSeen.get(e.name), P={e,st,low};
+  P.no=el('span','no',e.i+1);
+  P.label=el('span','st',stLabel(e,st));
+  const t=el('span','t'); P.name=t;
+  if (low){ for (const c of e.name){ if (low.includes(c)) t.appendChild(el('mark',null,c)); else t.append(c); } } else t.textContent=e.name||(e.reading?'…':'（名前なし）');
+  if (!e.reading){ t.contentEditable='plaintext-only'; if (t.contentEditable!=='plaintext-only') t.contentEditable='true'; t.spellcheck=false; t.setAttribute('role','textbox'); t.setAttribute('aria-label','名前（タップして直せます）');
+    t.onclick=ev=>ev.stopPropagation(); let done=false;
+    t.onkeydown=ev=>{ if (ev.key==='Enter'){ ev.preventDefault(); t.blur(); } if (ev.key==='Escape'){ done=true; t.blur(); renderNames(); } };
+    t.onblur=()=>{ if (done) return; done=true; const v=t.textContent.replace(/\s+/g,' ').trim(); if (v && v!==e.name) inlineFix(e.i,v); else if (!v && e.name) renderNames(); else if (namesLater) renderNames(); }; }
+  // 元の画像の名前（見比べ用）：字の高さを読み取った名前の字（g＝字の黒い部分の高さ）とそろえる
+  P.crop=(g=13*.9,align=true)=>{ if (!e.crop?.src || e.reading) return null; const im=el('img','orig'); im.src=e.crop.src; im.alt='元の画像の名前'; im.style.height=(e.crop.hr*g).toFixed(1)+'px'; im.style.marginLeft=align ? `-${(e.crop.pr*g).toFixed(1)}px` : '0'; return im; };
+  P.gift=e.noGift ? Object.assign(el('span','st ng-gift','🚫プレゼント禁止'),{style:'background:#ff5a6e;color:#fff'}) : null;
+  P.copy=(short)=>e.name ? btn('cp',short?'📋':'📋コピー',async()=>toast(await copyText(e.name) ? `「${e.name}」をコピーしました` : 'コピーできませんでした'),'名前をコピー') : null;
+  P.check=(txt='✓確認')=>st==='ng' && !e.reading && e.name ? btn('ck',txt,()=>inlineFix(e.i,e.name),'この名前で合っている') : null;
+  P.tx=(short)=>items.length>1 ? Object.assign(btn('tx'+(e.skip?' off':''),short?(e.skip?'文✕':'文'):(e.skip?'文字に入れない':'文字に入れる'),()=>{ items[e.i].skip=!items[e.i].skip; renderNames(); },'このアイテムを文字・題名に入れるかを切り替える')) : null;
+  P.rm=()=>items.length>1 ? btn('rm','✕',b=>{ if (b.dataset.sure){ removeItem(e.i); } else { b.dataset.sure=1; b.classList.add('sure'); b.textContent='外す？'; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.classList.remove('sure'); b.textContent='✕'; } },3000); } },'このアイテムを外す') : null;
+  // ×数（複数のとき）。表示なしは「なし」
+  P.count=()=>{ if (items.length<2 || e.reading) return null; const it=items[e.i], c=itemCount(it), w=el('span','cnt');
+    w.append(btn('m','−',()=>{ it.count=Math.max(0,(itemCount(it)??1)-1); renderItems(); renderNames(); draw(); },'1減らす'), el('b',null,c==null?'なし':'×'+c), btn('p','＋',()=>{ it.count=(itemCount(it)??0)+1; renderItems(); renderNames(); draw(); },'1増やす')); return w; };
+  P.countText=()=>{ if (e.reading) return ''; const c=items.length>1 ? itemCount(items[e.i]) : countValue(); return c==null ? 'なし' : '×'+c; };
+  P.thumb=()=>{ const s=entryThumb(e); if (!s) return null; const im=el('img','th'); im.src=s; im.alt=''; return im; };
+  P.row=(cls)=>{ const d=el('div','nmRow '+cls+' '+(e.reading?'wait':st)+(low?' low':'')+(e.skip?' skip':'')); if (e.noGift) d.style.borderColor='#ff5a6e'; d.onclick=()=>{ fixThen=null; openFix(e.i); }; return d; };
+  return P; }
+const add=(p,...xs)=>{ xs.forEach(x=>{ if (x) p.append(x); }); return p; };
+const line=(cls,...xs)=>add(el('div',cls),...xs);
+function renderNames(){
+  const box=$('names'); if (box.contains(document.activeElement) && document.activeElement.classList.contains('t')){ namesLater=true; return; } namesLater=false; box.innerHTML='';
+  const L=nameLayout(), es=nameEntries(); box.className='lay'+L; document.body.classList.toggle('cntInRows',L===6 && items.length>1);
+  if (L===7 && es.length){ const tb=el('table','nmTable'); tb.append(add(el('tr'),el('th',null,'#'),el('th',null,'名前（上：読み取り／下：元の画像）'),el('th',null,'数'),el('th')));
+    es.forEach(e=>{ const P=nameParts(e), tr=el('tr',(e.reading?'wait ':'')+P.st+(P.low?' low':'')+(e.skip?' skip':'')); tr.onclick=()=>{ fixThen=null; openFix(e.i); };
+      tr.append(add(el('td'),P.no), add(el('td'),P.name,P.gift,line('cr',P.crop())), add(el('td','n'),P.countText()), add(el('td','b'),P.check('✓')||(P.st==='ok'&&!e.reading?el('span','okm','✓'):null),P.rm())); tb.append(tr); });
+    box.append(tb); }
+  else if (L===8){ const need=es.filter(e=>!e.reading && nameStatus(e)!=='ok'), rest=es.filter(e=>!need.includes(e));
+    if (need.length){ box.append(el('div','sec y',`要確認 ${need.length}件`)); need.forEach(e=>{ const P=nameParts(e); box.append(add(P.row('r1'),line('top',P.no,P.name,P.label),P.gift,line('cr',P.crop()),line('btns',P.check(),P.copy(),P.tx(),P.rm()))); }); }
+    if (rest.length){ box.append(el('div','sec g',need.length?`OK ${rest.length}件`:`全部OK（${rest.length}件）`));
+      rest.forEach(e=>{ const P=nameParts(e); box.append(add(P.row('r8'),P.no,P.name,P.gift,e.reading?P.label:null,P.copy(true),P.tx(true),P.rm())); }); } }
+  else if (L===9 && es.length){ oneIdx=Math.min(Math.max(0,oneIdx),es.length-1); const e=es[oneIdx], P=nameParts(e), d=P.row('r9');
+    d.append(line('pg',`${oneIdx+1} / ${es.length}`), P.thumb(), el('div','cap','元の画像'), line('cr',P.crop(20,false)), el('div','cap','読み取った名前'), add(line('big',P.name)), line('tags',P.label,P.gift),
+      line('nav', btn('','◀ 前',()=>{ oneIdx=Math.max(0,oneIdx-1); renderNames(); }), P.st==='ng'&&!e.reading&&e.name ? btn('ck','✓ 合っている → 次',()=>{ const n=oneIdx; inlineFix(e.i,e.name); oneIdx=Math.min(es.length-1,n+1); renderNames(); }) : btn('ck','次 ▶',()=>{ oneIdx=Math.min(es.length-1,oneIdx+1); renderNames(); })),
+      line('btns',P.count(),P.copy(),P.tx(),P.rm()));
+    box.append(d, add(el('div','dots'),...es.map((x,i)=>{ const s=el('span',(i===oneIdx?'on ':'')+(x.reading?'wait':nameStatus(x)==='ok'?'ok':'need')); s.onclick=()=>{ oneIdx=i; renderNames(); }; return s; }))); }
+  else { const grid=L===5 ? el('div','g5') : null;
+    es.forEach(e=>{ const P=nameParts(e); let d;
+      if (L===1){ d=add(P.row('r1'),line('top',P.no,P.name,P.label),P.gift,line('cr',P.crop()),line('btns',P.copy(),P.check(),P.tx(),P.rm())); }
+      else if (L===2){ d=add(P.row('r2'),P.no,add(line('mid',P.name,P.gift),line('cr',P.crop())),line('ic',P.check('✓'),P.copy(true),P.tx(true),P.rm())); }
+      else if (L===3){ d=add(P.row('r3'),P.no,line('l',P.crop(11,false)),add(line('r',P.name,P.gift),line('rb',P.check('✓'),P.copy(true),P.tx(true),P.rm()))); }
+      else if (L===4){ d=add(P.row('r4'),P.no,add(line('mid',P.name,P.gift),line('cr',P.crop())),line('ic',P.check()||P.copy(true),P.tx(true),P.rm())); }
+      else if (L===5){ d=add(P.row('r5'),line('top',P.no,P.label),P.name,P.gift,line('cr',P.crop(10,false)),line('btns',P.check(),P.copy(true),P.tx(true),P.rm())); }
+      else if (L===10){ const ok=P.st==='ok' && !e.reading, bx=btn('box'+(ok?' on':''),ok?'✓':'',()=>{ if (!ok && e.name && !e.reading) inlineFix(e.i,e.name); },ok?'確認ずみ':'確認する');
+        d=add(P.row('r10'),bx,add(line('mid',P.name,P.gift),line('cr',P.crop())),line('ic',el('span','nn',P.countText()),P.copy(true),P.rm())); }
+      else { d=add(P.row('r6'),P.thumb()||el('span','th'),add(line('mid',line('top',P.no,P.name,P.label),P.gift,line('cr',P.crop()),line('bot',P.count(),P.check(),P.copy(true),P.tx(true),P.rm())))); }
+      (grid||box).append(d); });
+    if (grid) box.append(grid);
+    if (L===10 && es.length){ const n=es.filter(e=>!e.reading && nameStatus(e)==='ok').length; box.append(el('div','foot10',n===es.length ? `✓ 全部確認しました（${n}件）` : `確認 ${n} / ${es.length}（左の□を押すと確認）`)); } }
+  // 名前を直す画面を開いたまま読み取り・組み合わせが終わったとき：欄をまだ書き直していなければ、今の名前に入れ直す
+  // （撮った順に仮に入れた名前＝別のアイテムの名前が欄に残って、そのまま決めてしまわないように）
+  // 読み取り中に開いた画面は、読み終わったら（名前が同じでも・読めなくても）言葉を入れ直す（「読み終わると入れ直します」のまま待たせない）。欄を書き直していたら、言葉だけ変える
+  if (!$('fixSheet').hidden){ const e=nameEntries()[fixIdx], done=!!e && fixWasReading && !e.reading;
+    // 撮った順に仮に入れた名前・読めなかった名前は「読み取りました」と言わない（開いたときと同じ言葉にする）
+    if (e && !fixTyped && ($('fixInput').value!==e.name || done)) openFix(fixIdx, e.name && !e.guess ? `名前を読み取りました：${e.name}\n合っていれば「この名前で決定」。ちがうときは上の欄を直すか、下の候補から選んでください` : '');
+    else if (e && done){ fixWasReading=false; fixNote(e.name && !e.guess ? `読み取りが終わりました：${e.name}\n入れた名前で決めるときは「この名前で決定」を押してください`
+      : `読み取りが終わりました（${e.name ? `画像は読めず、仮の名前：${e.name}` : '名前は読めませんでした'}）。入れた名前で決めるときは「この名前で決定」を押してください`); } }
+}
+// 複数アイテムから1つ外す。1つだけ残ったら、その画像を1個の表示に切り替える
+function removeItem(i){
+  const [gone]=items.splice(i,1); if (gone?.src) try{ URL.revokeObjectURL(gone.src); }catch(e){}
+  fixSeen.clear(); // 番号がずれるので、確かめた記録もやり直す
+  // 読み取り・当てはめの途中だったときは、残った1枚を1枚のときと同じように読み直す（「読取中」のままコピーできなくならないように。手で決めた名前はそのまま）
+  const again=items.length===1 && (itemsBusy===ocrSeq || !!items[0].reading || !!items[0].prov);
+  if (items.length===1){ const it=items[0]; items=[]; shotImg=it.img; shotName=it.name||''; shotRaw=it.raw||''; shotCrop=it.nameCrop||null; shotReading=again; shotIph=!!it.iph && !again; shotNoGift=!!it.noGift; shotFixed=!!it.fixed; shotGuess=!!it.guess && !again; shotOcr={owned:it.ocrOwned||null, sure:!!it.ownedSure, noGift:!!it.ocrNoGift}; shotOwnTyped=false;
+    $('owned').value=it.owned||''; $('count').value=it.count ?? ''; $('ownSnap').src=it.snap||''; $('ownSnap').hidden=!it.snap; $('ownState').textContent=it.owned?'自動':'読取×';
+    const W=it.img.width, sb=showOwned()&&it.ownedBottom ? it.ownedBottom : (it.nameBottom ?? it.cardBottom); if (sb) $('ct').value=Math.max(0,+(((sb-W)/W)*100).toFixed(1)); }
+  renderItems(); renderNames(); draw(); toast(`${i+1}番を外しました`);
+  if (again) readOwned(shotImg); // 複数の読み取りはここで止まる（ocrSeq が変わる）
+}
+// ---- 名前を直す画面（ピグパ・ポケツイ共通）：入力欄のすぐ下の「この名前で決定」で決める。違うときだけ下の候補から選ぶ ----
+let fixIdx=0, fixThen=null; // fixThen：「題名」「文字」から開いたとき、決めたらそのままコピーを続ける
+let fixTyped=false, fixLate=null, fixWasReading=false; // fixTyped：開いたあとに欄を書き直した。fixLate：開いている間に届いたお知らせ（閉じたあとにもう一度出す）。fixWasReading：読み取り中に開いた
+const fixSeen=new Set();    // 一度見てもらった赤い名前（2回目からは確認だけでコピーできる。同じ画面に何度も戻さない）
+function fixNote(t,err){ $('fixMsg').textContent=t; $('fixMsg').classList.toggle('err',!!err); }
+async function openFix(i,msg){
+  fixIdx=i; const e=nameEntries()[i]; if(!e) return; fixWasReading=!!e.reading;
+  $('fixInput').value=e.name; fixTyped=false;
+  fixNote(msg || (e.reading&&!e.name ? 'まだ読み取り中です。名前を入れて「この名前で決定」でも決められます' : e.reading ? 'まだ読み取り中です（今の名前は、撮った順に仮に入れたものです。読み終わると入れ直します）'
+    : e.guess&&e.name ? guessMsg('')
+    : !e.name ? noNameMsg('')
+    : e.raw&&e.raw!==e.name ? `画像から読んだ文字：${e.raw}` : '合っていれば「この名前で決定」。ちがうときは上の欄を直すか、下の候補から選んでください'));
+  $('fixSheet').hidden=false; $('fixSheet').querySelector('.sheetIn').scrollTop=0; fitSheet(); $('fixCands').innerHTML='<div class="note">候補をさがしています…</div>';
+  const names=await loadItemNames(); if (fixIdx!==i || $('fixSheet').hidden) return;
+  const q=normName(e.raw||e.name||''), box=$('fixCands'), seen=new Set([e.name]); box.innerHTML='';
+  // 前にiPhoneで読んだ名前（前の版が写真に保存した完成画像を読んだ「計7点」のような名前は出さない）
+  const hist=histAll().filter(h=>!/^(?:計\d+点|[×x]\s*\d+)$/i.test(String(h.name).normalize('NFKC').trim()));
+  const scored=[], near=n=>{ const b=normName(n||''); return b && Math.abs(b.length-q.length)<=6 ? editCost(q,b) : null; };
+  for (const n of [...names,...itemMore]){ const d=near(n); if (d!=null) scored.push([d,n]); }
+  for (const p of pendingList()){ const d=near(p.name); if (d!=null) scored.push([d-0.5,p.name]); } // 今回iPhoneで読んだ名前を先に
+  for (const h of hist){ const d=near(h.name); if (d!=null) scored.push([d-0.25,h.name]); } // 前にiPhoneで読んだ名前も
+  scored.sort((a,b)=>a[0]-b[0]);
+  // 画像から名前が読めなかった（名前なし・撮った順に仮に入れた名前・候補から選んだ名前）：今回iPhoneで読んだ名前と、前に読んだ名前（新しい順・6つまで）を先に出す（今の名前は出さない）
+  // （赤の行で、画像から読んだ名前が短い（「ア」「所持数」）か、受け取りの名前にも一覧にも近いものがない（画面の別の行の字）ときも）
+  const pend=pendingList(), weak=!normName(e.raw||'') || (!e.reading && pend.length && nameStatus(e)==='ng' && (q.length<5 || (!(scored[0]?.[0]<=1.5) && pend.every(p=>nameDist(q,p.name)>.5))));
+  if (weak){
+    // 今回の名前は全部出し、ほかの行で使っていない名前を先に（撮った順の同じ番目の名前がいちばん先。それ以外は新しい順）
+    const used=new Set(nameEntries().filter(x=>x.i!==i && x.name).map(x=>x.name)), same=items.length>1 && pend.length===items.length;
+    const pn=pend.map((p,k)=>({n:p.name, k, s:(used.has(p.name)?2:0)-(same && k===i ? 1 : 0)})).sort((a,b)=>a.s-b.s || b.k-a.k).map(x=>x.n);
+    [...pn, ...hist.slice(-6).map(h=>h.name).reverse()].filter(n=>n && !seen.has(n) && seen.add(n)).forEach(n=>{ const b=document.createElement('button'); b.type='button'; b.className='cand'; b.innerHTML='<span></span><small>iPhoneで読んだ</small>'; b.firstChild.textContent=n; b.onclick=()=>applyFix(n,true); box.appendChild(b); });
+    if (!q){ if (!box.children.length) box.innerHTML='<div class="note">候補はありません。上の欄に名前を入れて「この名前で決定」を押してください</div>'; return; } }
+  const top=box.children.length;
+  scored.filter(([,n])=>!seen.has(n)&&seen.add(n)).slice(0,8).forEach(([d,n],k)=>{ const b=document.createElement('button'); b.type='button';
+    b.className='cand'+(k===0&&d<=1.5&&!top?' best':''); b.innerHTML='<span></span><small></small>'; // 近い候補だけ目立たせる（上の欄のほうが正しいことが多い）
+    b.firstChild.textContent=n; b.lastChild.textContent=d<=0.5?'ほぼ一致':d<=1.5?'近い':''; b.onclick=()=>applyFix(n,true); box.appendChild(b); });
+  if (!box.children.length) box.innerHTML='<div class="note">近い候補はありません</div>';
+}
+// 決めた名前を覚える：読み取った文字・iPhoneで読んだ名前 → 決めた名前（少しの読み違いのときだけ。まったく違う名前は組み違いなので覚えない）と、決めた名前そのもの
+function applyFix(v,pick){ v=(v||'').trim(); if (!v){ fixNote('名前を入れてください（空のままでは決められません）',true); $('fixInput').focus(); return; }
+  const e=nameEntries()[fixIdx]; if (!e){ closeFix(); return; }
+  // 読み取り中の、撮った順に仮に入れた名前は決めない（別のアイテムの名前のことがある）。書き直した名前・候補から選んだ名前は決められる
+  if (e.reading && e.name && v===e.name && !fixTyped && !pick){ fixNote('まだ読み取り中です（今の名前は、撮った順に仮に入れたものです）。読み終わると名前を入れ直すので、少し待ってから決めてください',true); return; }
+  // 覚えるのは小さな読み違いだけ（組み違いで付いた別アイテムの名前・別の年の名前を直したのは覚えない。覚えると、その本当のアイテムまで書き換わる）
+  // iPhoneで読んだ名前（黄）は本当にあるアイテムの名前なので、小さい字・濁点くらいの違い（slip）のときだけ
+  let saved=true; [learnable(e.raw,v) ? e.raw : '', e.iph && slip(e.name,v) ? e.name : ''].filter(Boolean).forEach(k=>{ saved=learned.add(k,v)&&saved; });
+  if (!dictExact.has(v)) saved=learned.add(v,v)&&saved; okNames.add(v); // 一覧にない名前は「決めた名前」として覚える。保存できなくても、開いている間は緑
+  const then=fixThen, idx=fixIdx, late=closeFix(); setEntryName(idx,v);
+  // 名前を変えたとき：所持数・プレゼント禁止も、その名前で受け取った（なければ前に読んだ）ものに入れ直す。どちらもなければ画像から読んだものに戻す（前の名前のものを残さない）
+  // （前の名前が手で決めた名前・仮の名前のときは、小さい字・濁点くらいの違いのときだけ同じアイテムとみる。同じシリーズの別アイテムを選び直したときに前の名前の数を残さない）
+  if (v!==e.name) refillOwn(idx,e.name,v,e.guess||e.fixed);
+  toast((!saved ? '決めました（保存がいっぱいなので今回だけ）' : dictExact.has(v) ? '決めました' : '決めました（一覧にない名前として覚えました）')+(late?'\n'+late:''));
+  if (then) then(); } // 「題名」「文字」から開いたときは、そのままコピーを続ける（同じタップの中なのでコピーできる）
+// 名前 v の所持数・プレゼント禁止（o：画像から読んだもの）。所持数：画像の「所持数」の枠から確かに読めた数 → その名前で受け取った数 → 画像から読んだ数 → その名前の前の記録の数（前の記録は古いので後）
+// プレゼント禁止：その名前の受け取り・前の記録か、画像の表示にあるとき。前の記録は1枚の画面の記録だけ（前の版の記録で数が3つ以上あるもの＝2つ並びの完成画像かもしれないものは使わない）
+const ownFor=(v,o)=>{ const pp=pendingList().find(x=>x.name===v), hh=pp ? null : histAll().filter(h=>h.name===v && oneScreen(h) && !((h.sig||[]).some(x=>x[0]==='n') && (h.sig||[]).filter(x=>x[0]!=='d').length>2)).pop();
+  return {pp, hh, own:(o.sure&&o.owned) || pp?.owned || o.owned || hh?.owned || null, ng:!!(pp?.noGift || hh?.noGift || o.noGift)}; };
+// 同じアイテムの名前と言えるか（前の名前の読み違いを直しただけ）。strict：小さい字・濁点くらいの違いだけ（そうでなければ、近い名前で、名前の中の数字が同じで、色・種類・1字の英字の入れ替えでないときも）
+const sameItem=(a,b,strict)=>!!normName(a||'') && (normName(a)===normName(b||'') || slip(a,b) || (!strict && nearName(a,b) && digitsOf(a)===digitsOf(b) && !hueSwap(a,b) && !variantSwap(a,b) && !letterSwap(a,b)));
+// 名前を変えた行の所持数・プレゼント禁止を入れ直す（i：行、old：前の名前、v：決めた名前）
+// 所持数：画像の「所持数」の枠から確かに読めた数 → その名前で受け取った数 → 画像から読んだ数 → その名前の前の記録の数（前の記録は古いので後）。手で変えた×数・手で入れた所持数はそのまま
+// プレゼント禁止：その名前の受け取り・前の記録か、画像の表示にあるときだけ
+// 受け取りも前の記録もない名前にしたときは、前の名前にも受け取り・前の記録がない（今の所持数は画像から読んだもの）か、前の名前の読み違いを直しただけ（同じアイテム）なら、何も変えない
+// （撮った順に仮に入れた名前は、小さい字・濁点くらいの違いのときだけ同じアイテムとみる）
+function refillOwn(i,old,v,guess){ const it=items.length>1 ? items[i] : null; if (items.length>1 && !it) return;
+  const o=it ? {owned:it.ocrOwned||null, sure:!!it.ownedSure, noGift:!!it.ocrNoGift} : (shotOcr||{owned:null, sure:false, noGift:false});
+  const {pp,hh,own,ng}=ownFor(v,o);
+  const was=!!old && (pendingList().some(x=>x.name===old) || histAll().some(h=>h.name===old));
+  if (!pp && !hh && (!was || sameItem(old,v,guess))) return;
+  if (it){ it.owned=own; it.noGift=ng; renderItems(); }
+  else { if (!shotOwnTyped){ $('owned').value=own||''; $('ownState').textContent=own?'自動':'読取×'; } shotNoGift=ng; }
+  renderNames(); draw(); }
+// 閉じる。開いている間に届いたお知らせを返す（閉じたあとに出す）
+function closeFix(){ $('fixInput').blur(); $('fixSheet').hidden=true; fixThen=null; fitSheet(); const t=fixLate; fixLate=null; return t; }
+// ✕・外の暗い所で閉じたとき：上の欄に書き直した名前があれば、捨てずに決めるか聞く（決めたと思って閉じても失わないように。書き直していなければ聞かない）
+// 「題名」「文字」から開いた画面を閉じたときは、ほかの赤い名前も見てもらったことにする（次に押したときは、まとめて確認してコピーできる）
+function closeFixByUser(){ const v=$('fixInput').value.trim(), e=nameEntries()[fixIdx], fromCopy=!!fixThen;
+  if (fixTyped && v && e && v!==e.name && confirm(`入れた名前「${v}」で決めますか？`)){ applyFix(v); return; } // 「題名」「文字」から開いたときは、決定と同じくそのままコピーを続ける
+  if (fromCopy) nameEntries().filter(x=>!x.skip && !x.reading && x.name && nameStatus(x)==='ng').forEach(x=>fixSeen.add(x.i+'|'+x.name));
+  const t=closeFix(); if (t) toast(t); }
+$('fixInput').addEventListener('input',()=>{ fixTyped=true; });
+$('fixForm').addEventListener('submit',ev=>{ ev.preventDefault(); applyFix($('fixInput').value); }); // 「決定」ボタンもキーボードの「完了」もここ
+$('fixClose').onclick=closeFixByUser;
+$('fixSheet').addEventListener('click',e=>{ if (e.target.id==='fixSheet') closeFixByUser(); }); // 外の暗い所をタップしても閉じる
+// iPhoneのキーボードが出ている間も「決定」「もう一度コピー」が見えるように、開いている画面を見えている範囲（キーボードの上）に合わせる
+const vv=window.visualViewport;
+function fitSheet(){ for (const id of ['fixSheet','txtSheet']){ const s=$(id), kb=vv && !s.hidden ? innerHeight-vv.height-vv.offsetTop : 0;
+  if (kb>80){ s.style.top=Math.max(0,vv.offsetTop)+'px'; s.style.bottom=kb+'px'; } else { s.style.top=''; s.style.bottom=''; } } }
+if (vv){ vv.addEventListener('resize',fitSheet); vv.addEventListener('scroll',fitSheet); }
+// 名前を直す画面の言葉：画像が読めずに仮に入れた名前（pre：「2番は」など）・名前が読めなかった（pre：「2番の」など。copy：題名・文字から開いた）
+const guessMsg=pre=>`${pre}画像を読めなかったので、${items.length>1?'撮った順に':''}ショートカットの名前を仮に入れました。合っていれば「この名前で決定」、ちがうときは上の欄を直すか、下の候補から選んでください`;
+const noNameMsg=(pre,copy)=>`${pre}名前が読めませんでした。`+(pendingList().length || histAll().length ? '下の候補（iPhoneで読んだ名前）から選ぶか、' : '')+'名前を入れて「この名前で決定」を押してください'+(copy && items.length>1 ? '（いらないときは、一覧の「文字に入れる」を押して外せます）' : '');
+// コピーの前の確認：まだ見てもらっていない赤い名前があれば、直す画面を1回だけ開く。一度閉じた赤い名前は、確かめてそのままコピーできる（何度も同じ画面に戻さない）
+// ×0 の行（所持数が読めなかった・0にした）は題名・文字に入らないので、名前の確認はしない（入らない行のために止めない）
+const cntOf=e=>nOf(items.length>1 ? itemCount(items[e.i]) : countValue());
+function namesReady(again){ const all=nameEntries().filter(e=>!e.skip);
+  if (all.some(e=>e.reading)){ toast('まだ読み取り中です。少し待ってからもう一度押してください'); return false; }
+  const es=all.filter(e=>cntOf(e)>0), reds=es.filter(e=>nameStatus(e)==='ng');
+  if (reds.length){ const bad=reds.find(e=>!fixSeen.has(e.i+'|'+e.name));
+    if (bad){ fixSeen.add(bad.i+'|'+bad.name); fixThen=again||null;
+      const no=items.length>1 ? `${bad.i+1}番` : ''; // 1枚のときは番号を出さない
+      openFix(bad.i, bad.guess ? guessMsg(no ? no+'は' : '')
+        : bad.name ? `${no ? no+'の' : ''}名前が一覧にありません。合っていれば「この名前で決定」、ちがうときは上の欄を直すか、下の候補から選んでください`
+        : noNameMsg(no ? no+'の' : '',true)); return false; }
+    // 名前が空の行は「×3」だけになってしまうので、名前を入れてもらう（入れた名前は何でも決められるので、ここで止まり続けることはない）
+    const empty=reds.find(e=>!e.name); if (empty){ fixThen=again||null; openFix(empty.i,noNameMsg(items.length>1 ? `${empty.i+1}番の` : '',true)); return false; }
+    // 画像が読めずに仮に入れた名前（撮った順・ショートカットの名前）は、仮の名前だと分かるように
+    if (!confirm(`赤い名前があります。このままコピーしますか？\n\n${reds.map(e=>`${e.i+1}. ${e.name}`+(e.guess ? (items.length>1 ? '（仮：撮った順に入れた名前）' : '（仮：ショートカットの名前）') : '')).join('\n')}`)){
+      fixThen=again||null; openFix(reds[0].i,'直したら「この名前で決定」を押してください（そのままコピーを続けます）'); return false; } }
+  // 所持数が読めず ×0 のままの行は、題名・文字に入らないことを1回だけ知らせる（＋で数を入れられる）
+  const zero=items.length>1 && defCnt()==='own' ? all.filter(e=>items[e.i].count==null && !items[e.i].owned && !fixSeen.has('z'+e.i)) : [];
+  if (zero.length){ zero.forEach(e=>fixSeen.add('z'+e.i));
+    if (!confirm(`${zero.map(e=>e.i+1).join('・')}番の所持数が読めませんでした（×0の行は題名・文字に入りません）。\nこのままコピーしますか？（入れるときは「キャンセル」を押して、＋で数を入れてください）`)) return false; }
+  const ng=es.filter(e=>e.noGift); if (ng.length && !confirm(`プレゼント禁止のアイテムが入っています。\n${ng.map(e=>`${e.i+1}. ${e.name}`).join('\n')}\n\nこのままコピーしますか？`)) return false;
+  return true; }
+// コピーできないわけ（画像がない・読み取り中・所持数がない）を出す。コピーできるときは false
+function copyBlocked(t){ if (!shotImg && items.length<2){ toast('アイテム画像を選んでください'); return true; }
+  if (t) return false;
+  if (nameEntries().some(e=>!e.skip && e.reading)) toast('まだ読み取り中です。少し待ってからもう一度押してください');
+  else if (items.length>1 && items.every(it=>it.skip)) toast('「文字に入れる」アイテムがありません');
+  else toast('所持数（×数）を入れてください');
+  return true; }
+
+// ---- アプリの背景：公式サイトの今月の壁紙（wallpaper.json は GitHub Actions が毎月更新） ----
+fetch('wallpaper.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{ if(!j?.image) return;
+  const i=new Image(); i.onload=()=>{ document.body.style.setProperty('--wall',`url("${j.image}")`); document.body.classList.add('wall'); }; i.src=j.image; }).catch(()=>{});
+
+// ---- 複数アイテム（2〜12個）：選んだ順に並べる ----
+let items=[], itemsBusy=0; // itemsBusy：複数の読み取り・当てはめの途中（外したときに、残った1枚を読み直すため）
+// ×数の最初の数（設定）：own＝所持数−1（今まで通り）、one＝全部1、none＝全部 表示なし（null：画像に数を出さず、文字は名前だけ）。＋−で直した数はそのまま
+const defCnt=()=>{ try{ return localStorage.getItem('promo_defCount')||'own'; }catch(e){ return 'own'; } };
+const itemCount=it=>it.count!=null ? it.count : defCnt()==='one' ? 1 : defCnt()==='none' ? null : Math.max(0,(it.owned||1)-1);
+const nOf=c=>c ?? (defCnt()==='none' ? 1 : 0); // 表示なしは、文字・合計では1個
+async function setItems(files){
+  const seq=++ocrSeq; shotImg=null; fixSeen.clear();
+  // 読み込み中にまた選び直されたら、古いほうは途中でやめる（混ざらないように自分用の入れ物に入れる）
+  const list=[]; let bad=0;
+  for (const f of files.slice(0,12)){ const im=new Image(); im.src=URL.createObjectURL(f);
+    try{ await im.decode(); }catch(e){ bad++; URL.revokeObjectURL(im.src); continue; } // 読めない画像は飛ばす
+    if (seq!==ocrSeq) return;
+    const img=trimBars(im), lay=detectLayout(img); list.push({img, src:im.src, owned:null, count:null, top:lay?lay.top+img.width*.012:img.width*.5, cardBottom:lay?lay.cardBottom:img.width*1.45, reading:true}); }
+  if (bad) toast(`読み込めない画像が${bad}枚あったので飛ばしました`);
+  if (list.length<2){ items=[]; renderItems(); if (list.length) setShot(list[0].img); else renderNames(); draw(); return; } // 読めたのが1枚なら1枚のときと同じ
+  items=list;
+  if (files.length>12) toast('13個以上は選べないので、最初の12個を使います');
+  // 枚数が同じなら、読み取りが終わるまで撮った順に名前を仮に出しておく（読み取り後に、画面の数字・名前で同じ画面か確かめて直す）
+  let pinfo=pendingInfo(), pend=pinfo.list;
+  if (pend.length===items.length && !pinfo.used) items.forEach((it,i)=>{ it.name=pend[i].name; it.iph=true; it.prov=true; });
+  renderItems(); renderNames(); draw(); itemsBusy=seq;
+  // 読み取り中に ✕ で外されても、残りを1枚ずつ読む（外した画像は飛ばす。並びが変わっても読み残さないよう、始めの並びを写して回す）
+  for (const it of list.slice()){ if (!items.includes(it)) continue; try{ const r=await ocrOne(()=>seq===ocrSeq ? analyzeShot(it.img) : null); if (seq!==ocrSeq) return;
+      it.ocrOwned=r?.owned||null; it.ownedSure=!!r?.ownedSure; it.owned=it.ocrOwned; it.known=r?.known||null; // 所持数はまず画像の「所持数」の枠から
+      it.snap=r?.snap; it.raw=r?.raw; it.nameCrop=r?.nameCrop||null; it.ocrName=r?.name; it.sig=r?.sig; if (!it.iph && !it.fixed) it.name=r?.name; if (r?.noGift){ it.noGift=true; it.ocrNoGift=true; } if (r?.cardBottom){ it.ownedBottom=r.ownedBottom; it.nameBottom=r.nameBottom; it.cardBottom=r.cardBottom; it.top=r.top ?? Math.max(0,r.squareBottom-it.img.width); }
+    }catch(e){} if (seq!==ocrSeq) return; it.reading=false; renderItems(); renderNames(); draw(); }
+  itemsBusy=0; if (items.length<2) return; // 途中で1枚になったときは、その1枚の読み取りに任せる
+  pinfo=pendingInfo(); pend=pinfo.list; // 読み取り中にもう一度背面タップして届いた名前も使う
+  // 画面から読めたもの（数字・名前・所持数）と受け取った名前を見比べて、同じ画面と言えるものどうしだけを組にする
+  const u=uniqSigs(pend,items), M=items.map(it=>shotInfo({raw:it.raw, sig:it.sig, owned:it.ocrOwned, ownedSure:it.ownedSure, known:it.known}));
+  const C=items.map((_,i)=>pend.map(p=>pairInfo(M[i],p,u)));
+  // 組にしてよいか：samePair。名前だけで決めるときは、同じくらい近い別の名前が受け取りの中にないこと。3桁の数1つだけのときは、名前がほとんど同じ別の受け取りがないこと
+  const ok=(i,j)=>{ const c=C[i][j]; if (!samePair(c)) return false; if (c.nn>=2 || c.big) return true;
+    const n=normName(pend[j].name||''), oth=C[i].filter((d,k)=>k!==j && normName(pend[k].name||'')!==n); return !oth.some(d=>d.nc<=(c.nn ? .05 : c.nc+.05)); };
+  const cost=(i,j)=>{ const c=C[i][j]; return ok(i,j) ? -c.nn-c.nd*.1+Math.min(c.nc,1)*.1 : 9; };
+  const pairs=[]; items.forEach((_,i)=>pend.forEach((_,j)=>{ const c=cost(i,j); if (c<9) pairs.push([c,i,j]); })); pairs.sort((a,b)=>a[0]-b[0]);
+  const usedI=new Set(), usedJ=new Set(), pick=[], how=[];
+  for (const [c,i,j] of pairs){ if (usedI.has(i)||usedJ.has(j)) continue; usedI.add(i); usedJ.add(j); pick[i]=j; how[i]='match'; }
+  // 同じアイテムの画像が2枚以上あるとき：組にならなかった画像も、同じ画面と言えればその名前を使う
+  items.forEach((_,i)=>{ if (pick[i]!=null) return; let bj=null, bc=9; pend.forEach((_,j)=>{ const c=cost(i,j); if (c<bc){ bc=c; bj=j; } }); if (bj!=null && usedJ.has(bj)){ pick[i]=bj; how[i]='match'; } });
+  // 画像から名前も数字も読めなかったもの（文字認識が動かない・時間切れ等）
+  const blank=i=>!M[i].raw && !M[i].sig.some(x=>x[0]!=='d');
+  // どの画像も読めなかったときだけ、残った名前を撮った順に仮に当てはめる（枚数が同じ・1回目だけ。赤の「仮の名前」にして、コピーの前に確かめてもらう）
+  // （読めた画像があるときは、読めなかった画像に残りの名前を付けない。選んだ順が撮った順と違ったり、受け取りにないスクショだったりすると別アイテムの名前になる）
+  // （読み取り中に手で決めた名前の行には当てはめず、その名前も残りの名前から外す）
+  const rest=pend.map((_,j)=>j).filter(j=>!usedJ.has(j) && !items.some(it=>it.fixed && it.name===pend[j].name));
+  if (pend.length===items.length && !pinfo.used && items.every((_,i)=>blank(i))) items.forEach((_,i)=>{ if (pick[i]!=null || !rest.length || items[i].fixed) return;
+    if (!pairVeto(C[i][rest[0]])){ pick[i]=rest.shift(); how[i]='order'; } });
+  let moved=0;
+  items.forEach((it,i)=>{ const j=pick[i]; it.prov=false; it.fromHist=false; it.guess=false;
+    // 読み取り中に手で決めた名前が、組になった受け取りと別のアイテム（組にならなかったときも）：所持数・プレゼント禁止はその名前のもの（読み終わってから選んだときと同じ）
+    if (it.fixed && (j==null || !sameItem(pend[j].name,it.name))){ const f=ownFor(it.name,{owned:it.ocrOwned||null, sure:!!it.ownedSure, noGift:!!it.ocrNoGift}); it.owned=f.own; it.noGift=f.ng; return; }
+    if (j==null){ if (!it.fixed){ it.iph=false; it.name=it.ocrName||''; } it.noGift=!!it.ocrNoGift; it.owned=it.ocrOwned; useHist(it,M[i]); return; } // 撮った順で仮に入れた名前・所持数は残さない
+    const p=pend[j], pn=fullName(p,it.raw); if (!it.fixed){ if (it.name!==pn) moved++; it.name=pn; it.iph=true; it.guess=how[i]==='order'; } it.noGift=!!(p.noGift||it.ocrNoGift);
+    if (how[i]==='match' && proven(C[i][j])) relearn([it.ocrName,it.raw],p.name);
+    it.owned=pickOwned(M[i],p,how[i]==='match' && proven(C[i][j])); }); // 数字で同じ画面と確かめられたときだけ受け取りの所持数を先に使う
+  // お知らせ：仮に入れた名前・読めなかった画像・受け取りになかった画像。前の記録の名前（黄）も当てはめた数に入れる
+  if (pend.length){ const no=f=>items.map((it,i)=>f(it,i) ? i+1 : 0).filter(Boolean), nh=items.filter(it=>it.fromHist).length,
+      guess=no((it,i)=>how[i]==='order'), fail=no((it,i)=>pick[i]==null && !it.fromHist && !it.fixed && blank(i)), miss=no((it,i)=>pick[i]==null && !it.fromHist && !it.fixed && !blank(i));
+    const msg=[guess.length ? '画像を読めなかったので、撮った順にショートカットの名前を仮に入れました。合っているか確かめてください（名前をタップして直せます）' : '',
+      fail.length ? `${fail.join('・')}番は画像を読めませんでした。名前をタップして入れてください（ショートカットの名前が候補に出ます）` : '',
+      miss.length ? `${miss.join('・')}番は、ショートカットで読んだ中にありませんでした。画像から読んだ名前と所持数を使います（名前がちがうときは、名前をタップして直せます）\n撮ってすぐ背面タップしたときは、もう一度背面タップすると、選び直さなくても名前が入ります` : ''].filter(Boolean).join('\n');
+    if (msg) toast(msg);
+    // 前の記録の名前を入れた画像は、ショートカットの名前を当てはめた画像とは別に数える（足すと名前の入った画像の数になる）
+    else if (pend.length!==items.length || nh){ const nm=items.filter((_,i)=>pick[i]!=null).length;
+      toast(!usedJ.size ? `前にiPhoneで読んだ記録から${nh}枚の名前を入れました` : nh ? `ショートカットの${pend.length}枚分から${nm}枚に名前を当てはめ、ほかの${nh}枚には前に読んだ記録の名前を入れました`
+        : `ショートカットの${pend.length}枚分のうち、${usedJ.size}枚を選んだ画像に当てはめました`); }
+    else if (retried) toast('前に選んだ画像に、届いた名前を当てはめました');
+    else if (moved) toast('画像と名前の対応を直しました');
+    markPendingUsed(); }
+  retried=false;
+  keepRetry(pend.length ? items.map((it,i)=>pick[i]==null && !it.fromHist && !it.fixed && !blank(i) ? M[i] : null).filter(Boolean) : []);
+  renderItems(); renderNames(); draw(); warnNoGift();
+}
+// 前にiPhoneで読んだ記録から名前を当てはめる（手で決めた名前は変えない。所持数は画像から確かに読めた数を先に使う）
+function useHist(it,m){ if (it.fixed) return false; const h=histMatch(m||shotInfo({raw:it.raw, sig:it.sig, owned:it.ocrOwned, ownedSure:it.ownedSure, known:it.known})); if (!h) return false;
+  if (proven(h)) relearn([it.ocrName,it.raw],h.p.name);
+  it.name=fullName(h.p,it.raw); it.iph=true; it.fromHist=true; it.noGift=!!(h.p.noGift||it.ocrNoGift); it.owned=histOwned(m||{owned:it.ocrOwned,ownedSure:it.ownedSure},h); return true; }
+function renderItems(){
+  const box=$('multi'); document.body.classList.toggle('isMulti',items.length>1);
+  if (items.length<2){ box.innerHTML=''; return; }
+  box.innerHTML='';
+  items.forEach((it,n)=>{ const d=document.createElement('div'); d.className='chip';
+    d.innerHTML=`<span class="no">${n+1}</span>${it.snap?`<img class="snap" src="${it.snap}" alt="元画像の所持数">`:(it.reading?'<img src="'+it.src+'" alt="">':'<span class="nosnap">所持数なし</span>')}<button type="button" class="m">−</button><b>${it.reading?'…':itemCount(it)==null?'<small style="font-size:11px">なし</small>':'×'+itemCount(it)}</b><button type="button" class="p">＋</button>`;
+    d.querySelector('.m').onclick=()=>{ it.count=Math.max(0,(itemCount(it)??1)-1); renderItems(); draw(); };
+    d.querySelector('.p').onclick=()=>{ it.count=(itemCount(it)??0)+1; renderItems(); draw(); };
+    box.appendChild(d); });
+}
+$('shot').addEventListener('click',()=>{ picking=true; }); // 写真を選んでいる最中は自動で読み直さない
+$('shot').addEventListener('change',()=>{ const fs=[...$('shot').files]; $('shot').value=''; if (fs.length){ pickFiles=fs.slice(0,12); retried=false; }
+  if (fs.length>1) setItems(fs); else if (fs[0]) fromFile(fs[0],setShot); });
+// ---- 名前の届かなかった画像の取っておき ----
+// 撮ってすぐ背面タップすると、最後のスクショがまだ写真に保存されていなくて、ショートカットが読めないことがある。
+// そのとき選んだ画像を端末に取っておき、もう一度背面タップして名前が届いたら、選び直さなくても同じ画像に当てはめ直す
+// （届いた名前に、前に当てはまらなかった画像と同じ画面があるときだけ・30分まで。全部当てはまったら消す）
+let pickFiles=[], retried=false; // いま選んでいる画像。retried：取っておいた画像を当てはめ直している
+const RETRY_MIN=30;
+const dbPut=(k,v)=>idb.then(d=>new Promise(ok=>{ const t=d.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=()=>ok(true); t.onerror=t.onabort=()=>ok(false); })).catch(()=>false);
+const dbDel=k=>idb.then(d=>new Promise(ok=>{ const t=d.transaction('kv','readwrite'); t.objectStore('kv').delete(k); t.oncomplete=t.onerror=t.onabort=()=>ok(); })).catch(()=>{});
+// miss：受け取りになかった画像の読み取り（shotInfo）。なければ取っておきを消す
+async function keepRetry(miss){
+  if (!miss.length || !pickFiles.length){ dbDel('retry'); return; }
+  try{ const fs=pickFiles, files=await Promise.all(fs.map(async f=>({name:f.name||'', type:f.type||'image/png', buf:await f.arrayBuffer()})));
+    if (fs===pickFiles) await dbPut('retry',{at:Date.now(), files, miss}); }catch(e){} }
+// 新しく名前が届いたとき：前に当てはまらなかった画像が、今度は当てはまるなら、取っておいた画像を選び直したことにする
+async function useRetry(list){ let j=null; try{ j=await dbGet('retry'); }catch(e){}
+  if (!j?.files?.length || !(Date.now()-j.at<RETRY_MIN*60e3) || !(j.miss||[]).some(m=>matchPending(m,list))) return;
+  const fs=j.files.map(x=>new File([x.buf],x.name,{type:x.type})); pickFiles=fs; retried=true;
+  toast(`前に選んだ画像${fs.length>1?`（${fs.length}枚）`:''}に、届いた名前を当てはめ直します`);
+  if (fs.length>1) setItems(fs); else fromFile(fs[0],setShot); }
+
+const showOwned=()=>$('showOwnedChk').checked;
+try{ $('showOwnedChk').checked=localStorage.getItem('promo_showOwned')==='1'; }catch(e){}
+$('showOwnedChk').addEventListener('change',()=>{ try{ localStorage.setItem('promo_showOwned',showOwned()?'1':'0'); }catch(e){} if(shotImg) readOwned(shotImg); draw(); });
+// 画面下にお知らせを表示
+function toast(t){ if (!$('fixSheet').hidden){ fixNote(t); fixLate=t; return; } // 名前を直す画面を開いている間は、画面の中に出す（上に重なって欄や✕を隠さないように。閉じたあとにもう一度出す）
+  let el=$('toast'); if(!el){ el=document.createElement('div'); el.id='toast'; document.body.appendChild(el); }
+  // 文字の画面を開いていて、iPhoneのキーボードで見える範囲が下にずれているときは、見える範囲の上に出す
+  // （上の位置を決めるときは下を auto にする。閉じたあとに上と下の両方が効いて、縦に長い帯にならないように）
+  const V=window.visualViewport, up=!!V && !$('txtSheet').hidden && V.offsetTop>0; el.style.top=up ? `${Math.round(V.offsetTop)+12}px` : ''; el.style.bottom=up ? 'auto' : '';
+  el.textContent=t; el.classList.add('show'); clearTimeout(el._t); if(!/中…$/.test(t)) el._t=setTimeout(()=>el.classList.remove('show'),t.includes('\n')?6000:3500); }
+// ---- GitHub への保存（鍵がある端末だけ）：背景画像は bg/、割り当ては sets.json ----
+const GH={owner:'ahonokiki',repo:'poketsui-app',branch:'main'};
+const ghToken=()=>{ try{ return localStorage.getItem('promo_ghToken')||''; }catch(e){ return ''; } };
+async function ghApi(path,opt={}){
+  const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${path}`+(opt.method?'':`?ref=${GH.branch}&t=${Date.now()}`),
+    {...opt,headers:{Authorization:'Bearer '+ghToken(),Accept:'application/vnd.github+json',...(opt.headers||{})}});
+  if (r.status===404 && !opt.method) return null;
+  if (!r.ok) throw new Error('GitHub '+r.status);
+  return r.json();
+}
+const b64utf8=str=>btoa(unescape(encodeURIComponent(str)));
+let ghQueue=Promise.resolve();
+function ghRun(label,fn){ // 書き込みは1つずつ順番に
+  ghQueue=ghQueue.then(async()=>{ ghMsg(label+'中…'); try{ await fn(); ghMsg(label+'しました（全端末に1〜2分で反映）'); }catch(e){ ghMsg(label+'できませんでした：'+(e.message.includes('401')?'鍵が正しくありません':e.message)); } });
+  return ghQueue;
+}
+function ghMsg(t){ toast(t); $('ghState').textContent=t; const n=$('edgeNote'); if(n) n.textContent=t; }
+async function ghEditSets(fn){ // sets.json を読み込んで書き換える
+  const cur=await ghApi('sets.json'); let j={sets:[]};
+  if (cur) j=JSON.parse(decodeURIComponent(escape(atob(cur.content.replace(/\n/g,'')))));
+  fn(j); j.sets.sort((a,b)=>a.slot-b.slot);
+  await ghApi('sets.json',{method:'PUT',body:JSON.stringify({message:'背景セットを更新（アプリから）',content:b64utf8(JSON.stringify(j,null,2)+'\n'),branch:GH.branch,...(cur?{sha:cur.sha}:{})})});
+}
+async function ghDeleteFile(path){ const f=await ghApi(path); if(f) await ghApi(path,{method:'DELETE',body:JSON.stringify({message:'背景画像を削除（アプリから）',sha:f.sha,branch:GH.branch})}); }
+$('ghToken').value=ghToken() ? '********' : '';
+$('ghState').textContent=ghToken() ? '鍵あり' : '鍵なし';
+$('ghSave').onclick=async()=>{ const v=$('ghToken').value.trim(); if(!v || v==='********') return;
+  try{ localStorage.setItem('promo_ghToken',v); }catch(e){}
+  ghMsg('確認中…');
+  try{ const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}`,{headers:{Authorization:'Bearer '+v}}); const j=await r.json();
+    ghMsg(r.ok && j.permissions?.push ? '鍵OK：全端末に保存できます' : '鍵は保存しましたが、書き込み権限がないようです'); $('ghToken').value='********';
+  }catch(e){ ghMsg('確認できませんでした（通信を確認してください）'); } };
+$('ghClear').onclick=()=>{ try{ localStorage.removeItem('promo_ghToken'); }catch(e){} $('ghToken').value=''; ghMsg('鍵なし'); };
+
+// 端末だけの背景セットを全端末共通にする（背景画像を bg/ に保存し、sets.json に登録）
+async function toJpegData(src){ if (src.startsWith('data:image/jpeg')) return src;
+  const i=new Image(); i.src=src; await i.decode(); const c=document.createElement('canvas'); c.width=i.width; c.height=i.height;
+  c.getContext('2d').drawImage(i,0,0); return c.toDataURL('image/jpeg',0.92); }
+function shareSlot(n){ const t=sets[n]; if(!t) return;
+  const path=`bg/slot${n}-${Date.now()}.jpg`, edge=t.edge;
+  return ghRun(`${SLOTS[n][0]}を全端末に保存`,async()=>{
+    const data=await toJpegData(t.bg);
+    await ghApi(path,{method:'PUT',body:JSON.stringify({message:'背景を追加（アプリから）',content:data.split(',')[1],branch:GH.branch})});
+    let old=null; await ghEditSets(j=>{ old=j.sets.find(x=>x.slot===n)?.bg; j.sets=j.sets.filter(x=>x.slot!==n); j.sets.push({slot:n,bg:path,edge}); });
+    if (old && old!==path && old.startsWith('bg/')) await ghDeleteFile(old);
+    if (sets[n]){ sets[n].shared=true; sets[n].path=path; } saveSets(); renderSets();
+  }); }
+
+// ---- 背景セット：色分けされた10個の枠に「背景＋フチ色」を1セットで保存（IndexedDBに保存） ----
+const SLOTS=[['ピンク','#ff7eb6'],['レッド','#ff5a6e'],['オレンジ','#ffa24c'],['イエロー','#ffd23f'],['グリーン','#6fd67a'],
+             ['ミント','#4fd8c4'],['ブルー','#5aa9ff'],['パープル','#a98be0'],['ブラウン','#b98a6a'],['グレー','#a8a3ad']];
+let sets = Array(10).fill(null), cur = +(store.get('curSlot')||0), pickSlot = 0;
+const idb = new Promise((ok,ng)=>{ const r=indexedDB.open('poketsui',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>ok(r.result); r.onerror=()=>ng(r.error); });
+const dbGet = k => idb.then(d=>new Promise(ok=>{ const q=d.transaction('kv').objectStore('kv').get(k); q.onsuccess=()=>ok(q.result); q.onerror=()=>ok(undefined); }));
+const saveSets = () => idb.then(d=>{ const t=d.transaction('kv','readwrite'); t.objectStore('kv').put(sets,'slots'); t.onerror=()=>console.warn('保存できませんでした'); });
+try{ navigator.storage?.persist?.(); }catch(e){} // 端末に「消さないで」と依頼
+const curSet = () => sets[cur];
+function renderSets(){
+  const box=$('sets'); box.innerHTML='';
+  SLOTS.forEach(([name,col],n)=>{ const t=sets[n], b=document.createElement('button'); b.type='button';
+    b.className='set'+(n===cur?' on':'')+(t?'':' empty')+(t?.shared?' shared':''); b.style.setProperty('--slot',col);
+    if (t) b.style.backgroundImage=`url(${t.bg})`;
+    b.innerHTML=`<em>${name}</em>`+(t?`<b style="background:${t.edge}"></b><span class="del">×</span>`:'<i>＋</i>');
+    b.onclick=e=>{
+      if (!t){ pickSlot=n; $('bg').click(); return; }
+      selectSet(n); };
+    box.appendChild(b); });
+  const dl=$('delList'); dl.innerHTML='';
+  SLOTS.forEach(([name,col],n)=>{ if(!sets[n] || (sets[n].shared && !ghToken())) return; const d=document.createElement('button'); d.type='button'; d.className='delBtn';
+    d.style.setProperty('--slot',col); d.textContent='🗑 '+name;
+    d.onclick=()=>{ if(d.dataset.sure){ const t=sets[n]; sets[n]=null; saveSets(); selectSet(n);
+      if (t?.shared && ghToken()) ghRun('全端末から削除',async()=>{ let old=null; await ghEditSets(j=>{ old=j.sets.find(x=>x.slot===n)?.bg; j.sets=j.sets.filter(x=>x.slot!==n); }); if(old?.startsWith('bg/')) await ghDeleteFile(old); }); } else { d.dataset.sure=1; d.textContent='もう一度タップで削除'; setTimeout(()=>{ if(d.isConnected){ delete d.dataset.sure; d.textContent='🗑 '+name; } },3000); } }; dl.appendChild(d); });
+  if (ghToken()) SLOTS.forEach(([name,col],n)=>{ if(!sets[n] || sets[n].shared) return; const u=document.createElement('button'); u.type='button'; u.className='delBtn';
+    u.style.setProperty('--slot',col); u.textContent='☁ '+name+'を全端末に共有'; u.onclick=()=>shareSlot(n); dl.appendChild(u); });
+  if(!dl.children.length) dl.innerHTML='<div class="note">この端末だけで登録した背景セットはありません（共通の背景セットはここでは削除できません）。</div>';
+}
+function selectSet(n){
+  cur=n; store.set('curSlot',n); const t=curSet(); renderSets();
+  if (!t){ bgImg=null; currentList=[]; renderSwatches([]); draw(); return; }
+  const i=new Image(); i.onload=()=>{ bgImg=i; currentList=edgeCandidates(analyzeBg(i)); $('edgeColor').value=t.edge; renderSwatches(currentList); draw(); }; i.src=t.bg;
+}
+$('bg').addEventListener('change',()=>{ const f=$('bg').files[0]; if(!f) return; $('bg').value='';
+  fromFile(f,i=>{
+    const k=Math.min(1,S/Math.min(i.width,i.height)), c=document.createElement('canvas');
+    c.width=Math.round(i.width*k); c.height=Math.round(i.height*k); c.getContext('2d').drawImage(i,0,0,c.width,c.height);
+    const n=pickSlot, data=c.toDataURL('image/jpeg',0.92), edge=edgeCandidates(analyzeBg(i))[0].hex;
+    sets[n]={bg:data, edge}; saveSets(); selectSet(n);
+    if (ghToken()) shareSlot(n);
+  });
+});
+document.addEventListener('paste',e=>{ const f=[...e.clipboardData.files].find(f=>f.type.startsWith('image/')); if(f){ pickFiles=[f]; retried=false; fromFile(f,setShot); } });
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{ e.preventDefault(); const f=[...e.dataTransfer.files].find(f=>f.type.startsWith('image/')); if(f){ pickFiles=[f]; retried=false; fromFile(f,setShot); } });
+
+// ---- フチ色のおすすめ ----
+// 背景の主な色相・明るさを調べ、配色理論（類似色／補色／三角配色）でネオン色の候補を作る。
+// 「おすすめ」は類似色を寒色側へ約35°ずらした色：同系色でなじみつつ、色相差と高彩度で背景から浮き上がる。
+// 背景が暗いときは明るく、明るいときは少し濃くして明度差もつける。
+function analyzeBg(img){
+  const c=document.createElement('canvas'); c.width=c.height=48;
+  const g=c.getContext('2d'); g.drawImage(img,0,0,48,48);
+  const d=g.getImageData(0,0,48,48).data; let x=0,y=0,L=0,n=0;
+  for (let i=0;i<d.length;i+=4){
+    const [h,s,l]=hsl(d[i],d[i+1],d[i+2]); const w=s*(1-Math.abs(2*l-1));
+    x+=Math.cos(h*2*Math.PI)*w; y+=Math.sin(h*2*Math.PI)*w; L+=l; n++;
+  }
+  return { hue:((Math.atan2(y,x)*180/Math.PI)+360)%360, light:L/n };
+}
+function hsl2hex(h,s,l){ h=((h%360)+360)%360; s/=100; l/=100;
+  const f=n=>{ const k=(n+h/30)%12, a=s*Math.min(l,1-l); return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1)))).toString(16).padStart(2,'0'); };
+  return '#'+f(0)+f(8)+f(4); }
+function edgeCandidates(bg){
+  const l = bg.light<0.35 ? 72 : bg.light>0.85 ? 56 : 64;
+  return [
+    {name:'おすすめ',  hex:hsl2hex(bg.hue-38,80,l)},
+    {name:'類似色',    hex:hsl2hex(bg.hue+35,95,l)},
+    {name:'補色',      hex:hsl2hex(bg.hue+180,95,l)},
+    {name:'三角配色',  hex:hsl2hex(bg.hue+120,95,l)},
+    {name:'ホワイト',  hex:'#fff4fc'},
+  ];
+}
+function renderSwatches(list){
+  const box=$('swatches'); box.innerHTML='';
+  list.forEach(c=>{ const b=document.createElement('button'); b.className='sw'+(c.hex===$('edgeColor').value?' on':''); b.type='button';
+    b.innerHTML=`<i style="background:${c.hex};color:${c.hex}"></i>${c.name}`;
+    b.onclick=()=>{ $('edgeColor').value=c.hex; saveEdge(); renderSwatches(list); draw(); }; box.appendChild(b); });
+}
+let currentList=[];
+let edgeTimer=null;
+function saveEdge(){ const t=curSet(); if (!t) return; t.edge=$('edgeColor').value; saveSets(); renderSets();
+  if (t.shared){
+    if (!ghToken()){ $('edgeNote').textContent='共通の背景セットです。この端末だけに反映されます（全端末に反映するには⚙で鍵を入れてください）。'; return; }
+    const n=cur, edge=t.edge; clearTimeout(edgeTimer);
+    edgeTimer=setTimeout(()=>ghRun('フチ色を全端末に保存',()=>ghEditSets(j=>{ const e=j.sets.find(x=>x.slot===n); if(e) e.edge=edge; })),1200);
+  } }
+$('edgeColor').addEventListener('input',()=>{ saveEdge(); renderSwatches(currentList); draw(); });
+function hsl(r,g,b){ r/=255;g/=255;b/=255; const mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2;
+  if(mx===mn) return [0,0,l]; const d=mx-mn, s=l>.5?d/(2-mx-mn):d/(mx+mn);
+  const h = mx===r?((g-b)/d+(g<b?6:0)):mx===g?((b-r)/d+2):((r-g)/d+4); return [h/6,s,l]; }
+
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
+function countValue(){
+  // 設定が「全部1」「全部 表示なし」なら、×数を直していないときはその数
+  if ($('count').value==='' && defCnt()!=='own'){ const v=defCnt()==='one' ? 1 : null; $('countView').textContent=v ?? '−'; return v; }
+  // 所持数も×数も未入力なら、×数字は出さない
+  if ($('owned').value==='' && $('count').value===''){ $('countView').textContent='−'; return null; }
+  const auto=Math.max(0,($('owned').value|0)-1);
+  const v=$('count').value!=='' ? Math.max(0,$('count').value|0) : auto;
+  $('countView').textContent=v; return v;
+}
+
+// ---- 描画の部品 ----
+function fontPx(h){ const base=FONTS[$('font').value]||FONTS[10];
+  const mm=document.createElement('canvas').getContext('2d'); mm.font=base.replace(/\d+px/,'100px');
+  return {base, px:Math.round(100*h/Math.max(1,mm.measureText('3').actualBoundingBoxAscent))}; }
+const setF=(base,px)=>base.replace(/\d+px/, Math.round(px)+'px');
+// ぷっくり文字（濃ピンク＋白フチ＋細い蛍光ライン）。parts: [{t,f,x,y,sx}]、k: 太さの倍率
+// 色を明るく(+)・暗く(-)する
+function shade(hex,t){ const n=parseInt(hex.slice(1),16), c=[n>>16,n>>8&255,n&255].map(v=>Math.round(t<0?v*(1+t):v+(255-v)*t));
+  return '#'+c.map(v=>v.toString(16).padStart(2,'0')).join(''); }
+function puffy(parts,k,edge,col='#f82da1'){
+  const dark=shade(col,-.2), glow=shade(col,.55)+'4d';
+  const FAT=6*k, OUT=36*k;
+  const each=(g,fn)=>parts.forEach(q=>{ g.save(); g.font=q.f; g.textAlign='left'; g.textBaseline='alphabetic'; g.lineJoin='round';
+    g.translate(q.x,q.y); g.scale(q.sx||1,1); fn(g,q.t); g.restore(); });
+  ctx.save();
+  each(ctx,(g,t)=>{ g.shadowColor=edge; g.shadowBlur=3*k; g.strokeStyle=edge; g.lineWidth=OUT+10*k; g.strokeText(t,0,0); });
+  each(ctx,(g,t)=>{ g.strokeStyle='#fff'; g.lineWidth=OUT; g.strokeText(t,0,0); });
+  ctx.restore();
+  // 重ねる用の下書きは、字のまわりだけの大きさで作る（画像全体の大きさで作ると、12個のときにとても遅い）
+  const mm=document.createElement('canvas').getContext('2d'); let bx0=S,by0=S,bx1=0,by1=0;
+  parts.forEach(q=>{ mm.font=q.f; const m=mm.measureText(q.t), w=m.width*(q.sx||1); bx0=Math.min(bx0,q.x); bx1=Math.max(bx1,q.x+w); by0=Math.min(by0,q.y-(m.actualBoundingBoxAscent||parseFloat(q.f.match(/(\d+(?:\.\d+)?)px/)?.[1]||100))); by1=Math.max(by1,q.y+(m.actualBoundingBoxDescent||0)); });
+  const M=Math.ceil(FAT+60*k+8), ox=Math.floor(Math.max(0,bx0-M)), oy=Math.floor(Math.max(0,by0-M)), cw=Math.max(1,Math.min(S,Math.ceil(bx1+M))-ox), chh=Math.max(1,Math.min(S,Math.ceil(by1+M))-oy);
+  const c=document.createElement('canvas'); c.width=cw; c.height=chh; const g=c.getContext('2d'); g.translate(-ox,-oy);
+  each(g,(g,t)=>{ g.fillStyle=g.strokeStyle=col; g.lineWidth=FAT; g.fillText(t,0,0); g.strokeText(t,0,0); });
+  g.globalCompositeOperation='source-atop';
+  each(g,(g,t)=>{ g.strokeStyle=dark; g.lineWidth=FAT+10*k; g.filter=`blur(${4*k}px)`; g.strokeText(t,0,0); });
+  each(g,(g,t)=>{ g.fillStyle=col; g.filter=`blur(${6*k}px)`; g.fillText(t,0,-2*k); });
+  each(g,(g,t)=>{ g.fillStyle=glow; g.filter=`blur(${14*k}px)`; g.fillText(t,-10*k,-18*k); g.filter='none'; });
+  const mk=document.createElement('canvas'); mk.width=cw; mk.height=chh; const mg=mk.getContext('2d'); mg.translate(-ox,-oy);
+  each(mg,(g,t)=>{ g.fillStyle=g.strokeStyle='#000'; g.lineWidth=FAT; g.fillText(t,0,0); g.strokeText(t,0,0); });
+  g.setTransform(1,0,0,1,0,0); g.globalCompositeOperation='destination-in'; g.filter='none'; g.drawImage(mk,0,0);
+  ctx.drawImage(c,ox,oy);
+}
+// 「×数」を右端 right・ベースライン base に、数字の高さ h で描く
+function drawCount(num,right,base,h,edge){
+  const {base:fb,px}=fontPx(h), k=h/205, SX=1.08, fN=setF(fb,px), fX=setF(fb,px*.66);
+  const m=document.createElement('canvas').getContext('2d');
+  m.font=fN; const wN=m.measureText(num).width*SX; m.font=fX; const wX=m.measureText('×').width;
+  puffy([{t:num,f:fN,x:right-wN,y:base,sx:SX},{t:'×',f:fX,x:right-wN-18*k-wX,y:base-26*k}],k,edge,$('numColor').value);
+}
+// ネオン風のフチ（k: 太さの倍率）
+function neon(x,y,w,h,r,edge,k){
+  const EI=EDGE_IN*k, EC=EDGE_CORE*k, o1=EI/2, o2=EI+EC/2, OUTER=EI+EC;
+  // 光るフチの下書きは、枠のまわりだけの大きさで作る（画像全体の大きさで作ると、12個のときにとても遅い）
+  const M=Math.ceil(OUTER+80*k+8), ox=Math.floor(Math.max(0,x-M)), oy=Math.floor(Math.max(0,y-M)), cw=Math.max(1,Math.min(S,Math.ceil(x+w+M))-ox), chh=Math.max(1,Math.min(S,Math.ceil(y+h+M))-oy);
+  const c=document.createElement('canvas'); c.width=cw; c.height=chh; const g=c.getContext('2d'); g.translate(-ox,-oy);
+  g.strokeStyle=edge; g.shadowColor=edge; g.lineWidth=EC; g.shadowBlur=24*k;
+  for (let n=0;n<3;n++){ g.beginPath(); g.roundRect(x-o2,y-o2,w+o2*2,h+o2*2,r+o2); g.stroke(); }
+  g.shadowBlur=0; g.globalCompositeOperation='destination-out';
+  g.beginPath(); g.roundRect(x-OUTER,y-OUTER,w+OUTER*2,h+OUTER*2,r+OUTER); g.fill();
+  ctx.drawImage(c,ox,oy);
+  ctx.save(); ctx.filter=`blur(${k}px)`;
+  ctx.lineWidth=EI+k; ctx.strokeStyle=edge; rr(x-o1,y-o1,w+o1*2,h+o1*2,r+o1); ctx.stroke();
+  ctx.lineWidth=EC; ctx.strokeStyle='#fffaff'; ctx.shadowColor='#fff'; ctx.shadowBlur=6*k;
+  rr(x-o2,y-o2,w+o2*2,h+o2*2,r+o2); ctx.stroke(); ctx.restore();
+}
+// 並べ方：n個を1〜4行にできるだけ均等に分けた候補（横は最大4個）の中から、画像がいちばん大きくなる並びを選ぶ
+// 例：3個は横長の画像なら 2＋1、縦長なら横1列。7個は 3＋2＋2 か 4＋3
+function rowSplits(n){ const out=[]; for (let r=1;r<=4;r++){ const base=Math.floor(n/r), extra=n%r; if (!base || base+(extra?1:0)>4) continue;
+  out.push(Array.from({length:r},(_,i)=>base+(i<extra?1:0))); } return out; }
+function bestRows(n,ar,gap){ const availW=S-56*2, availH=S-70-215; let best=null, bw=0;
+  for (const rows of rowSplits(n)){ const cols=Math.max(...rows), w=Math.min((availW-gap*(cols-1))/cols,(availH-gap*(rows.length-1))/rows.length/ar);
+    if (w>bw+0.5){ best=rows; bw=w; } } return best; }
+
+// 描き直しは、続けて頼まれても1回にまとめる（読み取りの途中は少し待ってから。読み取りを止めないように）
+let drawT=0;
+function draw(){ if (drawT) return; drawT=setTimeout(()=>requestAnimationFrame(()=>{ drawT=0; drawNow(); }), itemsBusy && itemsBusy===ocrSeq ? 1500 : 0); } // 複数の読み取りが今まさに動いているときだけ待つ
+function flushDraw(){ if (drawT){ clearTimeout(drawT); drawT=0; } drawNow(); }
+function drawNow(){
+  ctx.clearRect(0,0,S,S);
+  if (bgImg){ const k=Math.max(S/bgImg.width,S/bgImg.height), w=bgImg.width*k, h=bgImg.height*k;
+    ctx.drawImage(bgImg,(S-w)/2,(S-h)/2,w,h); }
+  else { ctx.fillStyle='#ff7aa8'; ctx.fillRect(0,0,S,S); }
+  const edge = $('edgeColor').value;
+  if (items.length>1) return drawMulti(edge);
+
+  const {x,y,size} = BOX;
+  // アイテム画像（正方形切り抜き・縦横同倍率・ピクセルはそのまま）
+  ctx.save(); rr(x,y,size,size,R); ctx.clip();
+  ctx.fillStyle='#fff'; ctx.fillRect(x,y,size,size);
+  if (shotImg){
+    // 一辺が画像の幅より長いとき（「入手可能です」の行まで入れると縦が長い）は、左右に白い余白を付けて下の行まで入れる
+    // （画像の外を drawImage の範囲に入れると Safari で描かれないことがあるので、画像の中の範囲だけを描く）
+    const W=shotImg.width, H=shotImg.height, side=Math.max(1,W*$('cs').value/100), top=Math.max(0,W*$('ct').value/100), k=size/side;
+    const sx=Math.max(0,(W-side)/2), sw=Math.min(W,side), sh=Math.min(side,H-top);
+    ctx.imageSmoothingQuality='high';
+    if (sh>0) ctx.drawImage(shotImg,sx,top,sw,sh,x+(side-sw)/2*k,y,sw*k,sh*k);
+  }
+  ctx.restore();
+  neon(x,y,size,size,R,edge,1);
+  const cnt=countValue();
+  if ($('showCount').checked && cnt!==null) drawCount(String(cnt),1194,262,205,edge);
+}
+
+// 複数アイテム：選んだ順に左上から並べ、下に「計○点」
+function drawMulti(edge){
+  const n=Math.min(items.length,12);
+  const PAD=56, TOP=70, FOOT=215, GAP=n>6?34:44;
+  // カードの縦横比（アイテム上端〜名前の行まで）
+  items.forEach(it=>{ it.cardBottom = showOwned()&&it.ownedBottom ? it.ownedBottom : (it.nameBottom ?? it.cardBottom); });
+  const ratios=items.map(it=>(it.cardBottom-it.top)/it.img.width).filter(r=>r>0.5&&r<1.6);
+  const ar=ratios.length? ratios.sort((a,b)=>a-b)[ratios.length>>1] : 1;
+  const rows=bestRows(n,ar,GAP), cols=Math.max(...rows);
+  const availW=S-PAD*2, availH=S-TOP-FOOT;
+  const cw=Math.min((availW-GAP*(cols-1))/cols, (availH-GAP*(rows.length-1))/rows.length/ar), ch=cw*ar;
+  const k=cw/1000, r=Math.max(14,R*k*1.6);
+  let y=TOP+(availH-(rows.length*ch+(rows.length-1)*GAP))/2, idx=0;
+  const cards=[];
+  rows.forEach(c=>{ let x=(S-(c*cw+(c-1)*GAP))/2; for(let i=0;i<c;i++){ cards.push({x,y,it:items[idx++]}); x+=cw+GAP; } y+=ch+GAP; });
+  cards.forEach(({x,y,it})=>{
+    ctx.save(); rr(x,y,cw,ch,r); ctx.clip(); ctx.fillStyle='#fff'; ctx.fillRect(x,y,cw,ch);
+    const W=it.img.width; ctx.imageSmoothingQuality='high';
+    ctx.drawImage(it.img,0,it.top,W,W*ar,x,y,cw,ch); ctx.restore();
+    neon(x,y,cw,ch,r,edge,Math.max(.5,k*1.4));
+  });
+  if (!$('showCount').checked) return;
+  const ht=Math.max(60,cw*.24); // 各カードの×数字の高さ
+  cards.forEach(({x,y,it})=>{ const c=itemCount(it); if (c!=null) drawCount(String(c),x+cw+ht*.18,y+ht*.62,ht,edge); });
+  // 合計○個（数字を大きく）
+  const total=items.slice(0,n).reduce((a,it)=>a+nOf(itemCount(it)),0);
+  const {base:fb,px}=fontPx(150), fBig=setF(fb,px), fSm=(()=>{ const {f,w}=jfontCss(); return `${w} ${Math.round(px*.52)}px "${f}"`; })();
+  const m=document.createElement('canvas').getContext('2d');
+  m.font=fSm; const w1=m.measureText('計').width, w3=m.measureText('点').width; m.font=fBig; const w2=m.measureText(String(total)).width;
+  const gap=18, tw=w1+w2+w3+gap*2, bx=(S-tw)/2, by=S-62;
+  puffy([{t:'計',f:fSm,x:bx,y:by},{t:String(total),f:fBig,x:bx+w1+gap,y:by+6},{t:'点',f:fSm,x:bx+w1+w2+gap*2,y:by}],150/205,edge,$('totalColor').value);
+}
+dbGet('slots').catch(()=>undefined).then(v=>{ // 端末に保存できない環境でも共通の背景セットは読む
+  if (Array.isArray(v)) sets=v;
+  else { try{ JSON.parse(store.get('sets')||'[]').slice(0,10).forEach((t,n)=>sets[n]={bg:t.bg,edge:t.edge}); saveSets(); }catch(e){} } // 旧形式から移行
+  selectSet(Math.min(9,Math.max(0,cur||0)));
+  // 全端末共通の背景セット（リポジトリの sets.json）で上書き
+  fetch('sets.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
+    if (!j?.sets) return;
+    const inJson=new Set(j.sets.map(t=>t.slot));
+    sets=sets.map((t,n)=>t?.shared && !inJson.has(n) ? null : t); // 共通から消えたものは消す
+    j.sets.forEach(t=>{ if (t.slot>=0 && t.slot<10){ const mine=sets[t.slot];
+      // 直前にこの端末で保存したもの（まだ反映待ち）は手元の画像を使う
+      sets[t.slot]= mine?.path===t.bg ? {...mine, edge:t.edge} : {bg:t.bg, edge:t.edge, shared:true}; } });
+    saveSets(); selectSet(cur);
+  }).catch(()=>{});
+});
+$('dl').onclick=()=>{ const name='poketsui-'+Date.now()+'.png'; flushDraw();
+  cv.toBlob(async blob=>{
+    const file=new File([blob],name,{type:'image/png'});
+    // 共有メニューが使えるのは単体で開いたときだけ（Claude上のページ内では使えないので、必ず画像表示へ）
+    const framed=(()=>{ try{ return window.self!==window.top; }catch(e){ return true; } })();
+    if (!framed && navigator.canShare?.({files:[file]})){ try{ await navigator.share({files:[file]}); return; }catch(e){ if (e.name==='AbortError') return; } } // 自分で閉じたときはそのまま
+    // 共有できない環境：画像を大きく表示 → 長押しで「写真に保存」
+    $('outImg').src=URL.createObjectURL(blob); $('out').hidden=false;
+  },'image/png'); };
+try{ const v=localStorage.getItem('promo_titleTotal'); if(v!==null) $('titleTotal').checked=v==='1'; }catch(e){}
+$('titleTotal').addEventListener('change',()=>{ try{ localStorage.setItem('promo_titleTotal',$('titleTotal').checked?'1':'0'); }catch(e){} });
+try{ $('defCount').value=defCnt(); }catch(e){}
+// ×数の最初の数を変える（設定と、選ぶボタンの下の小さいボタンは同じ）。小さいボタンは、＋−で直した数も全部その数に戻す
+function setDefCnt(m,reset){ try{ localStorage.setItem('promo_defCount',m); }catch(e){} $('defCount').value=m;
+  if (reset){ items.forEach(it=>{ it.count=null; }); $('count').value=''; }
+  document.querySelectorAll('.defBar button').forEach(b=>b.classList.toggle('on',b.dataset.m===m)); renderItems(); renderNames(); draw(); }
+// 名前一覧の配置を選ぶ（見本の画像は img/layouts/）
+(function(){ const box=$('layPick'); LAYOUTS.forEach((t,i)=>{ const n=i+1, b=document.createElement('button'); b.type='button'; b.dataset.n=n;
+  b.innerHTML=`${n}. ${t}<img src="img/layouts/L${n}.jpg" alt="${t}の見本" loading="lazy">`;
+  b.onclick=()=>{ try{ localStorage.setItem('promo_nameLayout',n); }catch(e){} box.querySelectorAll('button').forEach(x=>x.classList.toggle('on',+x.dataset.n===n)); renderNames(); toast(`名前一覧を「${n}. ${t}」にしました`); };
+  box.appendChild(b); }); box.querySelectorAll('button').forEach(x=>x.classList.toggle('on',+x.dataset.n===nameLayout())); })();
+$('defCount').addEventListener('change',()=>setDefCnt($('defCount').value,false));
+document.querySelectorAll('.defBar button').forEach(b=>{ b.classList.toggle('on',b.dataset.m===defCnt()); b.onclick=()=>{ setDefCnt(b.dataset.m,true); toast(b.dataset.m==='own'?'×数を「所持数−1」にしました':b.dataset.m==='one'?'×数を全部1にしました':'×数を全部「表示なし」にしました'); }; });
+['txtStyle','titleOne','titleSep','txtHead','txtTotal','txtFoot'].forEach(id=>{ try{ const v=localStorage.getItem('promo_'+id); if(v!==null) $(id).value=v; }catch(e){}
+  $(id).addEventListener('input',()=>{ try{ localStorage.setItem('promo_'+id,$(id).value); }catch(e){} }); });
+function listText(){
+  const list = items.length>1 ? items.filter(it=>!it.skip).map(it=>({name:it.name||'（名前を読み取れませんでした）', n:nOf(itemCount(it))}))
+    : (shotImg ? [{name:shotName||'（名前を読み取れませんでした）', n:nOf(countValue())}] : []);
+  const rows=list.filter(x=>x.n>0);
+  if (!rows.length) return '';
+  const total=rows.reduce((a,x)=>a+x.n,0), st=$('txtStyle').value;
+  const line=(x,i)=>{ const c=x.n>1?'×'+x.n:'';
+    return st==='numAll'?`${i+1}. ${x.name} ×${x.n}` : st==='dot'?`・${x.name}${c}` : st==='heart'?`♡ ${x.name}${c?' '+c:''}` : st==='plain'?`${x.name}${c}` : `${i+1}. ${x.name}${c}`; };
+  const parts=[];
+  if ($('txtHead').value.trim()) parts.push($('txtHead').value.trim());
+  parts.push(rows.map(line).join('\n'));
+  if ($('txtTotal').value.trim()) parts.push($('txtTotal').value.trim().replace(/\{n\}/g,total));
+  if ($('txtFoot').value.trim()) parts.push($('txtFoot').value.trim());
+  return parts.join('\n\n');
+}
+function titleText(){ // タイトル用：アイテム名×数だけ
+  const list = items.length>1 ? items.filter(it=>!it.skip).map(it=>({name:it.name||'', n:nOf(itemCount(it)), hide:itemCount(it)==null})) : (shotImg ? [{name:shotName||'', n:nOf(countValue()), hide:countValue()==null}] : []);
+  const rows=list.filter(x=>x.n>0); if(!rows.length) return '';
+  const sep=$('titleSep').value==='sp' ? ' ' : '\n';
+  const t=rows.map(x=>x.hide || x.n===1&&$('titleOne').value==='hide' ? x.name : `${x.name}×${x.n}`).join(sep);
+  return rows.length>1 && $('titleTotal').checked ? `${t}${sep}計${rows.reduce((a,x)=>a+x.n,0)}点` : t;
+}
+async function copyText(t){
+  try{ await navigator.clipboard.writeText(t); return true; }
+  catch(e){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(_){} ta.remove(); return ok; } }
+try{ const v=localStorage.getItem('promo_autoCopy'); if(v!==null) $('autoCopy').checked=v==='1'; }catch(e){}
+$('autoCopy').addEventListener('change',()=>{ try{ localStorage.setItem('promo_autoCopy',$('autoCopy').checked?'1':'0'); }catch(e){} });
+async function showCopy(t,label){
+  $('txtBox').value=t; txtShown=t; $('txtSheet').hidden=false; fitSheet(); // キーボードが出ているときはその上に
+  if (!$('autoCopy').checked){ $('txtCopy').textContent='コピー'; $('txtMsg').textContent=label+'：内容を確認して「コピー」を押してください'; return; }
+  $('txtCopy').textContent='もう一度コピー';
+  const ok=await copyText(t);
+  $('txtMsg').textContent= ok ? label+'をコピーしました。読み間違いがあれば直して「もう一度コピー」' : 'コピーできませんでした。下の文字を長押ししてコピーしてください'; }
+$('copyTxt').onclick=()=>{ const t=listText(); if (copyBlocked(t) || !namesReady(()=>$('copyTxt').click())) return; showCopy(listText(),'文字'); };
+// 直した文字から、各アイテムの正しい名前を取り出して覚える（次からは同じ読み間違いを自動で直す）
+let txtShown='';
+function learnFromEdit(before,after){
+  if (before===after) return 0;
+  const targets = items.length>1 ? items : (shotImg ? [{get name(){return shotName}, set name(v){shotName=v}, get raw(){return shotRaw}, get iph(){return shotIph}}] : []);
+  // 直す前と後の文字を1文字ずつ対応させる（個数や他の行を直していても、名前の部分だけ取り出せるように）
+  const A=[...before], B=[...after], n=A.length, m=B.length;
+  if (n*m>4e6) return 0;
+  const L=Array.from({length:n+1},()=>new Uint16Array(m+1));
+  for (let i=n-1;i>=0;i--) for (let j=m-1;j>=0;j--) L[i][j]= A[i]===B[j] ? L[i+1][j+1]+1 : Math.max(L[i+1][j],L[i][j+1]);
+  const at=new Int32Array(n).fill(-1); // 直す前の i 文字目 → 直した後の位置（変わらなかった文字だけ）
+  for (let i=0,j=0;i<n&&j<m;) { if (A[i]===B[j]){ at[i]=j; i++; j++; } else if (L[i+1][j]>=L[i][j+1]) i++; else j++; }
+  const startOf=s=>{ for (let i=s-1;i>=0;i--) if (at[i]>=0) return at[i]+1; return 0; };   // 名前の前の変わらない文字のすぐ後ろ
+  const endOf=e=>{ for (let i=e;i<n;i++) if (at[i]>=0) return at[i]; return m; };           // 名前の後の変わらない文字の手前
+  const toIdx=str=>[...str].length, chars=before; let pos=0, learnedN=0;
+  for (const t of targets){
+    if (!t.name) continue;
+    const k=chars.indexOf(t.name,pos); if (k<0) continue;            // 同じ名前が2回あっても順番に探す
+    const s0=toIdx(chars.slice(0,k)), e0=s0+toIdx(t.name); pos=k+t.name.length;
+    const v=B.slice(startOf(s0),endOf(e0)).join('').trim().replace(/\s*[×xX]\s*\d+\s*$/,''); // 名前のすぐ後ろに足した「×3」は外す
+    if (!v || v===t.name || /\n|[×xX]\s*\d/.test(v) || v.length>40) continue; // 名前以外まで含んでしまったら覚えない
+    // 小さな読み違いを直したときだけ「読み取り → 直した名前」を覚える（別アイテム・別の年の名前を直した＝組み違いを覚えると、その本当のアイテムの名前まで書き換わる）
+    [learnable(t.raw,v) ? t.raw : '', t.iph && slip(t.name,v) ? t.name : ''].filter(Boolean).forEach(k=>learned.add(k,v)); if (!dictExact.has(v)) learned.add(v,v); okNames.add(v);
+    if (items.length>1) t.fixed=true; else shotFixed=true; // 手で直した名前は、あとで書き換えない
+    for (const u of targets) if (u!==t && u.name===t.name){ u.name=v; u.fixed=true; }   // 同じ名前のアイテムはまとめて直す
+    t.name=v; learnedN++;
+  }
+  return learnedN;
+}
+$('txtCopy').onclick=async()=>{ const v=$('txtBox').value, n=learnFromEdit(txtShown,v); txtShown=v; renderNames(); $('txtCopy').textContent='もう一度コピー';
+  // 結果は画面の中（コピーのボタンの上）に出す（お知らせを重ねると、キーボードが出ているときに見出し・この言葉を隠すので出さない）
+  const msg=(await copyText(v)?'コピーしました':'コピーできませんでした。下の文字を長押ししてコピーしてください')+(n?`（${n}個の名前を覚えました）`:''); $('txtMsg').textContent=msg;
+  try{ $('txtMsg').animate([{opacity:.15},{opacity:1}],{duration:450}); }catch(e){} }; // 同じ言葉のままでも、押したことが分かるように一瞬薄くする
+$('copyTitle').onclick=()=>{ const t=titleText(); if (copyBlocked(t) || !namesReady(()=>$('copyTitle').click())) return; showCopy(titleText(),'題名'); };
+// 文字を直したまま ✕ で閉じたときは、直した文字をコピーするか聞く（直したつもりで閉じて、直す前の文字を貼らないように）
+$('txtClose').onclick=()=>{ $('txtBox').blur(); const cp=$('txtBox').value!==txtShown && confirm('直した文字をコピーしますか？') ? $('txtCopy').onclick() : null;
+  $('txtSheet').hidden=true; fitSheet(); const t=$('toast'); if (t){ t.style.top=''; t.style.bottom=''; } // 出ているお知らせは下の位置に戻す
+  if (cp) cp.then(()=>toast($('txtMsg').textContent.replace('下の文字を長押ししてコピーしてください','「文字」をもう一度押してコピーしてください'))); }; // 閉じたあとなので「下の文字」とは言わない
+$('outClose').onclick=()=>{ $('out').hidden=true; };
+draw();
+Promise.all(Object.values(FONTS).map(f=>document.fonts.load(f,"×0123456789").catch(()=>{}))).then(draw);
+</script>
+</body>
+</html>

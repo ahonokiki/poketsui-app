@@ -381,7 +381,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='70'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='71'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -694,10 +694,28 @@ async function ppRead(img){ const lay=detectLayout(img); if (!lay) return null; 
   let crop=''; try{ const b=rows[0], pd=b.h*.4, x0=Math.max(0,b.x-pd), y0=Math.max(0,b.y-pd), w=Math.min(img.width-x0,b.w+pd*2), h=Math.min(img.height-y0,b.h+pd*2), k=Math.min(1,60/h), c=document.createElement('canvas');
     c.width=Math.round(w*k); c.height=Math.round(h*k); c.getContext('2d').drawImage(img,x0,y0,w,h,0,0,c.width,c.height); crop={src:c.toDataURL('image/jpeg',.85), hr:h/b.h, pr:(b.x-x0)/b.h}; }catch(e){} // 見比べ用：元の画像の名前の行
   if (rows[1]) try{ const m=(await timeLimit(ppLine(pp,img,rows[1]),20000)).t.match(/所持数\D{0,3}(\d{1,3})/); if (m) owned=+m[1]; }catch(e){}
-  return /\p{L}/u.test(name) && !/リリ.?ス日|所持数|欲しい/.test(name) ? {name, owned, low:nl.low, crop} : {name:'', owned, crop}; }
+  return /\p{L}/u.test(name) && !/リリ.?ス日|所持数|欲しい/.test(name) ? {name, owned, low:nl.low, crop, ownBox:owned!=null ? rows[1] : null} : {name:'', owned, crop}; }
+// 組み合わせの手がかり（リリース日・「欲しい」の数）も新しい読み取りで読む。今までの読み取りの読み直しと同じ所。欲しいの数は白い字なので白黒を入れかえて読む
+async function ppNums(img,lay){ const pp=await ppInit(); if (!pp) return []; const W=img.width, out=[];
+  try{ out.push((await timeLimit(ppLine(pp,img,{x:W*.2, y:lay.pinkBottom+W*.07, w:W*.6, h:W*.055}),20000)).t); }catch(e){}
+  try{ const x0=W*.675, y0=lay.pinkBottom+W*.002, w=W*.12, h=W*.048, c=document.createElement('canvas'); c.width=Math.round(w*2); c.height=Math.round(h*2);
+    const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,x0,y0,w,h,0,0,c.width,c.height);
+    const id=g.getImageData(0,0,c.width,c.height), d=id.data; for (let i=0;i<d.length;i+=4){ const v=Math.min(d[i],d[i+1],d[i+2])>150 ? 0 : 255; d[i]=d[i+1]=d[i+2]=v; } g.putImageData(id,0,0);
+    const t=(await timeLimit(ppLine(pp,c,{x:0, y:0, w:c.width, h:c.height}),20000)).t.replace(/\s/g,'').replace(/(\d),(\d{3})/g,'$1$2'), m=t.match(/(\d{3,6})/); if (m) out.push('♥ '+(+m[1])); }catch(e){}
+  return out; }
 async function analyzeShot(img){
   const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.012, cardBottom:lay.cardBottom, nameBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
   if (!window.Tesseract) return r0;
+  // ショートカットの名前を受け取っていないときは、新しい読み取りだけで済ませる（今までの読み取りがいちばん時間がかかる）。
+  // 所持数の行の位置・確認用の切り抜き・組み合わせの手がかりの数字（リリース日・欲しいの数）も新しい読み取りで作る
+  const pendN=pendingList().length; let ppPre;
+  if (lay && !pendN){ ppPre=null; try{ ppPre=await ppRead(img); }catch(e){}
+    if (ppPre?.name){ const W=img.width, r={...r0, name:ppPre.name, pp:true, ppLow:ppPre.low||'', sig:[]};
+      try{ r.sig=numSig((await ppNums(img,lay)).join('\n')); }catch(e){} // 前の記録（ショートカットで読んだ名前）と組み合わせるときの手がかり if (ppPre.crop) r.nameCrop=ppPre.crop;
+      if (ppPre.owned!=null && ppPre.ownBox){ const b=ppPre.ownBox; r.owned=ppPre.owned; r.ownedSure=true;
+        r.squareBottom=b.y+b.h+W*.015; r.ownedBottom=r.squareBottom; r.cardBottom=r.squareBottom; // 所持数の行の少し下まで（今までの読み取りと同じ）
+        try{ const y0=b.y-W*.01, y1=b.y+b.h+W*.01, x0=W*.33, x1=W*.67, cc=document.createElement('canvas'); cc.width=x1-x0; cc.height=y1-y0; cc.getContext('2d').drawImage(img,x0,y0,x1-x0,y1-y0,0,0,x1-x0,y1-y0); r.snap=cc.toDataURL(); }catch(e){} }
+      return await nameDone(r); } }
   // 新しい読み取りを、今までの読み取り（別の作業場で動く）と同時に始める。名前が読めたら、今までの読み取りでの名前の読み直しは省く
   let ppP=null, pp=null;
   // 画面の下側（スクショ幅の60%より下・左右20〜80%）を読み取り用にコピーして「所持数」の行を探す
@@ -709,7 +727,7 @@ async function analyzeShot(img){
   // 通信が止まって「読取中…」のままにならないよう、時間を区切る（初回は文字認識のデータを読み込むので長め）
   ocrReady ??= Tesseract.createWorker('jpn',1,{workerPath:base+'worker.min.js',corePath:base,langPath:base,workerBlobURL:false}).catch(e=>{ ocrReady=null; throw e; });
   ocrWorker ??= await timeLimit(ocrReady, 90000);
-  ppP=ppRead(img).catch(()=>null); // 今までの読み取りの準備ができてから始める（初回のダウンロードを取り合って時間切れにならないように）
+  ppP=ppPre!==undefined ? Promise.resolve(ppPre) : ppRead(img).catch(()=>null); // 今までの読み取りの準備ができてから始める（初回のダウンロードを取り合って時間切れにならないように）
   try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'3'}); }catch(e){} // 前の読み取りの1行の設定（7）のままにしない
   const {data}=await timeLimit(ocrWorker.recognize(c,{},{text:true,blocks:true}), 30000);
   const lines=(data.blocks||[]).flatMap(b=>b.paragraphs.flatMap(p=>p.lines));
