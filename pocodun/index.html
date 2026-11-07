@@ -27,7 +27,7 @@
   .upb,.sbtn{border:2px solid var(--line);background:#fff;border-radius:99px;padding:5px 10px;font:inherit;font-weight:800}
   #stoneBox{display:flex;align-items:center;gap:8px;flex-wrap:wrap}#stoneBox.low{background:var(--yel);border-radius:10px;padding:4px}#stoneBox.low input{border-color:var(--yelb)}
   .crop{display:inline-flex;flex-direction:column;align-items:center;gap:1px;font-size:10px;color:var(--sub);pointer-events:none}.crop img{height:30px;border-radius:4px;opacity:.95}
-  .ic{display:flex;gap:8px;align-items:flex-start;border:2px solid var(--line);border-radius:14px;padding:6px;margin:6px 0;background:#fff}
+  .ic{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;border:2px solid var(--line);border-radius:14px;padding:6px;margin:6px 0;background:#fff}
   .ic.need{border-color:var(--yelb);background:var(--yel)}
   .ic img{width:64px;height:auto;border-radius:8px;flex:none}
   .ic .mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
@@ -37,7 +37,8 @@
   .reg{border:0;background:#ffd23f;color:#5a4300;border-radius:99px;padding:5px 9px;font:inherit;font-size:12px;font-weight:900;white-space:nowrap}
   .ops{display:flex;gap:6px;align-items:center;font-size:12px}.ops button{border:0;background:#f3eadf;border-radius:99px;width:30px;height:28px;font:inherit;font-weight:900;color:#8a6a55}.ops button.ok{width:auto;padding:0 10px;background:#5fae6e;color:#fff}
   .note2{font-size:11px;color:#a87400}
-  .cands{display:flex;gap:4px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--sub)}.cands button{border:0;background:#efe4fb;color:#5b3fa0;border-radius:99px;padding:5px 9px;font:inherit;font-size:12px;font-weight:800}
+  .cands{flex-basis:100%;display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:11px;color:var(--sub);padding-left:4px}.cands button{border:2px solid transparent;background:#efe4fb;color:#5b3fa0;border-radius:99px;padding:5px 11px;font:inherit;font-size:13px;font-weight:800;text-align:left}
+  .cands button.on{background:#6a4bc4;color:#fff;border-color:#4a2f9a}.cands button.on::before{content:'✓ '}
   .status{margin-top:6px;display:flex;flex-direction:column;gap:2px;font-weight:800;font-size:13px}.status .ok{color:#2f7a4f}.status .ng{color:#d0304f}.status .sub{color:var(--sub);font-weight:500}
   .lk{display:flex;gap:8px;align-items:center;border:2px solid var(--line);border-radius:12px;padding:5px;margin:5px 0}.lk.need{border-color:var(--yelb);background:var(--yel)}.lk img{width:52px;border-radius:8px}.lk .mid{flex:1}
   .wb{border:2px solid var(--line);background:#fff;border-radius:99px;padding:3px 10px;margin-left:4px;font:inherit;font-weight:900}.wb.on{background:#3fae6a;border-color:#3fae6a;color:#fff}
@@ -362,15 +363,15 @@ function renderStatus(){ const k=$('stKey'), l=$('stLucky'); const any=shots.len
   l.textContent=lucky.length ? `🍀 ラッキー：${luckTotal()}体分 ✓` : '🍀 ラッキー：スクショなし（運UPは手で入れる）'; l.className=lucky.length?'ok':'sub'; }
 function renderStone(){ if (!$('stone').dataset.typed) $('stone').value=stone.v||''; $('stoneBox').classList.toggle('low',shots.length>0 && (!stone.sure||!$('stone').value)); $('stoneCrop').src=stone.crop||''; $('stoneCropBox').hidden=!stone.crop; }
 function renderIcons(){ const box=$('icons'); box.innerHTML=''; $('iconHead').hidden=!icons.length;
-  icons.forEach((ic,i)=>{ const d=document.createElement('div'); d.className='ic'+(ic.name&&ic.guess!=='gwlow'?'':' need');
+  icons.forEach((ic,i)=>{ let candBox=null; const d=document.createElement('div'); d.className='ic'+(ic.name&&ic.guess!=='gwlow'?'':' need');
     const im=document.createElement('img'); im.src=ic.canvas.toDataURL('image/jpeg',.9); d.appendChild(im);
     const m=document.createElement('div'); m.className='mid';
     const inp=document.createElement('input'); inp.type='text'; inp.placeholder='正式名を入れる（1回入れると覚えます）'; inp.value=ic.name; inp.setAttribute('list','nameList');
     inp.onchange=()=>{ ic.name=inp.value.trim(); ic.guess=false; if (ic.name) rememberFP(ic.name,ic.fp); renderAll(); };
     m.appendChild(inp);
     if (ic.guess==='gwlow') m.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent:ic.guess==='gwlow' ? '要確認：いちばん似ているキャラを入れました。ちがうときは候補を押すか直して「✓確認」' : ''}));
-    if ((!ic.name || ic.guess==='gwlow') && ic.cands?.length){ const cs=document.createElement('div'); cs.className='cands'; cs.append(Object.assign(document.createElement('span'),{textContent:'候補：'}));
-      ic.cands.filter(c=>c.n).forEach(c=>{ const b=document.createElement('button'); b.type='button'; b.textContent=c.n; b.title='図鑑No.'+c.i; b.onclick=()=>{ ic.name=c.n; ic.guess=''; rememberFP(ic.name,ic.fp); renderAll(); }; cs.appendChild(b); }); m.appendChild(cs); }
+    if ((!ic.name || ic.guess==='gwlow' || ic.picked) && ic.cands?.length){ const cs=document.createElement('div'); cs.className='cands'; cs.append(Object.assign(document.createElement('span'),{textContent:'候補：'}));
+      ic.cands.filter(c=>c.n).forEach(c=>{ const b=document.createElement('button'); b.type='button'; b.textContent=c.n; if (c.n===ic.name) b.className='on'; b.title='図鑑No.'+c.i; b.onclick=()=>{ ic.name=c.n; ic.guess=''; ic.picked=true; rememberFP(ic.name,ic.fp); renderAll(); }; cs.appendChild(b); }); candBox=cs; }
     if (ic.name){ const nk=document.createElement('div'); nk.className='nick'; const reg=nickOf(ic.name), cand=candOf(ic.name);
       nk.innerHTML=`<span>呼称：</span>`; const ni=document.createElement('input'); ni.type='text'; ni.className=reg?'':'cand'; ni.value=reg||cand; ni.placeholder='（なし＝正式名）';
       ni.onchange=()=>{ const c=CHARS[ic.name] ??= {nick:'',fps:[]}; c.nick=ni.value.trim(); if (!c.nick && cand) c.no=true; saveChars(); renderAll(); };
@@ -382,7 +383,7 @@ function renderIcons(){ const box=$('icons'); box.innerHTML=''; $('iconHead').hi
     if (ic.guess==='gwlow' && ic.name){ const ok=document.createElement('button'); ok.type='button'; ok.className='ok'; ok.textContent='✓確認'; ok.onclick=()=>{ ic.guess=''; rememberFP(ic.name,ic.fp); renderAll(); }; ops.appendChild(ok); }
     const up=document.createElement('button'); up.type='button'; up.textContent='↑'; up.disabled=i===0; up.onclick=()=>{ [icons[i-1],icons[i]]=[icons[i],icons[i-1]]; renderAll(); }; ops.appendChild(up);
     const rm=document.createElement('button'); rm.type='button'; rm.textContent='✕'; rm.onclick=()=>{ icons.splice(i,1); renderAll(); }; ops.appendChild(rm);
-    m.appendChild(ops); d.appendChild(m); box.appendChild(d); });
+    m.appendChild(ops); d.appendChild(m); if (candBox) d.appendChild(candBox); box.appendChild(d); });
   const dl=$('nameList'); if (!dl.dataset.n || +dl.dataset.n!==Object.keys(CHARS).length){ const set=new Set([...Object.keys(CHARS), ...(GW||[]).map(x=>x.n).filter(Boolean)]); dl.innerHTML=[...set].map(n=>`<option value="${esc(n)}">`).join(''); dl.dataset.n=Object.keys(CHARS).length; }
   const nd=icons.filter(x=>!x.name||x.guess==='gwlow').length; $('iconNote').textContent=icons.length ? `鍵マークのアイコン ${icons.length}個`+(nd?`（要確認 ${nd}個）`:'') : '';
 }
