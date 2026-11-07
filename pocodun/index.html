@@ -37,6 +37,9 @@
   .reg{border:0;background:#ffd23f;color:#5a4300;border-radius:99px;padding:5px 9px;font:inherit;font-size:12px;font-weight:900;white-space:nowrap}
   .ops{display:flex;gap:6px;align-items:center;font-size:12px}.ops button{border:0;background:#f3eadf;border-radius:99px;width:30px;height:28px;font:inherit;font-weight:900;color:#8a6a55}
   .note2{font-size:11px;color:#a87400}
+  .status{margin-top:6px;display:flex;flex-direction:column;gap:2px;font-weight:800;font-size:13px}.status .ok{color:#2f7a4f}.status .ng{color:#d0304f}.status .sub{color:var(--sub);font-weight:500}
+  .lk{display:flex;gap:8px;align-items:center;border:2px solid var(--line);border-radius:12px;padding:5px;margin:5px 0}.lk.need{border-color:var(--yelb);background:var(--yel)}.lk img{width:52px;border-radius:8px}.lk .mid{flex:1}
+  .wb{border:2px solid var(--line);background:#fff;border-radius:99px;padding:3px 10px;margin-left:4px;font:inherit;font-weight:900}.wb.on{background:#3fae6a;border-color:#3fae6a;color:#fff}
   textarea.out{width:100%;font-size:13px;line-height:1.5}
   #titleLen{font-size:12px;color:var(--sub)}#titleLen.over{color:#d0304f;font-weight:900}
   .warn{color:#d0304f;font-size:12px;font-weight:800}
@@ -60,8 +63,12 @@
 <header><h1>ポコダン画像加工 <small id="ver"></small></h1><button type="button" id="openSet">⚙ 設定</button></header>
 <main>
   <section class="card">
-    <label class="pick">📷 ボックスのスクショを選ぶ<input type="file" id="shot" accept="image/*" multiple hidden></label>
-    <div class="note" style="margin-top:6px">ゲームで出品に入れたいキャラに鍵（ロック）を付けて、モンスター一覧のスクショを撮ってください。鍵が付いたアイコンだけを並べます。何枚でもまとめて選べます。<br>※ 鍵と「new」は点滅することがあるので、はっきり出ている瞬間に撮ってください</div>
+    <label class="pick">📷 スクショを選ぶ（鍵キャラ＋ラッキー）<input type="file" id="shot" accept="image/*" multiple hidden></label>
+    <div class="note" style="margin-top:6px">次の2枚をいっしょに選んでください（順番はどちらでも大丈夫。アプリが見分けます）。
+      <br>🔒 <b>鍵キャラのスクショ</b>：出品に入れたいキャラに鍵を付けたモンスター一覧
+      <br>🍀 <b>ラッキーのスクショ</b>：素材モンスターで「ラッキー」と検索して、ラッキーポポロンなどの運アップ用モンスターだけを並べた画面（なければ選ばなくてOK。運UPは手で入れます）
+      <br>※ 鍵と「new」は点滅することがあるので、はっきり出ている瞬間に撮ってください</div>
+    <div id="status" class="status" hidden><div id="stKey"></div><div id="stLucky"></div></div>
     <details class="safe"><summary>🔒 読み取りはすべてこのiPhoneの中で行い、写真はどこにも送信していません</summary>
       <div>選んだスクショは、このiPhoneのSafariの中で読み取ります（鍵マークの見分け・虹結晶の数の読み取り）。写真そのものはインターネットに送信も保存もしません。覚えたキャラ名・設定・背景も、このiPhoneの中だけに保存します。</div></details>
   </section>
@@ -78,6 +85,11 @@
     <div class="chips" id="headChips"></div>
     <div class="row"><label>挨拶の絵文字</label><input id="emo" class="grow" placeholder="空＝おまかせ（例：🌼即購入🌹🌻可能）"><button type="button" class="sbtn" id="emoRand">おまかせ</button></div>
     <div class="chips" id="emoChips"></div>
+  </section>
+
+  <section class="card" id="luckyCard" hidden>
+    <h2>🍀 ラッキー（運アップ用モンスター）</h2><div id="lucky"></div><div class="note" id="luckyTotal"></div>
+    <div class="note">ラッキーのスクショが2枚以上のときは、同じモンスターが重ならないように撮ってください（重なると2回数えます）。</div>
   </section>
 
   <section class="card" id="iconHead" hidden>
@@ -174,7 +186,7 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='1';
+const APP_VER='2';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
@@ -215,25 +227,36 @@ const candOf=n=>SET.cand && !nickOf(n) && !CHARS[n]?.no ? (CAND[n]||'') : '';
 let shots=[];   // {img, name}
 let icons=[];   // {canvas, fp, name, guess, inTitle, src(shot index), key}
 let stone={v:'', sure:true, crop:''};
+let lucky=[];   // ラッキーのスクショのアイコン {canvas, fp}
+let LUCK=load('luck',[]); // 覚えた運アップ用モンスター {fp, w:1|7}
+const saveLuck=()=>save('luck',LUCK);
 
 // ---- 画像を読む ----
 $('shot').addEventListener('change', async e=>{ const files=[...e.target.files]; e.target.value=''; if (!files.length) return;
-  $('busy').hidden=false; icons=[]; shots=[]; stone={v:'',sure:true,crop:''};
+  $('busy').hidden=false; icons=[]; shots=[]; lucky=[]; stone={v:'',sure:true,crop:''}; $('unup').dataset.typed='';
   try{
     for (const f of files){ const img=await fileImg(f); shots.push({img}); await readShot(img, shots.length-1); }
   }catch(err){ toast('画像を読めませんでした：'+(err?.message||err)); }
   $('busy').hidden=true;
   if (!icons.length) toast('鍵マークの付いたアイコンが見つかりませんでした。鍵がはっきり出ている瞬間に撮ったスクショで試してください');
-  renderAll(); });
+  fillUnup(); renderAll(); });
 function fileImg(f){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(f), i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('画像')); i.src=u; }); }
 let TPL=null;
 async function lockTpl(){ if (TPL) return TPL; const i=new Image(); i.src='lock.png'; await i.decode(); const c=document.createElement('canvas'); c.width=i.width; c.height=i.height; c.getContext('2d').drawImage(i,0,0); return TPL={g:pdGray(c),w:i.width,h:i.height}; }
 async function readShot(img,si){
   const W=img.width,H=img.height,c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,0,0);
   const d=g.getImageData(0,0,W,H).data, G=pdGrid(d,W,H); if (!G){ toast(`${si+1}枚目：アイコンの並びが見つかりませんでした`); return; }
-  const T=await lockTpl();
+  const T=await lockTpl(), cells=[];
   for (const [a,b] of G.rows) for (const [x0,x1] of G.cols){ const w=x1-x0+1, h=b-a+1, cc=pdCellCanvas(img,x0,a,w,h,100), gg=pdGray(cc), ey=cc.height-58;
-    const r=pdNCC(gg,100,cc.height,T.g,T.w,T.h,64,82,ey-12,ey+12); if (r.s<.6) continue;
+    const r=pdNCC(gg,100,cc.height,T.g,T.w,T.h,64,82,ey-12,ey+12); cells.push({a,b,x0,x1,w,h,lock:r.s>=.6,filled:filled(d,W,x0,a,w,h)}); }
+  // 鍵マークが1つでもあれば「鍵キャラのスクショ」、なければ「ラッキーのスクショ」（運アップ用モンスターを並べた画面）
+  if (!cells.some(c=>c.lock)){ const got=cells.filter(c=>c.filled).map(c=>({canvas:cellImg(img,c,H), fp:pdFP(img,c.x0,c.a,c.w,c.h)}));
+    // ラッキーの画面は、同じポポロンばかりで種類が少ない。種類が多いのは、鍵が点滅で消えた瞬間の鍵キャラのスクショ
+    const kinds=[]; for (const x of got) if (!kinds.some(k=>pdDist(k,x.fp)<3)) kinds.push(x.fp);
+    if (got.length && kinds.length<=6) lucky.push(...got);
+    else toast(`${si+1}枚目：鍵マークが見つかりませんでした。鍵がはっきり出ている瞬間に撮り直してください`);
+    return; }
+  for (const {a,b,x0,w,h,lock} of cells){ if (!lock) continue;
     // アイコン（new の文字が少し上にはみ出すので、上はマスの幅だけ取る）
     const bot=Math.min(H,b+1+Math.round(w*.07)), top=Math.max(a,bot-Math.round(w*1.2)), ic=document.createElement('canvas'); ic.width=w; ic.height=bot-top; ic.getContext('2d').drawImage(img,x0,top,w,ic.height,0,0,w,ic.height); // 下の Lv・星・運の数字が少しはみ出すので、下は少し広めに
     const fp=pdFP(img,x0,a,w,h);
@@ -244,6 +267,22 @@ async function readShot(img,si){
   }
   if (!stone.v) await readStone(img);
 }
+function cellImg(img,c,H){ const bot=Math.min(H,c.b+1+Math.round(c.w*.07)), top=Math.max(c.a,bot-Math.round(c.w*1.2)), ic=document.createElement('canvas'); ic.width=c.w; ic.height=bot-top; ic.getContext('2d').drawImage(img,c.x0,top,c.w,ic.height,0,0,c.w,ic.height); return ic; }
+// マスにアイコンがあるか（空のマスは茶色の地のまま）
+function filled(d,W,x0,a,w,h){ let n=0,m=0; for (let y=Math.round(a+h*.3);y<a+h*.8;y+=2) for (let x=Math.round(x0+w*.2);x<x0+w*.8;x+=2){ m++; const i=(y*W+x)*4,r=d[i],g=d[i+1],b=d[i+2]; if (r>=35&&r<=120&&g>=20&&g<=90&&b<=70&&r>g&&g>=b) n++; } return n/m<.5; }
+// ---- ラッキー（運アップ用モンスター）の数 ----
+function luckGroups(){ const gs=[]; for (const l of lucky){ const g=gs.find(x=>pdDist(x.fp,l.fp)<3); if (g) g.n++; else gs.push({fp:l.fp, canvas:l.canvas, n:1}); }
+  for (const g of gs){ let best=null,bd=1e9; for (const e of LUCK){ const dd=pdDist(e.fp,g.fp); if (dd<bd){bd=dd;best=e;} } g.known=bd<4; g.w=g.known ? best.w : 1; } return gs; }
+const luckTotal=()=>luckGroups().reduce((s,g)=>s+g.n*g.w,0);
+function fillUnup(){ if (!lucky.length || $('unup').dataset.typed) return; const t=luckTotal(); $('unup').value=t>=10 ? Math.floor(t/10)*10 : t; }
+function setLuck(fp,w){ const e=LUCK.find(x=>pdDist(x.fp,fp)<4); if (e) e.w=w; else LUCK.push({fp,w}); saveLuck(); $('unup').dataset.typed=''; fillUnup(); renderAll(); }
+function renderLucky(){ const box=$('lucky'), gs=luckGroups(); $('luckyCard').hidden=!lucky.length; box.innerHTML='';
+  gs.forEach(g=>{ const d=document.createElement('div'); d.className='lk'+(g.known?'':' need'); const im=document.createElement('img'); im.src=g.canvas.toDataURL('image/jpeg',.85); d.appendChild(im);
+    const t=document.createElement('div'); t.className='mid'; t.innerHTML=`<b>${g.n}体</b> × 1体で運気 `;
+    for (const w of [1,7]){ const b=document.createElement('button'); b.type='button'; b.className='wb'+(g.w===w&&g.known?' on':''); b.textContent='+'+w; b.onclick=()=>setLuck(g.fp,w); t.appendChild(b); }
+    if (!g.known) t.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent:'初めて見るモンスターです。ラッキーセブンポポロンなら「+7」、それ以外は「+1」を押してください（次からは覚えます）'}));
+    d.appendChild(t); box.appendChild(d); });
+  const tot=luckTotal(); $('luckyTotal').textContent=lucky.length ? `合計 ${tot}体分 → 運UPに「${tot>=10?Math.floor(tot/10)*10:tot}」を入れました` : ''; }
 function fullFP(c){ const t=document.createElement('canvas'); t.width=t.height=16; t.getContext('2d').drawImage(c,0,0,16,16); return Array.from(t.getContext('2d').getImageData(0,0,16,16).data).filter((_,i)=>i%4!==3); }
 // 虹結晶の数：画面の右上（虹色の石のマークの右）
 async function readStone(img){ try{ const W=img.width, pp=await timeLimit(ppInit(),90000); if (!pp) return;
@@ -280,7 +319,10 @@ function titleText(){ return fill(SET.titleTpl, vals()).replace(/\+運UP(?=\s*$)
 function descText(){ const v=vals(); const parts=[]; for (const b of SET.blocks){ if (!b.on) continue; const t=fill(b.t,v); if (/\{見出し\}/.test(b.t) && !t.trim()) continue; parts.push(t); } return parts.join('\n').replace(/\n{5,}/g,'\n\n\n\n'); }
 
 // ---- 画面：アイコンと名前の一覧 ----
-function renderAll(){ renderIcons(); renderStone(); renderText(); draw(); }
+function renderAll(){ renderIcons(); renderStone(); renderLucky(); renderStatus(); renderText(); draw(); }
+function renderStatus(){ const k=$('stKey'), l=$('stLucky'); const any=shots.length>0; $('status').hidden=!any;
+  k.textContent=icons.length ? `🔒 鍵キャラ：${icons.length}体 ✓` : '🔒 鍵キャラ：見つかりません'; k.className=icons.length?'ok':'ng';
+  l.textContent=lucky.length ? `🍀 ラッキー：${luckTotal()}体分 ✓` : '🍀 ラッキー：スクショなし（運UPは手で入れる）'; l.className=lucky.length?'ok':'sub'; }
 function renderStone(){ $('stoneRow').hidden=!shots.length; if (stone.v && !$('stone').dataset.typed) $('stone').value=stone.v; $('stoneBox').classList.toggle('low',!stone.sure||!$('stone').value); $('stoneCrop').src=stone.crop||''; $('stoneCrop').hidden=!stone.crop; }
 function renderIcons(){ const box=$('icons'); box.innerHTML=''; $('iconHead').hidden=!icons.length;
   icons.forEach((ic,i)=>{ const d=document.createElement('div'); d.className='ic'+(ic.name?'':' need');
@@ -306,8 +348,8 @@ function renderIcons(){ const box=$('icons'); box.innerHTML=''; $('iconHead').hi
 }
 function renderText(){ const t=titleText(); $('titleOut').value=t; $('descOut').value=descText(); const n=[...t].length; $('titleLen').textContent=`${n}/50字`; $('titleLen').classList.toggle('over',n>50);
   const used=HIST.nums.includes($('num').value.trim()); $('numWarn').hidden=!used||!$('num').value.trim(); renderChips(); }
-['num','head','emo','unup','stone'].forEach(id=>$(id).addEventListener('input',()=>{ if (id==='stone') $('stone').dataset.typed=1; if (id==='emo') lastRand=''; renderText(); if (id==='stone'){ renderStone(); draw(); } }));
-document.querySelectorAll('.upb').forEach(b=>b.onclick=()=>{ $('unup').value=b.dataset.v; renderText(); });
+['num','head','emo','unup','stone'].forEach(id=>$(id).addEventListener('input',()=>{ if (id==='unup') $('unup').dataset.typed=1; if (id==='stone') $('stone').dataset.typed=1; if (id==='emo') lastRand=''; renderText(); if (id==='stone'){ renderStone(); draw(); } }));
+document.querySelectorAll('.upb').forEach(b=>b.onclick=()=>{ $('unup').value=b.dataset.v; $('unup').dataset.typed=1; renderText(); });
 $('emoRand').onclick=()=>{ $('emo').value=''; lastRand=''; renderText(); };
 // 前に打った物（見出し・絵文字）：押すと入る、✕で消す
 function renderChips(){ for (const [key,id] of [['heads','head'],['emojis','emo']]){ const box=$(id+'Chips'); box.innerHTML='';
