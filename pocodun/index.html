@@ -272,7 +272,7 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='19';
+const APP_VER='20';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
@@ -400,7 +400,10 @@ function renderLucky(){ const box=$('lucky'), gs=luckGroups(); $('luckyCard').hi
   gs.forEach(g=>{ const d=document.createElement('div'); d.className='lk'+(g.known?'':' need'); const im=document.createElement('img'); im.src=g.canvas.toDataURL('image/jpeg',.85); d.appendChild(im);
     const t=document.createElement('div'); t.className='mid'; t.innerHTML=(g.name?`<div class="lkn">${esc(g.name)}</div>`:'')+`<b>${g.n}体</b>　`;
     for (const w of [1,7,0]){ const b=document.createElement('button'); b.type='button'; b.className='wb'+(g.w===w&&g.known?' on':''); b.textContent=w?'+'+w:'数えない'; b.onclick=()=>setLuck(g.fp,w); t.appendChild(b); }
-    if (!g.known) t.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent:'初めて見るモンスターです。ラッキーセブンポポロンなら「+7」、ラッキーポポロン・ラッキーじじいなどは「+1」、運アップ用でない素材なら「数えない」を押してください（次からは覚えます）'}));
+    // ＋1・＋7 以外の運気のキャラ（たとえば＋11）は、数を打って覚えさせる
+    { const other=g.known && ![1,7,0].includes(g.w), b=document.createElement('button'); b.type='button'; b.className='wb'+(other?' on':''); b.textContent=other?'+'+g.w:'ほかの数';
+      b.onclick=()=>{ const v=prompt('このモンスター1体の運気（例：11）',other?g.w:''); if (v==null) return; const n=parseInt(String(v).replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)),10); if (n>=0 && n<=999) setLuck(g.fp,n); }; t.appendChild(b); }
+    if (!g.known) t.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent:'初めて見るモンスターです。ラッキーセブンポポロンなら「+7」、ラッキーポポロン・ラッキーじじいなどは「+1」、＋1・＋7以外なら「ほかの数」、運アップ用でない素材なら「数えない」を押してください（次からは覚えます）'}));
     d.appendChild(t); box.appendChild(d); });
   const tot=luckTotal(); $('luckyTotal').textContent=lucky.length ? `合計 ${tot}体分 → 運UPに「${tot>=10?Math.floor(tot/10)*10:tot}」を入れました` : ''; }
 function fullFP(c){ const t=document.createElement('canvas'); t.width=t.height=16; t.getContext('2d').drawImage(c,0,0,16,16); return Array.from(t.getContext('2d').getImageData(0,0,16,16).data).filter((_,i)=>i%4!==3); }
