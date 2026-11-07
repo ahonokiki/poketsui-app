@@ -26,7 +26,7 @@
   .chip button{border:0;background:none;font:inherit;font-size:12px;padding:4px 8px;color:var(--ink)}.chip .x{color:#b0846a;padding:4px 6px 4px 0}
   .upb,.sbtn{border:2px solid var(--line);background:#fff;border-radius:99px;padding:5px 10px;font:inherit;font-weight:800}
   #stoneBox{display:flex;align-items:center;gap:8px;flex-wrap:wrap}#stoneBox.low{background:var(--yel);border-radius:10px;padding:4px}#stoneBox.low input{border-color:var(--yelb)}
-  #stoneCrop{height:34px;border-radius:6px}
+  .crop{display:inline-flex;flex-direction:column;align-items:center;gap:1px;font-size:10px;color:var(--sub);pointer-events:none}.crop img{height:30px;border-radius:4px;opacity:.95}
   .ic{display:flex;gap:8px;align-items:flex-start;border:2px solid var(--line);border-radius:14px;padding:6px;margin:6px 0;background:#fff}
   .ic.need{border-color:var(--yelb);background:var(--yel)}
   .ic img{width:64px;height:auto;border-radius:8px;flex:none}
@@ -79,7 +79,7 @@
   <section class="card">
     <h2>出品ごとに入れる所</h2>
     <div class="row"><label>管理番号</label><input id="num" inputmode="numeric" class="grow" placeholder="例：9431"><span id="numWarn" class="warn" hidden>前に使った番号です</span></div>
-    <div class="row" id="stoneRow"><label>虹結晶</label><div id="stoneBox" class="grow"><input id="stone" inputmode="numeric" class="grow" style="width:100%" placeholder="鍵キャラのスクショから自動で入ります"></div></div>
+    <div class="row" id="stoneRow"><label>虹結晶</label><div id="stoneBox" class="grow"><input id="stone" inputmode="numeric" class="grow" style="flex:1" placeholder="鍵キャラのスクショから自動で入ります"><span id="stoneCropBox" class="crop" hidden><small>元の画像</small><img id="stoneCrop" alt="スクショの虹結晶の数"></span></div></div>
     <div class="row"><label>運UP</label><input id="unup" inputmode="numeric" class="grow" placeholder="ラッキーのスクショを入れると自動で入ります"></div>
     <div class="row"><label>見出し</label><input id="head" class="grow" placeholder="なし（空なら入れない）"></div>
     <div class="chips" id="headChips"></div>
@@ -180,6 +180,12 @@ function pdFullIcon(d,W,x0,a,w,h){ const sat=(x,y)=>{ const i=(y*W+x)*4,r=d[i],g
 // 見分け用（小さい・圧縮された画像でもぶれにくいよう、一度ぼかして 8×8 に）
 function pdFP2(img,x0,y0,w,h){ const t=document.createElement('canvas'); t.width=t.height=32; const g=t.getContext('2d'); g.imageSmoothingQuality='high'; const top=y0+h-w*.98; g.drawImage(img,x0+w*.1,top+w*.15,w*.6,w*.62,0,0,32,32); // 右側はスクロールの棒がかかることがあるので使わない
   const c=document.createElement('canvas'); c.width=c.height=8; const g2=c.getContext('2d'); g2.imageSmoothingQuality='high'; g2.drawImage(t,0,0,8,8); return Array.from(g2.getImageData(0,0,8,8).data).filter((_,i)=>i%4!==3); }
+// 顔の上にかかった文字（「編成中」の明るい緑）の所は見比べに使わない：8×8 のマスごとに、かかっていれば印を付ける
+function pdMask2(img,x0,y0,w,h){ const t=document.createElement('canvas'); t.width=t.height=32; const g=t.getContext('2d',{willReadFrequently:true}); const top=y0+h-w*.98; g.drawImage(img,x0+w*.1,top+w*.15,w*.6,w*.62,0,0,32,32);
+  const d=g.getImageData(0,0,32,32).data, m=new Array(64).fill(false);
+  for (let by=0;by<8;by++) for (let bx=0;bx<8;bx++){ let n=0; for (let y=by*4;y<by*4+4;y++) for (let x=bx*4;x<bx*4+4;x++){ const i=(y*32+x)*4,r=d[i],gg=d[i+1],b=d[i+2]; if (gg>170&&r<150&&b<150&&gg-r>60&&gg-b>40) n++; } m[by*8+bx]=n>=3; }
+  return m; }
+function pdDistM(a,b,m){ let s=0,n=0; for (let k=0;k<64;k++){ if (m&&m[k]) continue; for (let c=0;c<3;c++){ s+=Math.abs(a[k*3+c]-b[k*3+c]); n++; } } return n ? s/n : 999; }
 
 const timeLimit=(p,ms)=>Promise.race([p,new Promise((_,ng)=>setTimeout(()=>ng(new Error('timeout')),ms))]);
 let ppReady=null, ppOff=false;
@@ -204,7 +210,7 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='4';
+const APP_VER='5';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
@@ -262,7 +268,8 @@ function fileImg(f){ return new Promise((res,rej)=>{ const u=URL.createObjectURL
 // GameWith のキャラ一覧（正式名・二つ名を外した名前・アイコンの見分け用の数字）。初めて読むときに読み込む
 let GW=null;
 async function loadGW(){ if (GW) return GW; try{ const j=await (await fetch('gw.json')).json(); GW=j.map(x=>({n:x.n, s:x.s, f:x.f ? Array.from(atob(x.f),c=>c.charCodeAt(0)) : null})).filter(x=>x.f); }catch(e){ GW=[]; } return GW; }
-function gwCands(fp2){ if (!GW?.length) return []; const ds=GW.map(x=>({n:x.n,s:x.s,d:pdDist(x.f,fp2)})).sort((a,b)=>a.d-b.d); const out=[]; for (const x of ds){ if (!out.some(o=>o.s===x.s)) out.push(x); if (out.length>=3) break; } return out; }
+const sameFamily=(a,b)=>{ const k=s=>s.replace(/\(.*?\)|（.*?）|＜.*?＞/g,'').replace(/^.*?(?=[ァ-ヶー・]{2,}$)/,''); return k(a)&&k(a)===k(b); };
+function gwCands(fp2,m){ if (!GW?.length) return []; const ds=GW.map(x=>({n:x.n,s:x.s,d:pdDistM(x.f,fp2,m)})).sort((a,b)=>a.d-b.d); const out=[]; for (const x of ds){ if (!out.some(o=>o.s===x.s)) out.push(x); if (out.length>=3) break; } return out; }
 let TPL=null;
 async function lockTpl(){ if (TPL) return TPL; const i=new Image(); i.src='lock.png'; await i.decode(); const c=document.createElement('canvas'); c.width=i.width; c.height=i.height; c.getContext('2d').drawImage(i,0,0); return TPL={g:pdGray(c),w:i.width,h:i.height}; }
 async function readShot(img,si){
@@ -287,9 +294,9 @@ async function readShot(img,si){
     const fp=pdFP(img,x0,a,w,h);
     // 同じスクショどうしを何枚か入れたとき（重なった所）は、ほとんど同じ絵なら1つにする
     if (icons.some(o=>o.src!==si && pdDist(o.fp,fp)<1.2 && pdDist(o.full,fullFP(ic))<3)) continue;
-    let name=guessName(fp)||'', guess=name?'mem':''; const cands=gwCands(pdFP2(img,x0,a,w,h));
-    // 覚えた名前がなければ、GameWith のアイコンとはっきり似ているときだけ、その名前（二つ名を外した名前）を入れる
-    if (!name && cands[0] && cands[0].d<=26 && (!cands[1] || cands[1].d-cands[0].d>=8)){ name=cands[0].s; guess='gw'; }
+    let name=guessName(fp)||'', guess=name?'mem':''; const cands=gwCands(pdFP2(img,x0,a,w,h),pdMask2(img,x0,a,w,h));
+    // 覚えた名前がなければ、GameWith のいちばん似ているキャラの名前（二つ名を外した名前）を必ず入れる。はっきりしないときは「要確認」
+    if (!name && cands[0]){ name=cands[0].s; const sure=cands[0].d<=26 && (!cands[1] || cands[1].d-cands[0].d>=5 || sameFamily(cands[0].s,cands[1].s)); guess=sure?'gw':'gwlow'; }
     icons.push({canvas:ic, fp, full:fullFP(ic), name, guess, cands, inTitle:icons.length<4, src:si, key:Math.random()});
   }
   if (!stone.v) await readStone(img);
@@ -350,16 +357,16 @@ function renderAll(){ renderIcons(); renderStone(); renderLucky(); renderStatus(
 function renderStatus(){ const k=$('stKey'), l=$('stLucky'); const any=shots.length>0; $('status').hidden=!any;
   k.textContent=icons.length ? `🔒 鍵キャラ：${icons.length}体 ✓` : '🔒 鍵キャラ：見つかりません'; k.className=icons.length?'ok':'ng';
   l.textContent=lucky.length ? `🍀 ラッキー：${luckTotal()}体分 ✓` : '🍀 ラッキー：スクショなし（運UPは手で入れる）'; l.className=lucky.length?'ok':'sub'; }
-function renderStone(){ if (!$('stone').dataset.typed) $('stone').value=stone.v||''; $('stoneBox').classList.toggle('low',shots.length>0 && (!stone.sure||!$('stone').value)); }
+function renderStone(){ if (!$('stone').dataset.typed) $('stone').value=stone.v||''; $('stoneBox').classList.toggle('low',shots.length>0 && (!stone.sure||!$('stone').value)); $('stoneCrop').src=stone.crop||''; $('stoneCropBox').hidden=!stone.crop; }
 function renderIcons(){ const box=$('icons'); box.innerHTML=''; $('iconHead').hidden=!icons.length;
-  icons.forEach((ic,i)=>{ const d=document.createElement('div'); d.className='ic'+(ic.name?'':' need');
+  icons.forEach((ic,i)=>{ const d=document.createElement('div'); d.className='ic'+(ic.name&&ic.guess!=='gwlow'?'':' need');
     const im=document.createElement('img'); im.src=ic.canvas.toDataURL('image/jpeg',.9); d.appendChild(im);
     const m=document.createElement('div'); m.className='mid';
     const inp=document.createElement('input'); inp.type='text'; inp.placeholder='正式名を入れる（1回入れると覚えます）'; inp.value=ic.name; inp.setAttribute('list','nameList');
     inp.onchange=()=>{ ic.name=inp.value.trim(); ic.guess=false; if (ic.name) rememberFP(ic.name,ic.fp); renderAll(); };
     m.appendChild(inp);
-    if (ic.guess) m.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent:ic.guess==='gw' ? 'GameWith のアイコンとよく似ていたので入れました（ちがうときは直すか、下の候補を押してください）' : '前に覚えた絵から入れました（ちがうときは直してください）'}));
-    if ((!ic.name || ic.guess==='gw') && ic.cands?.length){ const cs=document.createElement('div'); cs.className='cands'; cs.append(Object.assign(document.createElement('span'),{textContent:'候補：'}));
+    if (ic.guess) m.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent:ic.guess==='gw' ? 'GameWith のアイコンとよく似ていたので入れました（ちがうときは直すか、下の候補を押してください）' : ic.guess==='gwlow' ? '要確認：いちばん似ているキャラを入れました。ちがうときは下の候補を押すか、直してください' : '前に覚えた絵から入れました（ちがうときは直してください）'}));
+    if ((!ic.name || ic.guess==='gw' || ic.guess==='gwlow') && ic.cands?.length){ const cs=document.createElement('div'); cs.className='cands'; cs.append(Object.assign(document.createElement('span'),{textContent:'候補：'}));
       ic.cands.forEach(c=>{ const b=document.createElement('button'); b.type='button'; b.textContent=c.s; b.title=c.n; b.onclick=()=>{ ic.name=c.s; ic.guess=''; rememberFP(ic.name,ic.fp); renderAll(); }; cs.appendChild(b); }); m.appendChild(cs); }
     if (ic.name){ const nk=document.createElement('div'); nk.className='nick'; const reg=nickOf(ic.name), cand=candOf(ic.name);
       nk.innerHTML=`<span>呼称：</span>`; const ni=document.createElement('input'); ni.type='text'; ni.className=reg?'':'cand'; ni.value=reg||cand; ni.placeholder='（なし＝正式名）';
@@ -373,7 +380,7 @@ function renderIcons(){ const box=$('icons'); box.innerHTML=''; $('iconHead').hi
     const rm=document.createElement('button'); rm.type='button'; rm.textContent='✕'; rm.onclick=()=>{ icons.splice(i,1); renderAll(); }; ops.appendChild(rm);
     m.appendChild(ops); d.appendChild(m); box.appendChild(d); });
   const dl=$('nameList'); if (!dl.dataset.n || +dl.dataset.n!==Object.keys(CHARS).length){ const set=new Set([...Object.keys(CHARS), ...(GW||[]).map(x=>x.s)]); dl.innerHTML=[...set].map(n=>`<option value="${esc(n)}">`).join(''); dl.dataset.n=Object.keys(CHARS).length; }
-  const nd=icons.filter(x=>!x.name).length; $('iconNote').textContent=icons.length ? `鍵マークのアイコン ${icons.length}個`+(nd?`（名前がまだ ${nd}個）`:'') : '';
+  const nd=icons.filter(x=>!x.name||x.guess==='gwlow').length; $('iconNote').textContent=icons.length ? `鍵マークのアイコン ${icons.length}個`+(nd?`（要確認 ${nd}個）`:'') : '';
 }
 function renderText(){ const t=titleText(); $('titleOut').value=t; $('descOut').value=descText(); const n=[...t].length; $('titleLen').textContent=`${n}/50字`; $('titleLen').classList.toggle('over',n>50);
   const used=HIST.nums.includes($('num').value.trim()); $('numWarn').hidden=!used||!$('num').value.trim(); renderChips(); }
