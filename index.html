@@ -381,7 +381,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='71'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='72'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -711,7 +711,8 @@ async function analyzeShot(img){
   const pendN=pendingList().length; let ppPre;
   if (lay && !pendN){ ppPre=null; try{ ppPre=await ppRead(img); }catch(e){}
     if (ppPre?.name){ const W=img.width, r={...r0, name:ppPre.name, pp:true, ppLow:ppPre.low||'', sig:[]};
-      try{ r.sig=numSig((await ppNums(img,lay)).join('\n')); }catch(e){} // 前の記録（ショートカットで読んだ名前）と組み合わせるときの手がかり if (ppPre.crop) r.nameCrop=ppPre.crop;
+      if (ppPre.crop) r.nameCrop=ppPre.crop; // 見比べ用：元の画像の名前の切り抜き
+      try{ r.sig=numSig((await ppNums(img,lay)).join('\n')); }catch(e){} // 前の記録（ショートカットで読んだ名前）と組み合わせるときの手がかり
       if (ppPre.owned!=null && ppPre.ownBox){ const b=ppPre.ownBox; r.owned=ppPre.owned; r.ownedSure=true;
         r.squareBottom=b.y+b.h+W*.015; r.ownedBottom=r.squareBottom; r.cardBottom=r.squareBottom; // 所持数の行の少し下まで（今までの読み取りと同じ）
         try{ const y0=b.y-W*.01, y1=b.y+b.h+W*.01, x0=W*.33, x1=W*.67, cc=document.createElement('canvas'); cc.width=x1-x0; cc.height=y1-y0; cc.getContext('2d').drawImage(img,x0,y0,x1-x0,y1-y0,0,0,x1-x0,y1-y0); r.snap=cc.toDataURL(); }catch(e){} }
