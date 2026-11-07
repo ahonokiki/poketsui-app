@@ -61,6 +61,7 @@
   .bg{aspect-ratio:1;border-radius:12px;border:3px solid var(--line);background:#fff center/cover;font-size:22px;color:#c9b39b}.bg.on{border-color:#e8a530}
   .lr{display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px dashed var(--line);font-size:13px}.lr span{flex:1;color:var(--sub);font-size:12px}.lr button{border:0;background:#f3eadf;border-radius:8px;padding:3px 8px;font:inherit;font-size:12px}
   #big{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:25;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;font-weight:800}#big img{max-width:92%;max-height:80%}
+  #ck{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:30;display:flex;align-items:flex-end;justify-content:center}#ck[hidden]{display:none}.ckIn{background:#fff;border-radius:18px 18px 0 0;padding:12px;width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px;font-weight:800}#ckText{width:100%;font:inherit;font-weight:500;font-size:14px;border:2px solid var(--line);border-radius:12px;padding:8px}.ckBtns{display:flex;gap:8px}.ckBtns button{flex:1;border:0;border-radius:14px;padding:12px;font:inherit;font-weight:900;background:#f3eadf;color:#8a6a55}.ckBtns button.main{background:#5fae6e;color:#fff}
 </style></head>
 <body>
 <header><h1>ポコダン画像加工 <small id="ver"></small></h1><a href="manual.html" id="openMan">📖 使い方</a><button type="button" id="openSet">⚙ 設定</button></header>
@@ -108,6 +109,7 @@
 <div class="bar"><button type="button" id="copyTitle">題名コピー</button><button type="button" id="copyDesc">説明文コピー</button><button type="button" class="main" id="save">🖼 画像を保存</button></div>
 
 <div id="settings" hidden><header><h1>設定</h1><button type="button" id="closeSet">閉じる</button></header><main>
+  <section class="card"><h2>コピー</h2><div class="row"><label><input type="checkbox" data-set="autoCopy"> 「題名コピー」「説明文コピー」を押したらすぐコピーする</label></div><div class="note">オフにすると、押したときは文字を表示するだけで、確かめてから「コピー」を押します。</div></section>
   <section class="card"><h2>キャラ名の書き方</h2>
     <div class="row"><label>題名</label><select data-set="titleName"><option value="nick">呼称（なければ正式名）</option><option value="name">正式名</option></select></div>
     <div class="row"><label>説明文</label><select data-set="descName"><option value="name">正式名</option><option value="nick">呼称（なければ正式名）</option></select></div>
@@ -132,6 +134,7 @@
 <div id="busy" hidden>読み取り中…</div>
 <div id="toast" hidden></div>
 <div id="big" hidden><img id="bigImg" alt="出品画像"><div>画像を長押しして「写真に保存」</div></div>
+<div id="ck" hidden><div class="ckIn"><div id="ckTitle"></div><textarea id="ckText" rows="12"></textarea><div class="ckBtns"><button type="button" id="ckClose">閉じる</button><button type="button" id="ckCopy" class="main">コピー</button></div></div></div>
 <script>
 // ポコダン：ボックス画面から、アイコンのマスと鍵マークを見つける（画像は canvas の ImageData）
 function pdGrid(d,W,H){
@@ -269,7 +272,7 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='15';
+const APP_VER='16';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
@@ -292,7 +295,7 @@ const BLOCKS0=[
   {label:'お渡し方法', on:true, t:`${LINE}\n引き継ぎコードにてお譲りいたします。\n（iOS、Androidどちらでも使用できます。）\n{番号}.石{石}\n${LINE}`},
   {label:'最後の挨拶文', on:true, t:`\n※ 記載以外の情報は特定防止の為、お見せできません。また譲渡後のアカウント凍結等は自己責任になります。ご了承の上ご購入ください。\n\n⚠️質問後の無返信、既読無視、運営レビューのお客様とはお取引いたしかねます。ご了承ください。\n\n${LINE}`},
 ];
-const SET0={titleName:'nick', descName:'name', cand:true, times:false, autoOrder:true, autoBg:'pearl', arrow:true, cols:'auto', titleTpl:'{番号}.石{石}　{題名キャラ}+運UP{運UP}{↑}', blocks:BLOCKS0};
+const SET0={titleName:'nick', descName:'name', cand:true, times:false, autoOrder:true, autoCopy:true, autoBg:'pearl', arrow:true, cols:'auto', titleTpl:'{番号}.石{石}　{題名キャラ}+運UP{運UP}{↑}', blocks:BLOCKS0};
 let SET={...SET0, ...load('set',{})}; if (!Array.isArray(SET.blocks)) SET.blocks=BLOCKS0;
 const saveSet=()=>save('set',SET);
 
@@ -467,8 +470,11 @@ function remember(){ const h=$('head').value.trim(), e=$('emo').value.trim(), n=
 async function copy(t,what){ try{ await navigator.clipboard.writeText(t); toast(what+'をコピーしました'); }catch(e){ const ta=$(what==='題名'?'titleOut':'descOut'); ta.focus(); ta.select(); try{ document.execCommand('copy'); toast(what+'をコピーしました'); }catch(_){ toast('コピーできませんでした。長押しでコピーしてください'); } } }
 function checkBefore(){ const miss=[]; if (!$('num').value.trim()) miss.push('管理番号が空です'); if (!$('stone').value.trim()) miss.push('虹結晶の数が空です'); if (icons.some(x=>!x.name)) miss.push('名前がまだのアイコンがあります');
   return !miss.length || confirm(miss.join('\n')+'\n\nこのままコピーしますか？'); }
-$('copyTitle').onclick=()=>{ if (!checkBefore()) return; remember(); copy(titleText(),'題名'); };
-$('copyDesc').onclick=()=>{ if (!checkBefore()) return; remember(); copy(descText(),'説明文'); };
+// 設定「押したらすぐコピーする」がオフのときは、文字を見せて、確かめてから「コピー」を押す
+function copyOrShow(t,what){ if (SET.autoCopy){ copy(t,what); return; } $('ckTitle').textContent=what+'：確かめてから「コピー」を押してください'; $('ckText').value=t; $('ck').hidden=false; $('ckCopy').onclick=()=>{ copy($('ckText').value,what); $('ck').hidden=true; }; }
+$('ckClose').onclick=()=>{ $('ck').hidden=true; };
+$('copyTitle').onclick=()=>{ if (!checkBefore()) return; remember(); copyOrShow(titleText(),'題名'); };
+$('copyDesc').onclick=()=>{ if (!checkBefore()) return; remember(); copyOrShow(descText(),'説明文'); };
 
 // ---- 出品画像 ----
 const S=1080, cv=$('cv'), ctx=cv.getContext('2d'); cv.width=cv.height=S;
