@@ -66,7 +66,7 @@
     <label class="pick">📷 スクショを選ぶ（鍵キャラ＋ラッキー）<input type="file" id="shot" accept="image/*" multiple hidden></label>
     <div class="note" style="margin-top:6px">次の2枚をいっしょに選んでください（順番はどちらでも大丈夫。アプリが見分けます）。
       <br>🔒 <b>鍵キャラのスクショ</b>：出品に入れたいキャラに鍵を付けたモンスター一覧
-      <br>🍀 <b>ラッキーのスクショ</b>：素材モンスターで「ラッキー」と検索して、ラッキーポポロンなどの運アップ用モンスターだけを並べた画面（なければ選ばなくてOK。運UPは手で入れます）
+      <br>🍀 <b>ラッキーのスクショ</b>：モンスターハウスの「素材モンスター」で、ラッキーポポロンなどの運アップ用モンスターが並んだ画面（「ラッキー」で検索するとラッキーだけになります。なければ選ばなくてOK。運UPは手で入れます）
       <br>※ 鍵と「new」は点滅することがあるので、はっきり出ている瞬間に撮ってください</div>
     <div id="status" class="status" hidden><div id="stKey"></div><div id="stLucky"></div></div>
     <details class="safe"><summary>🔒 読み取りはすべてこのiPhoneの中で行い、写真はどこにも送信していません</summary>
@@ -89,7 +89,7 @@
 
   <section class="card" id="luckyCard" hidden>
     <h2>🍀 ラッキー（運アップ用モンスター）</h2><div id="lucky"></div><div class="note" id="luckyTotal"></div>
-    <div class="note">ラッキーのスクショが2枚以上のときは、同じモンスターが重ならないように撮ってください（重なると2回数えます）。</div>
+    <div class="note">上下が切れたアイコンは数えません。ラッキーのスクショが2枚以上のときは、同じモンスターが重ならないように撮ってください（重なると2回数えます）。</div>
   </section>
 
   <section class="card" id="iconHead" hidden>
@@ -162,6 +162,24 @@ function pdNCC(G,GW,GH,T,TW,TH,xs,xe,ys,ye){ let tm=0; for (const v of T) tm+=v;
 function pdFP(img,x0,y0,w,h){ const c=document.createElement('canvas'); c.width=12; c.height=12; const g=c.getContext('2d'); g.imageSmoothingQuality='high';
   const top=y0+h-w*.98; g.drawImage(img,x0+w*.1,top+w*.18,w*.58,w*.5,0,0,12,12); return Array.from(g.getImageData(0,0,12,12).data).filter((_,i)=>i%4!==3); }
 function pdDist(a,b){ let s=0; for (let i=0;i<a.length;i++) s+=Math.abs(a[i]-b[i]); return s/a.length; }
+// 行を、見つかった行から上下に同じ間隔でのばす（行の間がせまい画面でも全部の行を取る）
+function pdAllRows(G,H,d,W){ const rs=G.rows; if (!rs.length) return rs; const ds=rs.slice(1).map((r,i)=>r[0]-rs[i][0]).filter(d=>d>G.pitch*.9&&d<G.pitch*1.4).sort((a,b)=>a-b);
+  const rp=ds.length ? ds[ds.length>>1] : G.pitch*1.1, h=Math.round(G.cw*1.03), out=[];
+  for (let a=rs[0][0]; a>=0; a-=rp) out.unshift([Math.round(a),Math.round(a)+h-1]);
+  for (let a=rs[0][0]+rp; a+h<=H; a+=rp) out.push([Math.round(a),Math.round(a)+h-1]);
+  // マスの並ぶ板の中だけ（列の間のすきまが茶色）。上の見出しなどの所は行にしない
+  const brown=(x,y)=>{const i=(y*W+x)*4,r=d[i],g=d[i+1],b=d[i+2]; return r>=35&&r<=120&&g>=20&&g<=90&&b<=70&&r>g&&g>=b; };
+  const gx=Math.round((G.cols[0][1]+G.cols[1][0])/2);
+  const ok=out.map(([a,b])=>{ if (a<0||b>=H) return false; if (!d) return true; let n=0,m=0; for (let y=a;y<=b;y+=2){ m++; if (brown(gx,y)||brown(gx-1,y)||brown(gx+1,y)) n++; } return n/m>.5; });
+  // つながった行のかたまりのうち、いちばん長いものだけ（離れた所の行はまちがい）
+  let best=[0,-1],st=-1; ok.forEach((v,i)=>{ if (v&&st<0) st=i; if ((!v||i===ok.length-1)&&st>=0){ const e=v?i:i-1; if (e-st>best[1]-best[0]) best=[st,e]; st=-1; } });
+  return out.slice(best[0],best[1]+1); }
+// マスのアイコンが全部見えているか：色のついた枠の左右のふちが、上から下までつながっている
+function pdFullIcon(d,W,x0,a,w,h){ const sat=(x,y)=>{ const i=(y*W+x)*4,r=d[i],g=d[i+1],b=d[i+2], mx=Math.max(r,g,b), mn=Math.min(r,g,b); return mx>110 && (mx-mn>70 || mx>200); };
+  let ok=0,m=0; for (let y=Math.round(a+h*.18);y<a+h*.82;y+=2){ m++; let L=false,R=false; for (let dx=1;dx<=Math.max(3,w*.05);dx++){ if (sat(x0+dx,y)) L=true; if (sat(x0+w-1-dx,y)) R=true; } if (L) ok++; } return ok/m>.75; } // 右のふちはスクロールの棒で隠れることがあるので、左のふちで見る
+// 見分け用（小さい・圧縮された画像でもぶれにくいよう、一度ぼかして 8×8 に）
+function pdFP2(img,x0,y0,w,h){ const t=document.createElement('canvas'); t.width=t.height=32; const g=t.getContext('2d'); g.imageSmoothingQuality='high'; const top=y0+h-w*.98; g.drawImage(img,x0+w*.1,top+w*.15,w*.6,w*.62,0,0,32,32); // 右側はスクロールの棒がかかることがあるので使わない
+  const c=document.createElement('canvas'); c.width=c.height=8; const g2=c.getContext('2d'); g2.imageSmoothingQuality='high'; g2.drawImage(t,0,0,8,8); return Array.from(g2.getImageData(0,0,8,8).data).filter((_,i)=>i%4!==3); }
 
 const timeLimit=(p,ms)=>Promise.race([p,new Promise((_,ng)=>setTimeout(()=>ng(new Error('timeout')),ms))]);
 let ppReady=null, ppOff=false;
@@ -186,7 +204,7 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='2';
+const APP_VER='3';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
@@ -238,7 +256,7 @@ $('shot').addEventListener('change', async e=>{ const files=[...e.target.files];
     for (const f of files){ const img=await fileImg(f); shots.push({img}); await readShot(img, shots.length-1); }
   }catch(err){ toast('画像を読めませんでした：'+(err?.message||err)); }
   $('busy').hidden=true;
-  if (!icons.length) toast('鍵マークの付いたアイコンが見つかりませんでした。鍵がはっきり出ている瞬間に撮ったスクショで試してください');
+  if (!icons.length && !lucky.length) toast('鍵マークの付いたアイコンが見つかりませんでした。鍵がはっきり出ている瞬間に撮ったスクショで試してください');
   fillUnup(); renderAll(); });
 function fileImg(f){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(f), i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('画像')); i.src=u; }); }
 let TPL=null;
@@ -247,13 +265,16 @@ async function readShot(img,si){
   const W=img.width,H=img.height,c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,0,0);
   const d=g.getImageData(0,0,W,H).data, G=pdGrid(d,W,H); if (!G){ toast(`${si+1}枚目：アイコンの並びが見つかりませんでした`); return; }
   const T=await lockTpl(), cells=[];
-  for (const [a,b] of G.rows) for (const [x0,x1] of G.cols){ const w=x1-x0+1, h=b-a+1, cc=pdCellCanvas(img,x0,a,w,h,100), gg=pdGray(cc), ey=cc.height-58;
-    const r=pdNCC(gg,100,cc.height,T.g,T.w,T.h,64,82,ey-12,ey+12); cells.push({a,b,x0,x1,w,h,lock:r.s>=.6,filled:filled(d,W,x0,a,w,h)}); }
+  const RS=pdAllRows(G,H,d,W); for (const [ri,[a,b]] of RS.entries()) for (const [x0,x1] of G.cols){ if (!pdFullIcon(d,W,x0,a,x1-x0+1,b-a+1)) continue; const w=x1-x0+1, h=b-a+1, cc=pdCellCanvas(img,x0,a,w,h,100), gg=pdGray(cc), ey=cc.height-58;
+    const r=pdNCC(gg,100,cc.height,T.g,T.w,T.h,64,82,ey-12,ey+12); cells.push({ri,a,b,x0,x1,w,h,lock:r.s>=.6,filled:filled(d,W,x0,a,w,h)}); }
+  { // アイコンのある行がつながっている所だけ（離れた所の1マスは、上の見出しなどのまちがい）
+    const has=[...new Set(cells.map(c=>c.ri))].sort((x,y)=>x-y); let best=[0,-1],st=0; for (let i=1;i<=has.length;i++){ if (i===has.length||has[i]!==has[i-1]+1){ if (i-1-st>best[1]-best[0]) best=[st,i-1]; st=i; } }
+    const keep=new Set(has.slice(best[0],best[1]+1)); for (let i=cells.length-1;i>=0;i--) if (!keep.has(cells[i].ri)) cells.splice(i,1); }
   // 鍵マークが1つでもあれば「鍵キャラのスクショ」、なければ「ラッキーのスクショ」（運アップ用モンスターを並べた画面）
-  if (!cells.some(c=>c.lock)){ const got=cells.filter(c=>c.filled).map(c=>({canvas:cellImg(img,c,H), fp:pdFP(img,c.x0,c.a,c.w,c.h)}));
+  if (!cells.some(c=>c.lock)){ const got=cells.filter(c=>c.filled).map(c=>({canvas:cellImg(img,c,H), fp:pdFP2(img,c.x0,c.a,c.w,c.h)}));
     // ラッキーの画面は、同じポポロンばかりで種類が少ない。種類が多いのは、鍵が点滅で消えた瞬間の鍵キャラのスクショ
-    const kinds=[]; for (const x of got) if (!kinds.some(k=>pdDist(k,x.fp)<3)) kinds.push(x.fp);
-    if (got.length && kinds.length<=6) lucky.push(...got);
+    const kinds=[]; for (const x of got) if (!kinds.some(k=>pdDist(k,x.fp)<30)) kinds.push(x.fp);
+    if (got.length && (kinds.length<=10 || kinds.length<=got.length*.5)) lucky.push(...got);
     else toast(`${si+1}枚目：鍵マークが見つかりませんでした。鍵がはっきり出ている瞬間に撮り直してください`);
     return; }
   for (const {a,b,x0,w,h,lock} of cells){ if (!lock) continue;
@@ -271,16 +292,16 @@ function cellImg(img,c,H){ const bot=Math.min(H,c.b+1+Math.round(c.w*.07)), top=
 // マスにアイコンがあるか（空のマスは茶色の地のまま）
 function filled(d,W,x0,a,w,h){ let n=0,m=0; for (let y=Math.round(a+h*.3);y<a+h*.8;y+=2) for (let x=Math.round(x0+w*.2);x<x0+w*.8;x+=2){ m++; const i=(y*W+x)*4,r=d[i],g=d[i+1],b=d[i+2]; if (r>=35&&r<=120&&g>=20&&g<=90&&b<=70&&r>g&&g>=b) n++; } return n/m<.5; }
 // ---- ラッキー（運アップ用モンスター）の数 ----
-function luckGroups(){ const gs=[]; for (const l of lucky){ const g=gs.find(x=>pdDist(x.fp,l.fp)<3); if (g) g.n++; else gs.push({fp:l.fp, canvas:l.canvas, n:1}); }
-  for (const g of gs){ let best=null,bd=1e9; for (const e of LUCK){ const dd=pdDist(e.fp,g.fp); if (dd<bd){bd=dd;best=e;} } g.known=bd<4; g.w=g.known ? best.w : 1; } return gs; }
+function luckGroups(){ const gs=[]; for (const l of lucky){ const g=gs.find(x=>pdDist(x.fp,l.fp)<30); if (g) g.n++; else gs.push({fp:l.fp, canvas:l.canvas, n:1}); }
+  for (const g of gs){ let best=null,bd=1e9; for (const e of LUCK){ const dd=pdDist(e.fp,g.fp); if (dd<bd){bd=dd;best=e;} } g.known=bd<30; g.w=g.known ? best.w : 1; } return gs; }
 const luckTotal=()=>luckGroups().reduce((s,g)=>s+g.n*g.w,0);
 function fillUnup(){ if (!lucky.length || $('unup').dataset.typed) return; const t=luckTotal(); $('unup').value=t>=10 ? Math.floor(t/10)*10 : t; }
-function setLuck(fp,w){ const e=LUCK.find(x=>pdDist(x.fp,fp)<4); if (e) e.w=w; else LUCK.push({fp,w}); saveLuck(); $('unup').dataset.typed=''; fillUnup(); renderAll(); }
+function setLuck(fp,w){ const e=LUCK.find(x=>pdDist(x.fp,fp)<30); if (e) e.w=w; else LUCK.push({fp,w}); saveLuck(); $('unup').dataset.typed=''; fillUnup(); renderAll(); }
 function renderLucky(){ const box=$('lucky'), gs=luckGroups(); $('luckyCard').hidden=!lucky.length; box.innerHTML='';
   gs.forEach(g=>{ const d=document.createElement('div'); d.className='lk'+(g.known?'':' need'); const im=document.createElement('img'); im.src=g.canvas.toDataURL('image/jpeg',.85); d.appendChild(im);
-    const t=document.createElement('div'); t.className='mid'; t.innerHTML=`<b>${g.n}体</b> × 1体で運気 `;
-    for (const w of [1,7]){ const b=document.createElement('button'); b.type='button'; b.className='wb'+(g.w===w&&g.known?' on':''); b.textContent='+'+w; b.onclick=()=>setLuck(g.fp,w); t.appendChild(b); }
-    if (!g.known) t.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent:'初めて見るモンスターです。ラッキーセブンポポロンなら「+7」、それ以外は「+1」を押してください（次からは覚えます）'}));
+    const t=document.createElement('div'); t.className='mid'; t.innerHTML=`<b>${g.n}体</b>　`;
+    for (const w of [1,7,0]){ const b=document.createElement('button'); b.type='button'; b.className='wb'+(g.w===w&&g.known?' on':''); b.textContent=w?'+'+w:'数えない'; b.onclick=()=>setLuck(g.fp,w); t.appendChild(b); }
+    if (!g.known) t.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent:'初めて見るモンスターです。ラッキーセブンポポロンなら「+7」、ラッキーポポロン・ラッキーじじいなどは「+1」、運アップ用でない素材なら「数えない」を押してください（次からは覚えます）'}));
     d.appendChild(t); box.appendChild(d); });
   const tot=luckTotal(); $('luckyTotal').textContent=lucky.length ? `合計 ${tot}体分 → 運UPに「${tot>=10?Math.floor(tot/10)*10:tot}」を入れました` : ''; }
 function fullFP(c){ const t=document.createElement('canvas'); t.width=t.height=16; t.getContext('2d').drawImage(c,0,0,16,16); return Array.from(t.getContext('2d').getImageData(0,0,16,16).data).filter((_,i)=>i%4!==3); }
