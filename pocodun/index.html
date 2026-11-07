@@ -28,17 +28,17 @@
   .upb,.sbtn{border:2px solid var(--line);background:#fff;border-radius:99px;padding:5px 10px;font:inherit;font-weight:800}
   #stoneBox{display:flex;align-items:center;gap:8px;flex-wrap:wrap}#stoneBox.low{background:var(--yel);border-radius:10px;padding:4px}#stoneBox.low input{border-color:var(--yelb)}
   .crop{display:inline-flex;flex-direction:column;align-items:center;gap:1px;font-size:10px;color:var(--sub);pointer-events:none}.crop img{height:30px;border-radius:4px;opacity:.95}
-  .ic{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;border:2px solid var(--line);border-radius:14px;padding:6px;margin:6px 0;background:#fff}
+  .ic{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:flex-start;border:2px solid var(--line);border-radius:14px;padding:5px 6px;margin:5px 0;background:#fff}
   .ic.need{border-color:var(--yelb);background:var(--yel)}
-  .ic img{width:64px;height:auto;border-radius:8px;flex:none}
-  .ic .mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
-  .ic input{width:100%;font-size:15px;padding:6px 8px}
-  .nick{display:flex;gap:4px;align-items:center;font-size:12px;color:var(--sub)}.nick input{flex:1;font-size:14px;padding:4px 7px}
+  .ic img{width:58px;height:auto;border-radius:8px;flex:none}
+  .ic .mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+  .ic input{width:100%;font-size:15px;padding:5px 8px}
+  .nick{display:flex;gap:4px;align-items:center;font-size:12px;color:var(--sub)}.nick span{white-space:nowrap}.nick input{flex:1;font-size:14px;padding:3px 7px}
   .nick input.cand{color:#b8a898}
   .reg{border:0;background:#ffd23f;color:#5a4300;border-radius:99px;padding:5px 9px;font:inherit;font-size:12px;font-weight:900;white-space:nowrap}
-  .ops{display:flex;gap:6px;align-items:center;font-size:12px}.ops button{border:0;background:#f3eadf;border-radius:99px;width:30px;height:28px;font:inherit;font-weight:900;color:#8a6a55}.ops button.ok{width:auto;padding:0 10px;background:#5fae6e;color:#fff}
+  .ops{display:flex;gap:5px;align-items:center;font-size:12px}.ops button{border:0;background:#f3eadf;border-radius:99px;width:30px;height:26px;font:inherit;font-weight:900;color:#8a6a55;flex:none}.ops button.ok{width:auto;padding:0 10px;background:#5fae6e;color:#fff}.ops .tt{display:flex;align-items:center;gap:2px;white-space:nowrap;margin-right:auto}.ops .tt input{width:auto;margin:0}
   .note2{font-size:11px;color:#a87400}
-  .cands{flex-basis:100%;display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:11px;color:var(--sub);padding-left:4px}.cands button{border:2px solid transparent;background:#efe4fb;color:#5b3fa0;border-radius:99px;padding:5px 11px;font:inherit;font-size:13px;font-weight:800;text-align:left}
+  .cands{flex-basis:100%;display:flex;flex-direction:column;align-items:flex-start;gap:3px;font-size:11px;color:var(--sub);padding-left:4px}.cands button{border:2px solid transparent;background:#efe4fb;color:#5b3fa0;border-radius:99px;padding:2px 11px;font:inherit;font-size:13px;font-weight:800;text-align:left}
   .cands button.on{background:#6a4bc4;color:#fff;border-color:#4a2f9a}.cands button.on::before{content:'✓ '}
   .status{margin-top:6px;display:flex;flex-direction:column;gap:2px;font-weight:800;font-size:13px}.status .ok{color:#2f7a4f}.status .ng{color:#d0304f}.status .sub{color:var(--sub);font-weight:500}
   .lk{display:flex;gap:8px;align-items:center;border:2px solid var(--line);border-radius:12px;padding:5px;margin:5px 0}.lk.need{border-color:var(--yelb);background:var(--yel)}.lk img{width:52px;border-radius:8px}.lk .mid{flex:1}
@@ -243,7 +243,7 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='7';
+const APP_VER='8';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
@@ -304,7 +304,9 @@ function fileImg(f){ return new Promise((res,rej)=>{ const u=URL.createObjectURL
 let GW=null; const GW_SURE=26, GW_GAP=5; // これより近く、2番目と差があれば「確か」
 async function loadGW(){ if (GW) return GW; try{ const j=await (await fetch('gw.json')).json(); GW=j.map(x=>({i:x.i, n:x.n||'', a:x.a||'', o:x.o??null, f:x.f ? Array.from(atob(x.f),c=>c.charCodeAt(0)) : null})).filter(x=>x.f); }catch(e){ GW=[]; } return GW; }
 // GameWith の全アイコン（図鑑No ごと・進化前も）と見比べる。名前は持っている形そのものの正式名（初期アカウントは進化前の名前）
-function gwCands(fp2,m){ if (!GW?.length) return []; const ds=GW.map(x=>({n:x.n,i:x.i,a:x.a,o:x.o,d:pdDistM(x.f,fp2,m)})).sort((a,b)=>a.d-b.d); const out=[]; for (const x of ds){ if (!out.some(o=>o.n===x.n)) out.push(x); if (out.length>=4) break; } return out; }
+function gwCands(fp2,m){ if (!GW?.length) return []; const ds=GW.map(x=>({n:x.n,i:x.i,a:x.a,o:x.o,d:pdDistM(x.f,fp2,m)})).sort((a,b)=>a.d-b.d); const out=[]; for (const x of ds){ if (!out.some(o=>o.n===x.n)) out.push(x); if (out.length>=4) break; }
+  // 候補は本当に似ているものだけ（いちばん似ているものとの差が小さいもの）。数合わせで関係ないキャラは出さない
+  return out.filter((x,k)=>k===0 || (x.d<=out[0].d+GW_GAP+1 && x.d<=34)).slice(0,3); }
 let TPL=null;
 async function lockTpl(){ if (TPL) return TPL; const i=new Image(); i.src='lock.png'; await i.decode(); const c=document.createElement('canvas'); c.width=i.width; c.height=i.height; c.getContext('2d').drawImage(i,0,0); return TPL={g:pdGray(c),w:i.width,h:i.height}; }
 async function readShot(img,si){
@@ -402,8 +404,8 @@ function renderIcons(){ const box=$('icons'); box.innerHTML=''; $('iconHead').hi
     const inp=document.createElement('input'); inp.type='text'; inp.placeholder='正式名を入れる（1回入れると覚えます）'; inp.value=ic.name; inp.setAttribute('list','nameList');
     inp.onchange=()=>{ ic.name=inp.value.trim(); ic.guess=false; if (ic.name) rememberFP(ic.name,ic.fp); renderAll(); };
     m.appendChild(inp);
-    if (ic.guess==='gwlow') m.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent:ic.guess==='gwlow' ? '要確認：いちばん似ているキャラを入れました。ちがうときは候補を押すか直して「✓確認」' : ''}));
-    if ((!ic.name || ic.guess==='gwlow' || ic.picked) && ic.cands?.length){ const cs=document.createElement('div'); cs.className='cands'; cs.append(Object.assign(document.createElement('span'),{textContent:'候補：'}));
+    if (ic.guess==='gwlow') m.appendChild(Object.assign(document.createElement('div'),{className:'note2',textContent:'要確認：合っていれば✓確認、ちがえば候補を押す'}));
+    if ((!ic.name || ic.guess==='gwlow' || ic.picked) && ic.cands?.length){ const cs=document.createElement('div'); cs.className='cands'; cs.append(Object.assign(document.createElement('span'),{textContent:'似ているキャラ：'}));
       ic.cands.filter(c=>c.n).forEach(c=>{ const b=document.createElement('button'); b.type='button'; b.textContent=c.n; if (c.n===ic.name) b.className='on'; b.title='図鑑No.'+c.i; b.onclick=()=>{ ic.name=c.n; ic.guess=''; ic.picked=true; rememberFP(ic.name,ic.fp); renderAll(); }; cs.appendChild(b); }); candBox=cs; }
     if (ic.name){ const nk=document.createElement('div'); nk.className='nick'; const reg=nickOf(ic.name), cand=candOf(ic.name);
       nk.innerHTML=`<span>呼称：</span>`; const ni=document.createElement('input'); ni.type='text'; ni.className=reg?'':'cand'; ni.value=reg||cand; ni.placeholder='（なし＝正式名）';
@@ -412,7 +414,7 @@ function renderIcons(){ const box=$('icons'); box.innerHTML=''; $('iconHead').hi
       if (!reg && cand){ const b=document.createElement('button'); b.type='button'; b.className='reg'; b.textContent='呼称を登録'; b.onclick=()=>{ const c=CHARS[ic.name] ??= {nick:'',fps:[]}; c.nick=ni.value.trim()||cand; saveChars(); renderAll(); toast(`「${ic.name}」の呼称を「${c.nick}」で登録しました`); }; nk.appendChild(b); }
       m.appendChild(nk); }
     const ops=document.createElement('div'); ops.className='ops';
-    const t=document.createElement('label'); t.innerHTML=`<input type="checkbox" ${ic.inTitle?'checked':''}> 題名に入れる`; t.querySelector('input').onchange=e=>{ ic.inTitle=e.target.checked; renderText(); }; ops.appendChild(t);
+    const t=document.createElement('label'); t.className='tt'; t.innerHTML=`<input type="checkbox" ${ic.inTitle?'checked':''}>題名に入れる`; t.querySelector('input').onchange=e=>{ ic.inTitle=e.target.checked; renderText(); }; ops.appendChild(t);
     if (ic.guess==='gwlow' && ic.name){ const ok=document.createElement('button'); ok.type='button'; ok.className='ok'; ok.textContent='✓確認'; ok.onclick=()=>{ ic.guess=''; rememberFP(ic.name,ic.fp); renderAll(); }; ops.appendChild(ok); }
     const up=document.createElement('button'); up.type='button'; up.textContent='↑'; up.disabled=i===0; up.onclick=()=>{ [icons[i-1],icons[i]]=[icons[i],icons[i-1]]; renderAll(); }; ops.appendChild(up);
     const dn=document.createElement('button'); dn.type='button'; dn.textContent='↓'; dn.disabled=i===icons.length-1; dn.onclick=()=>{ [icons[i+1],icons[i]]=[icons[i],icons[i+1]]; renderAll(); }; ops.appendChild(dn);
