@@ -695,14 +695,23 @@ async function ppRead(img){ const lay=detectLayout(img); if (!lay) return null; 
     c.width=Math.round(w*k); c.height=Math.round(h*k); c.getContext('2d').drawImage(img,x0,y0,w,h,0,0,c.width,c.height); crop={src:c.toDataURL('image/jpeg',.85), hr:h/b.h, pr:(b.x-x0)/b.h}; }catch(e){} // 見比べ用：元の画像の名前の行
   if (rows[1]) try{ const m=(await timeLimit(ppLine(pp,img,rows[1]),20000)).t.match(/所持数\D{0,3}(\d{1,3})/); if (m) owned=+m[1]; }catch(e){}
   return /\p{L}/u.test(name) && !/リリ.?ス日|所持数|欲しい/.test(name) ? {name, owned, low:nl.low, crop, ownBox:owned!=null ? rows[1] : null} : {name:'', owned, crop}; }
+// 組み合わせの手がかり（リリース日・「欲しい」の数）も新しい読み取りで読む。今までの読み取りの読み直しと同じ所。欲しいの数は白い字なので白黒を入れかえて読む
+async function ppNums(img,lay){ const pp=await ppInit(); if (!pp) return []; const W=img.width, out=[];
+  try{ out.push((await timeLimit(ppLine(pp,img,{x:W*.2, y:lay.pinkBottom+W*.07, w:W*.6, h:W*.055}),20000)).t); }catch(e){}
+  try{ const x0=W*.675, y0=lay.pinkBottom+W*.002, w=W*.12, h=W*.048, c=document.createElement('canvas'); c.width=Math.round(w*2); c.height=Math.round(h*2);
+    const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,x0,y0,w,h,0,0,c.width,c.height);
+    const id=g.getImageData(0,0,c.width,c.height), d=id.data; for (let i=0;i<d.length;i+=4){ const v=Math.min(d[i],d[i+1],d[i+2])>150 ? 0 : 255; d[i]=d[i+1]=d[i+2]=v; } g.putImageData(id,0,0);
+    const t=(await timeLimit(ppLine(pp,c,{x:0, y:0, w:c.width, h:c.height}),20000)).t.replace(/\s/g,'').replace(/(\d),(\d{3})/g,'$1$2'), m=t.match(/(\d{3,6})/); if (m) out.push('♥ '+(+m[1])); }catch(e){}
+  return out; }
 async function analyzeShot(img){
   const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.012, cardBottom:lay.cardBottom, nameBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
   if (!window.Tesseract) return r0;
-  // ショートカットの名前を受け取っていないとき（組み合わせの手がかりの数字が要らないとき）は、新しい読み取りだけで済ませる。
-  // 名前が読めたら今までの読み取りは使わない（いちばん時間のかかる所）。所持数の行の位置・確認用の切り抜きも新しい読み取りの行から作る
+  // ショートカットの名前を受け取っていないときは、新しい読み取りだけで済ませる（今までの読み取りがいちばん時間がかかる）。
+  // 所持数の行の位置・確認用の切り抜き・組み合わせの手がかりの数字（リリース日・欲しいの数）も新しい読み取りで作る
   const pendN=pendingList().length; let ppPre;
   if (lay && !pendN){ ppPre=null; try{ ppPre=await ppRead(img); }catch(e){}
-    if (ppPre?.name){ const W=img.width, r={...r0, name:ppPre.name, pp:true, ppLow:ppPre.low||'', sig:[]}; if (ppPre.crop) r.nameCrop=ppPre.crop;
+    if (ppPre?.name){ const W=img.width, r={...r0, name:ppPre.name, pp:true, ppLow:ppPre.low||'', sig:[]};
+      try{ r.sig=numSig((await ppNums(img,lay)).join('\n')); }catch(e){} // 前の記録（ショートカットで読んだ名前）と組み合わせるときの手がかり if (ppPre.crop) r.nameCrop=ppPre.crop;
       if (ppPre.owned!=null && ppPre.ownBox){ const b=ppPre.ownBox; r.owned=ppPre.owned; r.ownedSure=true;
         r.squareBottom=b.y+b.h+W*.015; r.ownedBottom=r.squareBottom; r.cardBottom=r.squareBottom; // 所持数の行の少し下まで（今までの読み取りと同じ）
         try{ const y0=b.y-W*.01, y1=b.y+b.h+W*.01, x0=W*.33, x1=W*.67, cc=document.createElement('canvas'); cc.width=x1-x0; cc.height=y1-y0; cc.getContext('2d').drawImage(img,x0,y0,x1-x0,y1-y0,0,0,x1-x0,y1-y0); r.snap=cc.toDataURL(); }catch(e){} }
@@ -758,8 +767,7 @@ async function analyzeShot(img){
   if (NOGIFT.test((data.text||'').replace(/\s/g,''))) r.noGift=true;
   r.sig=numSig(data.text);
   // リリース日（名前の上の薄い灰色の行）も、読めなかったときはその行だけを拡大して読む（薄い字が消えないよう、しきい値は高め）
-  // リリース日・「欲しい」の数の読み直しは、ショートカットの名前と組み合わせるときだけ使うので、受け取っていないときは省く
-  if (pendN && lay && !r.sig.some(x=>x[0]==='d')) for (const thr of [215,200]){ try{ const x0=W*.2, y0=lay.pinkBottom+W*.07, w=W*.6, h=W*.055, z=Math.max(1,96/h), nc=document.createElement('canvas'); nc.width=Math.round(w*z); nc.height=Math.round(h*z);
+  if (lay && !r.sig.some(x=>x[0]==='d')) for (const thr of [215,200]){ try{ const x0=W*.2, y0=lay.pinkBottom+W*.07, w=W*.6, h=W*.055, z=Math.max(1,96/h), nc=document.createElement('canvas'); nc.width=Math.round(w*z); nc.height=Math.round(h*z);
     const ng=nc.getContext('2d',{willReadFrequently:true}); ng.imageSmoothingQuality='high'; ng.drawImage(img,x0,y0,w,h,0,0,nc.width,nc.height);
     const id=ng.getImageData(0,0,nc.width,nc.height), d=id.data; for (let i=0;i<d.length;i+=4){ const v=.3*d[i]+.59*d[i+1]+.11*d[i+2]<thr ? 0 : 255; d[i]=d[i+1]=d[i+2]=v; } ng.putImageData(id,0,0);
     await ocrWorker.setParameters({tessedit_pageseg_mode:'7'}); const ds=numSig((await timeLimit(ocrWorker.recognize(nc),20000)).data.text).filter(x=>x[0]==='d');
@@ -776,7 +784,7 @@ async function analyzeShot(img){
     await ocrWorker.setParameters({tessedit_pageseg_mode:'7'}); const t2=(await timeLimit(ocrWorker.recognize(nc),20000)).data.text.replace(/\s/g,'').replace(/(\d),(\d{3})/g,'$1$2'), m2=t2.match(/^(\d{3,6})$/);
     return m2 ? String(+m2[1]) : null; };
   const noYear=()=>{ const yr=r.sig.filter(x=>x[0]==='d').map(x=>x.slice(1,5)); r.sig=r.sig.filter(x=>x[0]!=='h' || !yr.includes(x.slice(1))); };
-  let hv=null, hmode='', hs=[]; if (pendN && lay && W>=600) for (const thr of [150,170]){ try{ const v=await rdH(thr,1);
+  let hv=null, hmode='', hs=[]; if (lay && W>=600) for (const thr of [150,170]){ try{ const v=await rdH(thr,1);
     if (v==null) continue; const drop=()=>{ r.sig=r.sig.filter(x=>x[0]!=='h' || !hs.includes(x.slice(1))); };
     if (hv!=null){ if (v===hv && hmode==='drop') drop(); break; } // 2回目（確かめる読み）。同じ桁で違う数を確かめて同じに読めたら、どちらが正しいか分からないので、どちらも使わない
     noYear(); hs=r.sig.filter(x=>x[0]==='h').map(x=>x.slice(1)).filter(a=>Math.abs(a.length-v.length)<=1);
@@ -788,7 +796,7 @@ async function analyzeShot(img){
     break; }catch(e){} }
   // 小さい画像（幅600未満：縮小・再圧縮されて送られてきた画像）：読み違い（桁が欠ける・増える・1字違う）が多いので、2つの別々の読みがぴったり同じ数のときだけ使う
   // （この所の読みが画面全体の読みと同じか、しきい値も倍率も変えて（160・1.5倍）もう一度読んで同じ）。そうでなければ「欲しい」の数は使わない（ない数は安全、違う数は組み違いのもと）
-  else if (pendN && lay){ let v=null; for (const thr of [150,170]){ try{ v=await rdH(thr,1); }catch(e){} if (v!=null) break; }
+  else if (lay){ let v=null; for (const thr of [150,170]){ try{ v=await rdH(thr,1); }catch(e){} if (v!=null) break; }
     noYear(); let keep=null;
     if (v!=null){ if (r.sig.includes('h'+v)) keep=v; else { let v2=null; try{ v2=await rdH(160,1.5); }catch(e){} if (v2===v) keep=v; } }
     r.sig=r.sig.filter(x=>x[0]!=='h'); if (keep) r.sig.push('h'+keep); }
