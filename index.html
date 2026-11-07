@@ -699,7 +699,7 @@ async function analyzeShot(img){
   const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.012, cardBottom:lay.cardBottom, nameBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
   if (!window.Tesseract) return r0;
   // 新しい読み取りを、今までの読み取り（別の作業場で動く）と同時に始める。名前が読めたら、今までの読み取りでの名前の読み直しは省く
-  const ppP=ppRead(img).catch(()=>null); let pp=null;
+  let ppP=null, pp=null;
   // 画面の下側（スクショ幅の60%より下・左右20〜80%）を読み取り用にコピーして「所持数」の行を探す
   const W=img.width, sx=W*.2, sy=W*.6, sw=W*.6, sh=img.height-sy;
   if (sh<=0) return null;
@@ -709,6 +709,7 @@ async function analyzeShot(img){
   // 通信が止まって「読取中…」のままにならないよう、時間を区切る（初回は文字認識のデータを読み込むので長め）
   ocrReady ??= Tesseract.createWorker('jpn',1,{workerPath:base+'worker.min.js',corePath:base,langPath:base,workerBlobURL:false}).catch(e=>{ ocrReady=null; throw e; });
   ocrWorker ??= await timeLimit(ocrReady, 90000);
+  ppP=ppRead(img).catch(()=>null); // 今までの読み取りの準備ができてから始める（初回のダウンロードを取り合って時間切れにならないように）
   try{ await ocrWorker.setParameters({tessedit_pageseg_mode:'3'}); }catch(e){} // 前の読み取りの1行の設定（7）のままにしない
   const {data}=await timeLimit(ocrWorker.recognize(c,{},{text:true,blocks:true}), 30000);
   const lines=(data.blocks||[]).flatMap(b=>b.paragraphs.flatMap(p=>p.lines));
@@ -1828,7 +1829,7 @@ function bestRows(n,ar,gap){ const availW=S-56*2, availH=S-70-215; let best=null
 
 // 描き直しは、続けて頼まれても1回にまとめる（読み取りの途中は少し待ってから。読み取りを止めないように）
 let drawT=0;
-function draw(){ if (drawT) return; drawT=setTimeout(()=>requestAnimationFrame(()=>{ drawT=0; drawNow(); }), itemsBusy ? 1500 : 0); }
+function draw(){ if (drawT) return; drawT=setTimeout(()=>requestAnimationFrame(()=>{ drawT=0; drawNow(); }), itemsBusy && itemsBusy===ocrSeq ? 1500 : 0); } // 複数の読み取りが今まさに動いているときだけ待つ
 function flushDraw(){ if (drawT){ clearTimeout(drawT); drawT=0; } drawNow(); }
 function drawNow(){
   ctx.clearRect(0,0,S,S);
