@@ -14,8 +14,9 @@ for pair in poketsui-app:claude/vigilant-pasteur-1ug721 piggparty-app:claude/sto
   # 作業中の変更があるときは何もしない（作業ブランチを main に作り直すと、直しかけの物が消えるため）
   retry git fetch -q origin main || { out+=("FAIL $repo mainを取れません"); continue; }
   git fetch -q origin "$br" 2>/dev/null
-  if [ -n "$(git status --porcelain --untracked-files=no)" ] || [ -n "$(git diff --name-only origin/main HEAD -- . ':!data' 2>/dev/null)" ] \
-     || { git rev-parse -q --verify "origin/$br" >/dev/null && [ -n "$(git diff --name-only origin/main "origin/$br" -- . ':!data')" ]; }; then
+  # main だけが先に進んだ分（毎日の「アイテム名一覧を更新」など）は作業ではないので、分かれた所からの差（...）だけを見る
+  if [ -n "$(git status --porcelain --untracked-files=no)" ] || [ -n "$(git diff --name-only origin/main...HEAD -- . ':!data' 2>/dev/null)" ] \
+     || { git rev-parse -q --verify "origin/$br" >/dev/null && [ -n "$(git diff --name-only origin/main..."origin/$br" -- . ':!data')" ]; }; then
     out+=("FAIL $repo 作業中の変更（data/ 以外）がまだ main に入っていないので、集計を止めました"); continue; fi
   git checkout -q -B "$br" origin/main || { out+=("FAIL $repo mainにそろえられません"); continue; }
   log=$(${TRACK:-node tools/gametrade-track.mjs} 2>&1); code=$? # TRACK：試すときだけ別の命令に差しかえる
