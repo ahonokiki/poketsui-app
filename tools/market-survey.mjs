@@ -29,6 +29,10 @@ const GAMES = process.env.SURVEY_GAMES ? process.env.SURVEY_GAMES.split(',') : [
   'nikke', 'db-legends', 'mahjongsoul', 'arknights-endfield', 'yokai-punipuni', 'granblue', '7taizai-grandx', 'hololive-dreams', 'yugio', 'pawapuro',
   'inazuma-cross', 'wizardry-daphne', 'another-eden', 'arknitgts', 'zzz', 'reverse1999', 'blue_archive', 'houkaistarrail', 'romasaga-reunivers',
   'shadowverse-wb', 'bang-dream', 'sololeveling', 'epicseven', 'stellasora',
+  // 追加：点数は低いがスマホで活気のあるもの
+  'dq-tact', 'heavenburnsred', 'bleach-bravesouls', 'jujutsuphanpara', 'last-cloudia', 'madoka-exedra', 'gensosuikoden-star-leap', 'kotodaman', 'czn', 'tensura-maoryuu', 'pj_sekai', 'twsted-wanderland',
+  // 追加：出品は中くらい（20〜98ページ）で競合が少なめかもしれないもの
+  'bleach-mh', 'monmusu-td', 'ayarabu', 'sakatsuku2025', 'song-for-prism', 'aigis', 'cookierun-kingdom', 'haikyu-haidori', 'krbs-sr', 'assaultlily_lb', 'jojo-oradora', 'otogi-frontier',
   'pocodun', 'pokekoro-twin', 'pigg-party'];
 const PAGES = +(process.env.SURVEY_PAGES || 5), CHECKS = +(process.env.SURVEY_CHECKS || 30), SAMPLE = +(process.env.SURVEY_SAMPLE ?? 10);
 const UA = { 'User-Agent': 'Mozilla/5.0 (personal market research)' };
