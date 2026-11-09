@@ -311,6 +311,8 @@
     <div class="row"><label><input type="checkbox" id="autoCopy"> 「題名」「文字」を押したらすぐコピーする</label></div>
     <div class="note">オフにすると、押したときは文字を表示するだけで、確認してから「コピー」を押します。赤い名前（一覧にない名前）があるときは、先に名前を確かめる画面が出ます（閉じたあとは、確認してそのままコピーもできます）。</div>
     <div class="row"><label><input type="checkbox" id="txtShop" checked> 「文字」にショップ情報（タイプ・タイトル・公開期間）を入れる</label></div>
+    <div class="row"><label>ショップ情報の場所 <select id="txtShopPos"><option value="after">計○点の下（線で囲む）</option><option value="before">アイテム一覧の上</option></select></label></div>
+    <div class="row"><label style="width:100%">ショップ情報を囲む線（空欄なら線なし）<input type="text" id="txtShopLine" value="━━━━━━━━━━━━━━━━━━━━━━" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font-size:16px"></label></div>
     <div class="row"><label style="width:100%">最初の行（空欄なら入れない）<input type="text" id="txtHead" placeholder="例：【即購入OK】" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font-size:16px"></label></div>
     <div class="row"><label style="width:100%">合計の書き方<input type="text" id="txtTotal" value="計{n}点" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font-size:16px"></label></div>
     <div class="row"><label style="width:100%">最後の行（空欄なら入れない）<textarea id="txtFoot" rows="3" placeholder="例：購入後にマイコードとお名前をお知らせください" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font:inherit;font-size:16px"></textarea></label></div>
@@ -384,7 +386,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='77'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='78'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -724,9 +726,10 @@ async function ppShop(img,lay,from){ const pp=await ppInit(); if (!pp) return nu
     if (/^タイトル/.test(t)){ // タイトルの後ろのコピーのマーク（字と少し離れた四角）は、字に読まれることがあるので切ってから読み直す
       const h=b-a, cl=[]; let st=-1; for (let x=l;x<=r+1;x++){ let on=false; if (x<=r) for (let yy=a;yy<b;yy++) if (ink(x,yy)){ on=true; break; } if (on&&st<0) st=x; if (!on&&st>=0){ cl.push([st,x]); st=-1; } }
       const [p0,q0]=cl[cl.length-1]||[], pe=cl[cl.length-2]?.[1];
-      if (pe && (q0-p0)>h*.6 && (q0-p0)<h*1.05 && p0-pe>h*.15) { // 読むときは行の前後も少し入れるので、マークの所は枠の色で塗ってから読む
+      if (pe && (q0-p0)>h*.5 && (q0-p0)<h*1.1 && p0-pe>h*.08) { // 読むときは行の前後も少し入れるので、マークの所は枠の色で塗ってから読む
         const cc=document.createElement('canvas'); cc.width=W; cc.height=Math.round(h*3); const cg=cc.getContext('2d'); cg.drawImage(img,0,a-h,W,h*3,0,0,W,h*3);
         cg.fillStyle=`rgb(${bg.join(',')})`; cg.fillRect(pe+h*.08,0,W-pe,h*3); const t2=(await timeLimit(ppLine(pp,cc,{x:l,y:h,w:pe-l,h}),20000)).t.trim(); if (t2.length<t.length && t.startsWith(t2)) t=t2; } } // 後ろに字が増えていたときだけ（ほかは最初の読みのまま）
+    if (/^タイトル/.test(t)) t=t.replace(/[后卮叵]$/u,''); // コピーのマークが字とくっついて読まれたときの読み違い（日本語の題名の最後には来ない字）
     const m=t.match(/^(.{1,6}?)\s*[:：]\s*(.+)$/);
     if (!m || /ショップ情報/.test(t)) continue;
     out.push(m[1].replace(/[^\p{L}]/gu,'')+'：'+m[2].replace(/\s*[~～〜]\s*/g,' 〜 ').replace(/(\d{4}年\d{1,2}月\d{1,2})(?![\d日])/g,'$1日').trim()); } // 「〜」の前の「日」は読み落としやすい
@@ -1981,7 +1984,7 @@ function setDefCnt(m,reset){ try{ localStorage.setItem('promo_defCount',m); }cat
   box.appendChild(b); }); box.querySelectorAll('button').forEach(x=>x.classList.toggle('on',+x.dataset.n===nameLayout())); })();
 $('defCount').addEventListener('change',()=>setDefCnt($('defCount').value,false));
 document.querySelectorAll('.defBar button').forEach(b=>{ b.classList.toggle('on',b.dataset.m===defCnt()); b.onclick=()=>{ setDefCnt(b.dataset.m,true); toast(b.dataset.m==='own'?'×数を「所持数−1」にしました':b.dataset.m==='one'?'×数を全部1にしました':'×数を全部「表示なし」にしました'); }; });
-['txtStyle','titleOne','titleSep','txtHead','txtTotal','txtFoot'].forEach(id=>{ try{ const v=localStorage.getItem('promo_'+id); if(v!==null) $(id).value=v; }catch(e){}
+['txtStyle','titleOne','titleSep','txtHead','txtTotal','txtFoot','txtShopPos','txtShopLine'].forEach(id=>{ try{ const v=localStorage.getItem('promo_'+id); if(v!==null) $(id).value=v; }catch(e){}
   $(id).addEventListener('input',()=>{ try{ localStorage.setItem('promo_'+id,$(id).value); }catch(e){} }); });
 function listText(){
   const list = items.length>1 ? items.filter(it=>!it.skip).map(it=>({name:it.name||'（名前を読み取れませんでした）', n:nOf(itemCount(it))}))
@@ -1993,10 +1996,14 @@ function listText(){
     return st==='numAll'?`${i+1}. ${x.name} ×${x.n}` : st==='dot'?`・${x.name}${c}` : st==='heart'?`♡ ${x.name}${c?' '+c:''}` : st==='plain'?`${x.name}${c}` : `${i+1}. ${x.name}${c}`; };
   const parts=[];
   if ($('txtHead').value.trim()) parts.push($('txtHead').value.trim());
-  if ($('txtShop').checked){ const imgs=items.length>1 ? items.filter(it=>!it.skip && nOf(itemCount(it))>0).map(it=>it.img) : [shotImg];
-    const bl=[...new Set(imgs.map(i=>i?._shop?.join('\n')).filter(Boolean))]; if (bl.length) parts.push(bl.join('\n\n')); } // ショップ情報（同じものは1つだけ）
   parts.push(rows.map(line).join('\n'));
   if ($('txtTotal').value.trim()) parts.push($('txtTotal').value.trim().replace(/\{n\}/g,total));
+  // ショップ情報（同じものは1つだけ）。「計○点の下」なら、すぐ下に線で囲んで入れる。「一覧の上」なら一覧の前に
+  if ($('txtShop').checked){ const imgs=items.length>1 ? items.filter(it=>!it.skip && nOf(itemCount(it))>0).map(it=>it.img) : [shotImg];
+    const bl=[...new Set(imgs.map(i=>i?._shop?.join('\n')).filter(Boolean))];
+    if (bl.length){ const ln=$('txtShopLine').value.trim(), shop=bl.join('\n\n');
+      if ($('txtShopPos').value==='before') parts.splice($('txtHead').value.trim()?1:0,0,shop);
+      else parts[parts.length-1]+='\n'+(ln ? ln+'\n'+shop+'\n'+ln : shop); } }
   if ($('txtFoot').value.trim()) parts.push($('txtFoot').value.trim());
   return parts.join('\n\n');
 }
