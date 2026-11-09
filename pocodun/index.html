@@ -76,7 +76,7 @@
       <br>※ 鍵と「new」は点滅することがあるので、はっきり出ている瞬間に撮ってください</div>
     <div id="status" class="status" hidden><div id="stKey"></div><div id="stLucky"></div></div>
     <details class="safe"><summary>🔒 読み取りはすべてこの端末の中で行い、写真はどこにも送信していません</summary>
-      <div>選んだスクショは、この端末のブラウザの中で読み取ります（鍵マークの見分け・虹結晶の数の読み取り）。写真そのものはインターネットに送信も保存もしません。覚えたキャラ名・設定・背景も、この端末の中だけに保存します。</div></details>
+      <div>選んだスクショは、この端末のブラウザの中で読み取ります（鍵マークの見分け・虹結晶の数の読み取り）。写真そのものはインターネットに送信も保存もしません。覚えたキャラ名・設定・背景は、この端末の中に保存します（設定で「ほかの端末と自動でそろえる」をつないだときだけ、ご自分の非公開の保存場所にも置きます）。</div></details>
   </section>
 
   <section class="card"><canvas id="cv"></canvas></section>
@@ -130,7 +130,12 @@
     <div class="row"><button type="button" class="sbtn" id="addBlock">＋ ブロックを足す</button><button type="button" class="sbtn" id="resetBlocks">はじめの形に戻す</button></div></section>
   <section class="card"><h2>覚えたキャラ</h2><div id="learned"></div>
     <div class="row"><button type="button" class="sbtn" id="exportBtn">ファイルに書き出す</button><button type="button" class="sbtn" id="importBtn">ファイルから読み込む</button></div>
-    <div class="note">書き出したファイルを別の端末で読み込むと、覚えたキャラ・呼称・設定を移せます（全端末で自動で共有するのは、次の版で）。</div></section>
+    <div class="note">書き出したファイルを別の端末で読み込むと、覚えたキャラ・呼称・設定を移せます。</div></section>
+  <section class="card"><h2>ほかの端末と自動でそろえる</h2>
+    <div class="note">覚えたキャラ・呼称・運気キャラ・設定・見出しなどの履歴・背景を、ご自分の非公開の保存場所（GitHub）に置いて、つないだ端末どうしで自動でそろえます。スクショ（写真）は送りません。</div>
+    <div class="row"><input id="syncToken" class="grow" placeholder="鍵（トークン）を貼り付ける" autocomplete="off"></div>
+    <div class="row"><button type="button" class="sbtn" id="syncSave">つなぐ</button><button type="button" class="sbtn" id="syncNowBtn">今すぐそろえる</button><button type="button" class="sbtn" id="syncOff">やめる</button></div>
+    <div id="syncState" class="note"></div></section>
 </main></div>
 
 <div id="busy" hidden>読み取り中…</div>
@@ -274,12 +279,12 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='23';
+const APP_VER='24';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
 const load=(k,def)=>{ try{ const v=localStorage.getItem(PFX+k); return v==null ? def : JSON.parse(v); }catch(e){ return def; } };
-const save=(k,v)=>{ try{ localStorage.setItem(PFX+k,JSON.stringify(v)); }catch(e){ toast('保存できませんでした（容量がいっぱいかもしれません）'); } };
+const save=(k,v)=>{ try{ localStorage.setItem(PFX+k,JSON.stringify(v)); }catch(e){ toast('保存できませんでした（容量がいっぱいかもしれません）'); } if (['chars','hist','set','luck'].includes(k) && typeof queueSync==='function') queueSync(); };
 let toastT=0; function toast(t){ const e=$('toast'); e.textContent=t; e.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>e.hidden=true,2600); }
 
 // 過去の出品から拾った物（見出し・絵文字・呼称の候補）
@@ -301,7 +306,7 @@ const SET0={titleName:'nick', descName:'name', cand:true, times:false, autoOrder
 let SET={...SET0, ...load('set',{})}; if (!Array.isArray(SET.blocks)) SET.blocks=BLOCKS0;
 // 「押したらすぐコピーする」は一度だけ必ずオフに戻す（このあと自分でオンにしたらそのまま）
 if (!SET.autoCopyOff1){ SET.autoCopy=false; SET.autoCopyOff1=true; try{ localStorage.setItem(PFX+'set',JSON.stringify(SET)); }catch(e){} }
-const saveSet=()=>save('set',SET);
+const saveSet=()=>{ SET._t=Date.now(); save('set',SET); };
 
 // ---- 覚えた物 ----
 let CHARS=load('chars',{});      // 正式名 -> {nick:'登録した呼称', fps:[[...]], no:true(候補を出さない)}
@@ -532,7 +537,7 @@ $('emoRand').onclick=()=>{ $('emo').value=''; lastRand=''; renderText(); };
 // 前に打った物（見出し・絵文字）：押すと入る、✕で消す
 function renderChips(){ for (const [key,id] of [['heads','head'],['emojis','emo']]){ const box=$(id+'Chips'); box.innerHTML='';
   (HIST[key]||[]).forEach((v,i)=>{ const c=document.createElement('span'); c.className='chip'; const a=document.createElement('button'); a.type='button'; a.textContent=v; a.onclick=()=>{ $(id).value=v; if (id==='emo') lastRand=''; renderText(); };
-    const x=document.createElement('button'); x.type='button'; x.className='x'; x.textContent='✕'; x.setAttribute('aria-label','この履歴を消す'); x.onclick=()=>{ HIST[key].splice(i,1); saveHist(); renderChips(); };
+    const x=document.createElement('button'); x.type='button'; x.className='x'; x.textContent='✕'; x.setAttribute('aria-label','この履歴を消す'); x.onclick=()=>{ (HIST.rm ??= []).push(HIST[key][i]); HIST[key].splice(i,1); saveHist(); renderChips(); };
     c.append(a,x); box.appendChild(c); }); } }
 function remember(){ const h=$('head').value.trim(), e=$('emo').value.trim(), n=$('num').value.trim(); const up=(k,v)=>{ if (!v) return; HIST[k]=[v,...(HIST[k]||[]).filter(x=>x!==v)].slice(0,30); };
   up('heads',h); up('emojis',e||lastRand); if (!e && lastRand){ HIST.greetUsed=[lastRand,...(HIST.greetUsed||[]).filter(x=>x!==lastRand)].slice(0,30); } if (n && !HIST.nums.includes(n)) HIST.nums.push(n); saveHist(); }
@@ -581,7 +586,7 @@ $('big').onclick=()=>$('big').hidden=true;
 // ---- 背景（色ごとに自分で用意した画像。この端末に保存） ----
 const idb=()=>new Promise((res,rej)=>{ const r=indexedDB.open('pocodun',1); r.onupgradeneeded=()=>r.result.createObjectStore('bg'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
 async function bgGet(k){ const db=await idb(); return new Promise(res=>{ const q=db.transaction('bg').objectStore('bg').get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }); }
-async function bgPut(k,v){ const db=await idb(); return new Promise(res=>{ const t=db.transaction('bg','readwrite'); v==null ? t.objectStore('bg').delete(k) : t.objectStore('bg').put(v,k); t.oncomplete=()=>res(); t.onerror=()=>res(); }); }
+async function bgPut(k,v,fromSync){ if (!fromSync && typeof queueBgSync==='function') queueBgSync(k); const db=await idb(); return new Promise(res=>{ const t=db.transaction('bg','readwrite'); v==null ? t.objectStore('bg').delete(k) : t.objectStore('bg').put(v,k); t.oncomplete=()=>res(); t.onerror=()=>res(); }); }
 let bgSel=load('bgSel',0);
 async function renderBg(){ const box=$('bgs'); box.innerHTML=''; for (let i=0;i<8;i++){ const v=await bgGet(i), b=document.createElement('button'); b.type='button'; b.className='bg'+(i===bgSel?' on':'');
     b.style.backgroundImage=v?`url(${v})`:'none'; b.textContent=v?'':'＋'; b.onclick=async()=>{ if (!v){ pickBg(i); return; } bgSel=i; save('bgSel',i); await useBg(); renderBg(); };
@@ -617,7 +622,7 @@ function renderSet(){
 $('addBlock').onclick=()=>{ const l=prompt('新しいブロックの名前'); if (!l) return; SET.blocks.push({label:l,on:true,t:''}); saveSet(); renderSet(); };
 $('resetBlocks').onclick=()=>{ if (confirm('文字の形を、はじめの形（最新の出品と同じ）に戻しますか？')){ SET.blocks=JSON.parse(JSON.stringify(BLOCKS0)); SET.titleTpl=SET0.titleTpl; saveSet(); renderSet(); } };
 function renderLearned(){ const box=$('learned'); const ks=Object.keys(CHARS); box.innerHTML=ks.length?'':'<div class="note">まだありません</div>';
-  ks.forEach(n=>{ const d=document.createElement('div'); d.className='lr'; d.innerHTML=`<b>${esc(n)}</b><span>${CHARS[n].nick?'呼称：'+esc(CHARS[n].nick):''}</span><button type="button">消す</button>`; d.querySelector('button').onclick=()=>{ if (confirm(`「${n}」を忘れますか？（覚えた絵も消えます）`)){ delete CHARS[n]; saveChars(); renderLearned(); } }; box.appendChild(d); }); }
+  ks.forEach(n=>{ const d=document.createElement('div'); d.className='lr'; d.innerHTML=`<b>${esc(n)}</b><span>${CHARS[n].nick?'呼称：'+esc(CHARS[n].nick):''}</span><button type="button">消す</button>`; d.querySelector('button').onclick=()=>{ if (confirm(`「${n}」を忘れますか？（覚えた絵も消えます）`)){ delete CHARS[n]; (HIST.rmChars ??= []).push(n); saveHist(); saveChars(); renderLearned(); } }; box.appendChild(d); }); }
 $('exportBtn').onclick=()=>{ const b=new Blob([JSON.stringify({chars:CHARS,hist:HIST,set:SET},null,1)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='pocodun-覚えた物.json'; a.click(); };
 $('importBtn').onclick=()=>{ const f=document.createElement('input'); f.type='file'; f.accept='application/json'; f.onchange=async()=>{ try{ const j=JSON.parse(await f.files[0].text()); if (j.chars){ CHARS={...CHARS,...j.chars}; saveChars(); } if (j.hist){ HIST=j.hist; saveHist(); } if (j.set){ SET={...SET0,...j.set}; saveSet(); } renderSet(); toast('読み込みました'); }catch(e){ toast('読み込めませんでした'); } }; f.click(); };
 
@@ -643,6 +648,53 @@ function clearWork(){ if (!confirm('いまの作業（読み取ったキャラ�
   try{ localStorage.removeItem(PFX+'work'); }catch(e){} renderAll(); toast('最初からにしました'); }
 $('clearWork').onclick=clearWork;
 ['num','head','emo','unup','stone'].forEach(id=>$(id).addEventListener('input',saveWork));
+// ---- ほかの端末と自動でそろえる（GitHub の非公開リポジトリに、覚えたキャラ・運気・設定・履歴・背景を置く。写真は送らない） ----
+const SYNC_API='https://api.github.com';
+let SYNC=load('sync',{repo:'ahonokiki/pocodun-sync', token:'', last:'', bg:{}});
+const syncOn=()=>!!(SYNC.token && SYNC.repo);
+const b64e=t=>btoa(String.fromCharCode(...new TextEncoder().encode(t))), b64d=b=>new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g,'')),c=>c.charCodeAt(0)));
+async function gh(path,opt={}){ const r=await fetch(`${SYNC_API}/repos/${SYNC.repo}/contents/${path}`,{...opt, headers:{Authorization:'Bearer '+SYNC.token, Accept:'application/vnd.github+json', ...(opt.body?{'Content-Type':'application/json'}:{})}, cache:'no-store'});
+  if (r.status===404) return null; if (!r.ok) throw new Error(r.status===401||r.status===403 ? '鍵（トークン）が使えません' : 'GitHub '+r.status); return r.json(); }
+// 2台の内容を合わせる：呼称・覚えた絵・運気・履歴は両方を足し合わせる（消したものは消したまま）。設定は新しく変えたほう
+function mergeIn(j){ const rmC=new Set([...(HIST.rmChars||[]),...(j.hist?.rmChars||[])]), rmH=new Set([...(HIST.rm||[]),...(j.hist?.rm||[])]);
+  for (const [n,c] of Object.entries(j.chars||{})){ if (rmC.has(n)) continue; const m=CHARS[n] ??= {nick:'',fps:[]};
+    if (!m.nick && c.nick) m.nick=c.nick; if (c.no) m.no=true; for (const f of c.fps||[]) if (!m.fps.some(g=>pdDist(g,f)<1.5) && m.fps.length<8) m.fps.push(f); }
+  for (const n of rmC) delete CHARS[n];
+  for (const e of j.luck||[]){ const m=LUCK.find(x=>e.k ? x.k===e.k : (!x.k && pdDist(x.fp,e.fp)<30)); if (!m) LUCK.push(e); }
+  for (const k of ['heads','emojis']){ HIST[k]=[...new Set([...(HIST[k]||[]),...(j.hist?.[k]||[])])].filter(v=>!rmH.has(v)).slice(0,30); }
+  HIST.nums=[...new Set([...(HIST.nums||[]),...(j.hist?.nums||[])])]; HIST.greetUsed=[...new Set([...(HIST.greetUsed||[]),...(j.hist?.greetUsed||[])])].slice(0,30);
+  HIST.rm=[...rmH].slice(-200); HIST.rmChars=[...rmC].slice(-200);
+  if (j.set && (j.set._t||0)>(SET._t||0)){ SET={...SET0,...j.set}; if (!Array.isArray(SET.blocks)) SET.blocks=BLOCKS0; } }
+const mine=()=>({v:1, chars:CHARS, luck:LUCK, hist:HIST, set:SET});
+let syncT=0, syncing=false, syncAgain=false;
+function queueSync(){ if (!syncOn()) return; clearTimeout(syncT); syncT=setTimeout(()=>syncNow(true),3000); }
+function storeAll(){ for (const [k,v] of [['chars',CHARS],['luck',LUCK],['hist',HIST],['set',SET]]) try{ localStorage.setItem(PFX+k,JSON.stringify(v)); }catch(e){} }
+async function syncNow(push){ if (!syncOn()) return false; if (syncing){ syncAgain=true; return false; } syncing=true; renderSync('そろえています…');
+  try{ for (let tries=0; tries<3; tries++){ const f=await gh('data.json'); if (f) mergeIn(JSON.parse(b64d(f.content))); storeAll();
+      const body=JSON.stringify(mine()); if (f && b64d(f.content)===body){ break; }
+      try{ await gh('data.json',{method:'PUT', body:JSON.stringify({message:'覚えたデータを更新', content:b64e(body), ...(f?{sha:f.sha}:{})})}); break; }catch(e){ if (!/409|422/.test(e.message) || tries===2) throw e; } }
+    await syncBg(); SYNC.last=new Date().toLocaleString('ja-JP'); SYNC.err=''; save('sync',SYNC); renderSync(); renderSet?.(); renderAll(); return true;
+  }catch(e){ SYNC.err=e.message; save('sync',SYNC); renderSync(); return false; }
+  finally{ syncing=false; if (syncAgain){ syncAgain=false; queueSync(); } } }
+// 背景：8つの場所ごとに bg/0.jpg〜bg/7.jpg。変えた場所だけ送り、ほかの端末で変わった場所だけ受け取る
+const bgDirty=new Set(load('bgDirty',[]));
+function queueBgSync(k){ bgDirty.add(k); save('bgDirty',[...bgDirty]); queueSync(); }
+async function syncBg(){ const list=(await fetch(`${SYNC_API}/repos/${SYNC.repo}/contents/bg`,{headers:{Authorization:'Bearer '+SYNC.token},cache:'no-store'}).then(r=>r.ok?r.json():[]).catch(()=>[]))||[];
+  const remote=Object.fromEntries(list.map(x=>[x.name.replace(/\.jpg$/,''),x.sha]));
+  for (const k of [...bgDirty]){ const v=await bgGet(k), sha=remote[k];
+    if (v){ const r=await gh(`bg/${k}.jpg`,{method:'PUT', body:JSON.stringify({message:'背景を更新', content:v.split(',')[1], ...(sha?{sha}:{})})}); SYNC.bg[k]=r?.content?.sha||''; }
+    else if (sha){ await gh(`bg/${k}.jpg`,{method:'DELETE', body:JSON.stringify({message:'背景を消す', sha})}); delete SYNC.bg[k]; }
+    bgDirty.delete(k); save('bgDirty',[...bgDirty]); delete remote[k]; }
+  for (const [k,sha] of Object.entries(remote)){ if (SYNC.bg[k]===sha) continue; const f=await gh(`bg/${k}.jpg`); if (f?.content){ await bgPut(+k,'data:image/jpeg;base64,'+f.content.replace(/\s/g,''),true); SYNC.bg[k]=sha; } }
+  for (const k of Object.keys(SYNC.bg)) if (!(k in remote) && !bgDirty.has(+k) && !bgDirty.has(k)){ /* ほかの端末で消された背景 */ if (await bgGet(+k)){ await bgPut(+k,null,true); } delete SYNC.bg[k]; }
+  renderBg(); useBg(); }
+function renderSync(msg){ const e=$('syncState'); if (!e) return; e.textContent= msg || (!syncOn() ? 'つないでいません（この端末の中だけに保存）' : SYNC.err ? '⚠ そろえられませんでした：'+SYNC.err : SYNC.last ? '✓ そろえました（'+SYNC.last+'）' : 'つなぎました'); e.className='note'+(SYNC.err?' warn':''); $('syncToken').value=SYNC.token?'••••••••（入っています）':''; }
+$('syncSave').onclick=async()=>{ const v=$('syncToken').value.trim(); if (!v || v.startsWith('••')){ toast('鍵（トークン）を貼り付けてください'); return; } SYNC.token=v; SYNC.err=''; save('sync',SYNC);
+  for (let i=0;i<8;i++) if (await bgGet(i)) bgDirty.add(i); save('bgDirty',[...bgDirty]); toast((await syncNow(true)) ? 'つなぎました。ほかの端末とそろえました' : 'つなげませんでした。鍵を確かめてください'); };
+$('syncNowBtn').onclick=async()=>toast((await syncNow(true)) ? 'そろえました' : 'そろえられませんでした');
+$('syncOff').onclick=()=>{ if (!confirm('この端末で、ほかの端末とそろえるのをやめますか？（この端末の中のデータは残ります）')) return; SYNC.token=''; SYNC.bg={}; save('sync',SYNC); renderSync(); };
+document.addEventListener('visibilitychange',()=>{ if (!document.hidden && syncOn()) syncNow(false); });
+renderSync(); if (syncOn()) syncNow(false);
 useBg(); (async()=>{ const ok=await restoreWork(); renderAll(); if (ok) toast('前回の作業を復元しました'); })();
 
 </script>
