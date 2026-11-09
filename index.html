@@ -684,7 +684,7 @@ function ppRows(img,lay){ const W=img.width,H=img.height,c=document.createElemen
   const y0=Math.round(lay.pinkBottom), y1=Math.min(H-1,Math.round(lay.pinkBottom+W*.3)), runs=[]; let s0=-1;
   for (let y=y0;y<y1;y++){ let n=0; for (let x=Math.round(W*.05);x<W*.95;x++) if (dark(x,y)) n++; if (n>2&&s0<0) s0=y; if (n<=2&&s0>=0){ runs.push([s0,y]); s0=-1; } }
   return runs.filter(([a,b])=>b-a>=W*.012).slice(0,2).map(([a,b])=>{ let xa=W,xb=0; for (let y=a;y<b;y++) for (let x=Math.round(W*.03);x<W*.97;x++) if (dark(x,y)){ if(x<xa)xa=x; if(x>xb)xb=x; } return {x:xa,y:a,w:xb-xa+1,h:b-a}; }); }
-async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad), y0=Math.max(0,box.y-pad), w=Math.min(img.width-x0,box.w+pad*2), h=Math.min(img.height-y0,box.h+pad*2);
+async function ppLine(pp,img,box,keepTail){ const pad=box.h*.5, x0=Math.max(0,box.x-pad), y0=Math.max(0,box.y-pad), w=Math.min(img.width-x0,box.w+pad*2), h=Math.min(img.height-y0,box.h+pad*2);
   const H=48, Wd=Math.min(1600,Math.max(16,Math.round(w*H/h))), c=document.createElement('canvas'); c.width=Wd; c.height=H; const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,x0,y0,w,h,0,0,Wd,H);
   const px=g.getImageData(0,0,Wd,H).data, f=new Float32Array(3*H*Wd);
   for (let i=0;i<H*Wd;i++){ f[i]=(px[i*4+2]/255-.5)/.5; f[H*Wd+i]=(px[i*4+1]/255-.5)/.5; f[2*H*Wd+i]=(px[i*4]/255-.5)/.5; }
@@ -692,7 +692,7 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   // 1文字ずつ、読み取りの自信（0〜1）も取っておく
   const ch=[]; let prev=-1; for (let k=0;k<T;k++){ let m=0,mi=0; for (let j=0;j<C;j++){ const v=P[k*C+j]*(pp.boost.has(j)?8:1); if(v>m){m=v;mi=j;} } const raw=P[k*C+mi];
     if (mi!==0){ if (mi!==prev) ch.push({c:mi<=pp.D.length?pp.D[mi-1]:' ', p:raw}); else ch[ch.length-1].p=Math.max(ch[ch.length-1].p,raw); } prev=mi; }
-  while (ch.length && /[「」□■ロ口\s]/u.test(ch[ch.length-1].c)) ch.pop(); while (ch.length && /\s/.test(ch[0].c)) ch.shift(); // 名前の横のコピーのマークは外す
+  while (ch.length && (keepTail ? /\s/ : /[「」□■ロ口\s]/u).test(ch[ch.length-1].c)) ch.pop(); while (ch.length && /\s/.test(ch[0].c)) ch.shift(); // 名前の横のコピーのマークは外す
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 async function ppRead(img){ const lay=detectLayout(img); if (!lay) return null; const pp=await timeLimit(ppInit(),90000).catch(()=>null); if (!pp) return null;
   const rows=ppRows(img,lay); if (!rows.length) return null;
@@ -709,8 +709,9 @@ async function ppNums(img,lay){ const pp=await ppInit(); if (!pp) return []; con
     const id=g.getImageData(0,0,c.width,c.height), d=id.data; for (let i=0;i<d.length;i+=4){ const v=Math.min(d[i],d[i+1],d[i+2])>150 ? 0 : 255; d[i]=d[i+1]=d[i+2]=v; } g.putImageData(id,0,0);
     const t=(await timeLimit(ppLine(pp,c,{x:0, y:0, w:c.width, h:c.height}),20000)).t.replace(/\s/g,'').replace(/(\d),(\d{3})/g,'$1$2'), m=t.match(/(\d{3,6})/); if (m) out.push('♥ '+(+m[1])); }catch(e){}
   return out; }
+// （読み取りの準備は時間を区切る：止まっても「読取中…」のままにしない）
 // ショップ情報の灰色の枠（所持数の行の下）：「タイプ：…」「タイトル：…」「公開期間：…」の行を新しい読み取りで読む。読めた行の配列（なければ null）
-async function ppShop(img,lay,from){ const pp=await ppInit(); if (!pp) return null; const W=img.width, H=img.height, c=document.createElement('canvas'); c.width=W; c.height=H;
+async function ppShop(img,lay,from){ const pp=await timeLimit(ppInit(),90000).catch(()=>null); if (!pp) return null; const W=img.width, H=img.height, c=document.createElement('canvas'); c.width=W; c.height=H;
   const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,0,0); const d=g.getImageData(0,0,W,H).data; c.width=c.height=0;
   const at=(x,y)=>{ const i=(y*W+Math.round(x))*4; return [d[i],d[i+1],d[i+2]]; }, pale=([r,gg,b])=>Math.min(r,gg,b)>205 && Math.min(r,gg,b)<247, near=(p,q)=>Math.abs(p[0]-q[0])+Math.abs(p[1]-q[1])+Math.abs(p[2]-q[2])<14;
   // 枠の上端：左の余白の少し内側の列で、白から薄い色（灰色・今のショップは薄紫）に変わる所（同じ色が少し続く）
@@ -722,14 +723,14 @@ async function ppShop(img,lay,from){ const pp=await ppInit(); if (!pp) return nu
   for (let yy=top; yy<=bot; yy++){ let n=0; for (let x=xa;x<xb;x++) if (ink(x,yy)) n++; if (n>2&&s0<0) s0=yy; if ((n<=2||yy===bot)&&s0>=0){ runs.push([s0,yy]); s0=-1; } }
   const out=[];
   for (const [a,b] of runs.filter(([a,b])=>b-a>=W*.015)){ let l=W,r=0; for (let yy=a;yy<b;yy++) for (let x=xa;x<xb;x++) if (ink(x,yy)){ if(x<l)l=x; if(x>r)r=x; }
-    let t=(await timeLimit(ppLine(pp,img,{x:l,y:a,w:r-l+1,h:b-a}),20000)).t.trim();
+    let t=(await timeLimit(ppLine(pp,img,{x:l,y:a,w:r-l+1,h:b-a},true),20000)).t.trim();
     if (/^タイトル/.test(t)){ // タイトルの後ろのコピーのマーク（字と少し離れた四角）は、字に読まれることがあるので切ってから読み直す
       const h=b-a, cl=[]; let st=-1; for (let x=l;x<=r+1;x++){ let on=false; if (x<=r) for (let yy=a;yy<b;yy++) if (ink(x,yy)){ on=true; break; } if (on&&st<0) st=x; if (!on&&st>=0){ cl.push([st,x]); st=-1; } }
       const [p0,q0]=cl[cl.length-1]||[], pe=cl[cl.length-2]?.[1];
       if (pe && (q0-p0)>h*.5 && (q0-p0)<h*1.1 && p0-pe>h*.08) { // 読むときは行の前後も少し入れるので、マークの所は枠の色で塗ってから読む
         const cc=document.createElement('canvas'); cc.width=W; cc.height=Math.round(h*3); const cg=cc.getContext('2d'); cg.drawImage(img,0,a-h,W,h*3,0,0,W,h*3);
-        cg.fillStyle=`rgb(${bg.join(',')})`; cg.fillRect(pe+h*.08,0,W-pe,h*3); const t2=(await timeLimit(ppLine(pp,cc,{x:l,y:h,w:pe-l,h}),20000)).t.trim(); if (t2.length<t.length && t.startsWith(t2)) t=t2; } } // 後ろに字が増えていたときだけ（ほかは最初の読みのまま）
-    if (/^タイトル/.test(t)) t=t.replace(/[后卮叵]$/u,''); // コピーのマークが字とくっついて読まれたときの読み違い（日本語の題名の最後には来ない字）
+        cg.fillStyle=`rgb(${bg.join(',')})`; cg.fillRect(pe+h*.08,0,W-pe,h*3); const t2=(await timeLimit(ppLine(pp,cc,{x:l,y:h,w:pe-l,h},true),20000)).t.trim(); const val=x=>x.replace(/^タイト[^:：・]*[:：・]\s*/,''), v1=val(t), v2=val(t2); if (v2 && v2.length<v1.length && v1.startsWith(v2)) t=t.slice(0,t.length-(v1.length-v2.length)); } } // 題名の後ろに字が増えていたときだけ、その字を外す（ほかは最初の読みのまま）
+    if (/^タイトル/.test(t)) t=t.replace(/[后卮叵□■]$/u,''); // コピーのマークが字とくっついて読まれたときの読み違い（日本語の題名の最後には来ない字）
     const m=t.match(/^(.{1,6}?)\s*[:：]\s*(.+)$/);
     if (!m || /ショップ情報/.test(t)) continue;
     out.push(m[1].replace(/[^\p{L}]/gu,'')+'：'+m[2].replace(/\s*[~～〜]\s*/g,' 〜 ').replace(/(\d{4}年\d{1,2}月\d{1,2})(?![\d日])/g,'$1日').trim()); } // 「〜」の前の「日」は読み落としやすい
@@ -2003,7 +2004,7 @@ function listText(){
     const bl=[...new Set(imgs.map(i=>i?._shop?.join('\n')).filter(Boolean))];
     if (bl.length){ const ln=$('txtShopLine').value.trim(), shop=bl.join('\n\n');
       if ($('txtShopPos').value==='before') parts.splice($('txtHead').value.trim()?1:0,0,shop);
-      else parts[parts.length-1]+='\n'+(ln ? ln+'\n'+shop+'\n'+ln : shop); } }
+      else { const blk=ln ? ln+'\n'+shop+'\n'+ln : shop; if ($('txtTotal').value.trim()) parts[parts.length-1]+='\n'+blk; else parts.push(blk); } } } // 計○点がないときは一覧と1行あける
   if ($('txtFoot').value.trim()) parts.push($('txtFoot').value.trim());
   return parts.join('\n\n');
 }
