@@ -25,9 +25,12 @@ for pair in poketsui-app:claude/vigilant-pasteur-1ug721 piggparty-app:claude/sto
   # 失敗したときは、原因がわかるように、エラーの行（なければ最後の行）を出す
   why=$(printf '%s\n' "$log" | grep -v 'EnvHttpProxyAgent\|trace-warnings\|^Node.js v' | grep -m1 -E 'Error|error|ECONN|ETIMEDOUT|失敗|読め' ); [ -n "$why" ] || why=$(printf '%s\n' "$log" | grep -v '^\s*$' | grep -v '^Node.js v' | tail -1)
   [ $code -eq 0 ] && [ -n "$sum" ] || { out+=("FAIL $repo 集計が失敗（code $code: $(printf '%s' "$why" | cut -c1-200)）"); continue; }
+  # ポコダンの記録（ポケツイのリポジトリにいっしょに入れる。失敗してもポケツイの集計は止めない）
+  pd=''; if [ "$repo" = poketsui-app ] && [ -f tools/pocodun-track.mjs ]; then pl=$(${TRACK_PD:-node tools/pocodun-track.mjs} 2>&1); if [ $? -eq 0 ]; then pd=$(printf '%s\n' "$pl" | grep -E '^ポコダン ' | tail -1); else pd="ポコダンの記録は失敗（$(printf '%s\n' "$pl" | grep -v 'EnvHttpProxyAgent\|trace-warnings' | grep -v '^\s*$' | tail -1 | cut -c1-120)）"; fi; fi
   git add data/gametrade-state.enc data/gametrade-ranking.enc data/gametrade-names.json 2>/dev/null
-  if git diff --cached --quiet; then out+=("RESULT $repo nochange $sum"); continue; fi
+  [ -f data/pocodun-state.enc ] && git add data/pocodun-state.enc
+  if git diff --cached --quiet; then out+=("RESULT $repo nochange $sum"); [ -n "$pd" ] && out+=("RESULT pocodun $pd"); continue; fi
   git commit -qm "売れ筋ランキングを更新（定期）" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && retry git push -q -f -u origin "$br" || { out+=("FAIL $repo pushできません"); continue; }
-  out+=("RESULT $repo pushed $sum")
+  out+=("RESULT $repo pushed $sum"); [ -n "$pd" ] && out+=("RESULT pocodun $pd")
 done
 printf '%s\n' "${out[@]}"
