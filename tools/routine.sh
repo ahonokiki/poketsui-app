@@ -7,6 +7,12 @@
 export NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt
 retry(){ local n=0 w=2; until "$@"; do n=$((n+1)); [ $n -ge 4 ] && return 1; sleep $w; w=$((w*2)); done; }
 out=()
+# 副業のゲーム選びの売れ行き調べ（ポケツイの集計と同時に、別に動かす。記録は /tmp に書き、ポケツイのリポジトリに入れるときに data/ へ写す）
+SPID=''; svin=/tmp/ms-in.enc; svout=/tmp/ms-out.enc; rm -f "$svout"
+if git -C /home/user/poketsui-app fetch -q origin main 2>/dev/null && git -C /home/user/poketsui-app show origin/main:tools/market-survey.mjs > /tmp/market-survey.mjs 2>/dev/null; then
+  git -C /home/user/poketsui-app show origin/main:data/market-survey.enc > "$svin" 2>/dev/null || : > "$svin"
+  SURVEY_IN="$svin" SURVEY_OUT="$svout" node /tmp/market-survey.mjs > /tmp/ms.log 2>&1 & SPID=$!
+fi
 for pair in poketsui-app:claude/vigilant-pasteur-1ug721 piggparty-app:claude/stop-schedule; do
   repo=${pair%%:*}; br=${pair#*:}; dir=/home/user/$repo
   [ -d "$dir/.git" ] || { out+=("FAIL $repo フォルダがありません"); continue; }
@@ -29,6 +35,8 @@ for pair in poketsui-app:claude/vigilant-pasteur-1ug721 piggparty-app:claude/sto
   pd=''; if [ "$repo" = poketsui-app ] && [ -f tools/pocodun-track.mjs ]; then pl=$(${TRACK_PD:-node tools/pocodun-track.mjs} 2>&1); if [ $? -eq 0 ]; then pd=$(printf '%s\n' "$pl" | grep -E '^ポコダン ' | tail -1); else pd="ポコダンの記録は失敗（$(printf '%s\n' "$pl" | grep -v 'EnvHttpProxyAgent\|trace-warnings' | grep -v '^\s*$' | tail -1 | cut -c1-120)）"; fi; fi
   git add data/gametrade-state.enc data/gametrade-ranking.enc data/gametrade-names.json 2>/dev/null
   [ -f data/pocodun-state.enc ] && git add data/pocodun-state.enc
+  if [ "$repo" = poketsui-app ] && [ -n "$SPID" ]; then wait "$SPID"; svl=$(grep -E '^調べ ' /tmp/ms.log | tail -1)
+    if [ -s "$svout" ] && [ -n "$svl" ]; then cp "$svout" data/market-survey.enc && git add data/market-survey.enc; out+=("RESULT survey $svl"); else out+=("FAIL survey 売れ行き調べが失敗（$(grep -v 'EnvHttpProxyAgent\|trace-warnings' /tmp/ms.log | tail -1 | cut -c1-150)）"); fi; fi
   if git diff --cached --quiet; then out+=("RESULT $repo nochange $sum"); [ -n "$pd" ] && out+=("RESULT pocodun $pd"); continue; fi
   git commit -qm "売れ筋ランキングを更新（定期）" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" && retry git push -q -f -u origin "$br" || { out+=("FAIL $repo pushできません"); continue; }
   out+=("RESULT $repo pushed $sum"); [ -n "$pd" ] && out+=("RESULT pocodun $pd")
