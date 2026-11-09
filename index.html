@@ -310,6 +310,7 @@
     <div class="row"><label><input type="checkbox" id="titleTotal" checked> 題名に「計○点」を付ける（2個以上のとき）</label></div>
     <div class="row"><label><input type="checkbox" id="autoCopy"> 「題名」「文字」を押したらすぐコピーする</label></div>
     <div class="note">オフにすると、押したときは文字を表示するだけで、確認してから「コピー」を押します。赤い名前（一覧にない名前）があるときは、先に名前を確かめる画面が出ます（閉じたあとは、確認してそのままコピーもできます）。</div>
+    <div class="row"><label><input type="checkbox" id="txtShop" checked> 「文字」にショップ情報（タイプ・タイトル・公開期間）を入れる</label></div>
     <div class="row"><label style="width:100%">最初の行（空欄なら入れない）<input type="text" id="txtHead" placeholder="例：【即購入OK】" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font-size:16px"></label></div>
     <div class="row"><label style="width:100%">合計の書き方<input type="text" id="txtTotal" value="計{n}点" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font-size:16px"></label></div>
     <div class="row"><label style="width:100%">最後の行（空欄なら入れない）<textarea id="txtFoot" rows="3" placeholder="例：購入後にマイコードとお名前をお知らせください" style="width:100%;border:2px solid #ffd0e6;border-radius:14px;padding:8px 10px;font:inherit;font-size:16px"></textarea></label></div>
@@ -383,7 +384,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='76'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='77'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -706,7 +707,34 @@ async function ppNums(img,lay){ const pp=await ppInit(); if (!pp) return []; con
     const id=g.getImageData(0,0,c.width,c.height), d=id.data; for (let i=0;i<d.length;i+=4){ const v=Math.min(d[i],d[i+1],d[i+2])>150 ? 0 : 255; d[i]=d[i+1]=d[i+2]=v; } g.putImageData(id,0,0);
     const t=(await timeLimit(ppLine(pp,c,{x:0, y:0, w:c.width, h:c.height}),20000)).t.replace(/\s/g,'').replace(/(\d),(\d{3})/g,'$1$2'), m=t.match(/(\d{3,6})/); if (m) out.push('♥ '+(+m[1])); }catch(e){}
   return out; }
-async function analyzeShot(img){
+// ショップ情報の灰色の枠（所持数の行の下）：「タイプ：…」「タイトル：…」「公開期間：…」の行を新しい読み取りで読む。読めた行の配列（なければ null）
+async function ppShop(img,lay,from){ const pp=await ppInit(); if (!pp) return null; const W=img.width, H=img.height, c=document.createElement('canvas'); c.width=W; c.height=H;
+  const g=c.getContext('2d',{willReadFrequently:true}); g.drawImage(img,0,0); const d=g.getImageData(0,0,W,H).data; c.width=c.height=0;
+  const at=(x,y)=>{ const i=(y*W+Math.round(x))*4; return [d[i],d[i+1],d[i+2]]; }, pale=([r,gg,b])=>Math.min(r,gg,b)>205 && Math.min(r,gg,b)<247, near=(p,q)=>Math.abs(p[0]-q[0])+Math.abs(p[1]-q[1])+Math.abs(p[2]-q[2])<14;
+  // 枠の上端：左の余白の少し内側の列で、白から薄い色（灰色・今のショップは薄紫）に変わる所（同じ色が少し続く）
+  let y=Math.round(from || lay.pinkBottom+W*.1), y1=Math.min(H-2,Math.round(y+W*.35)), top=-1, bg=null;
+  for (;y<y1;y++){ const c0=at(W*.07,y); if (!pale(c0)) continue; let ok=true; for (let k=1;k<W*.02;k++) if (y+k>=H || !near(at(W*.07,y+k),c0)){ ok=false; break; } if (ok){ top=y; bg=c0; break; } }
+  if (top<0) return null; let bot=top; while (bot<H-1 && near(at(W*.07,bot+1),bg)) bot++;
+  // 枠の中の字の行（字は枠より濃い灰色）。細い点線は外す
+  const ink=(x,yy)=>{ const [r,gg,b]=at(x,yy); return .3*r+.59*gg+.11*b<185; }, xa=Math.round(W*.08), xb=Math.round(W*.92), runs=[]; let s0=-1;
+  for (let yy=top; yy<=bot; yy++){ let n=0; for (let x=xa;x<xb;x++) if (ink(x,yy)) n++; if (n>2&&s0<0) s0=yy; if ((n<=2||yy===bot)&&s0>=0){ runs.push([s0,yy]); s0=-1; } }
+  const out=[];
+  for (const [a,b] of runs.filter(([a,b])=>b-a>=W*.015)){ let l=W,r=0; for (let yy=a;yy<b;yy++) for (let x=xa;x<xb;x++) if (ink(x,yy)){ if(x<l)l=x; if(x>r)r=x; }
+    let t=(await timeLimit(ppLine(pp,img,{x:l,y:a,w:r-l+1,h:b-a}),20000)).t.trim();
+    if (/^タイトル/.test(t)){ // タイトルの後ろのコピーのマーク（字と少し離れた四角）は、字に読まれることがあるので切ってから読み直す
+      const h=b-a, cl=[]; let st=-1; for (let x=l;x<=r+1;x++){ let on=false; if (x<=r) for (let yy=a;yy<b;yy++) if (ink(x,yy)){ on=true; break; } if (on&&st<0) st=x; if (!on&&st>=0){ cl.push([st,x]); st=-1; } }
+      const [p0,q0]=cl[cl.length-1]||[], pe=cl[cl.length-2]?.[1];
+      if (pe && (q0-p0)>h*.6 && (q0-p0)<h*1.05 && p0-pe>h*.15) { // 読むときは行の前後も少し入れるので、マークの所は枠の色で塗ってから読む
+        const cc=document.createElement('canvas'); cc.width=W; cc.height=Math.round(h*3); const cg=cc.getContext('2d'); cg.drawImage(img,0,a-h,W,h*3,0,0,W,h*3);
+        cg.fillStyle=`rgb(${bg.join(',')})`; cg.fillRect(pe+h*.08,0,W-pe,h*3); const t2=(await timeLimit(ppLine(pp,cc,{x:l,y:h,w:pe-l,h}),20000)).t.trim(); if (t2.length<t.length && t.startsWith(t2)) t=t2; } } // 後ろに字が増えていたときだけ（ほかは最初の読みのまま）
+    const m=t.match(/^(.{1,6}?)\s*[:：]\s*(.+)$/);
+    if (!m || /ショップ情報/.test(t)) continue;
+    out.push(m[1].replace(/[^\p{L}]/gu,'')+'：'+m[2].replace(/\s*[~～〜]\s*/g,' 〜 ').replace(/(\d{4}年\d{1,2}月\d{1,2})(?![\d日])/g,'$1日').trim()); } // 「〜」の前の「日」は読み落としやすい
+  return out.some(x=>/^(タイプ|タイトル|公開期間)：/.test(x)) ? out : null; }
+async function analyzeShot(img){ const r=await analyzeShot0(img);
+  try{ const lay=detectLayout(img); if (lay && img._shop===undefined) img._shop=await ppShop(img,lay,r?.ownedBottom); }catch(e){}
+  return r; }
+async function analyzeShot0(img){
   const lay=detectLayout(img), r0=lay?{top:lay.top+img.width*.012, cardBottom:lay.cardBottom, nameBottom:lay.cardBottom, squareBottom:lay.cardBottom}:{};
   if (!window.Tesseract) return r0;
   // ショートカットの名前を受け取っていないときは、新しい読み取りだけで済ませる（今までの読み取りがいちばん時間がかかる）。
@@ -1937,6 +1965,8 @@ $('dl').onclick=()=>{ const name='poketsui-'+Date.now()+'.png'; flushDraw();
     // 共有できない環境：画像を大きく表示 → 長押しで「写真に保存」
     $('outImg').src=URL.createObjectURL(blob); $('out').hidden=false;
   },'image/png'); };
+try{ const v=localStorage.getItem('promo_txtShop'); if(v!==null) $('txtShop').checked=v==='1'; }catch(e){}
+$('txtShop').addEventListener('change',()=>{ try{ localStorage.setItem('promo_txtShop',$('txtShop').checked?'1':'0'); }catch(e){} });
 try{ const v=localStorage.getItem('promo_titleTotal'); if(v!==null) $('titleTotal').checked=v==='1'; }catch(e){}
 $('titleTotal').addEventListener('change',()=>{ try{ localStorage.setItem('promo_titleTotal',$('titleTotal').checked?'1':'0'); }catch(e){} });
 try{ $('defCount').value=defCnt(); }catch(e){}
@@ -1963,6 +1993,8 @@ function listText(){
     return st==='numAll'?`${i+1}. ${x.name} ×${x.n}` : st==='dot'?`・${x.name}${c}` : st==='heart'?`♡ ${x.name}${c?' '+c:''}` : st==='plain'?`${x.name}${c}` : `${i+1}. ${x.name}${c}`; };
   const parts=[];
   if ($('txtHead').value.trim()) parts.push($('txtHead').value.trim());
+  if ($('txtShop').checked){ const imgs=items.length>1 ? items.filter(it=>!it.skip && nOf(itemCount(it))>0).map(it=>it.img) : [shotImg];
+    const bl=[...new Set(imgs.map(i=>i?._shop?.join('\n')).filter(Boolean))]; if (bl.length) parts.push(bl.join('\n\n')); } // ショップ情報（同じものは1つだけ）
   parts.push(rows.map(line).join('\n'));
   if ($('txtTotal').value.trim()) parts.push($('txtTotal').value.trim().replace(/\{n\}/g,total));
   if ($('txtFoot').value.trim()) parts.push($('txtFoot').value.trim());
