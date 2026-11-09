@@ -381,7 +381,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='74'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='75'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -404,9 +404,9 @@ if (!FONTS[store.get('font')] || store.get('fontDefault')!=='10'){ store.set('fo
   const v = store.get(id); if (v!==null) $(id).value = v;
   $(id).addEventListener('input',()=>{ store.set(id,$(id).value); draw(); });
 });
-$('owned').addEventListener('input',()=>{ $('count').value=''; shotOwnTyped=true; draw(); }); // 所持数を変えたら「所持数−1」に戻す
-$('minus').onclick=()=>{ $('count').value=Math.max(0,(countValue()??1)-1); draw(); };
-$('plus').onclick=()=>{ $('count').value=(countValue()??0)+1; draw(); };
+$('owned').addEventListener('input',()=>{ $('count').value=''; shotOwnTyped=true; draw(); renderNames(); }); // 所持数を変えたら「所持数−1」に戻す
+$('minus').onclick=()=>{ $('count').value=Math.max(0,(countValue()??1)-1); draw(); renderNames(); };
+$('plus').onclick=()=>{ $('count').value=(countValue()??0)+1; draw(); renderNames(); };
 const JFONTS=[["Mochiy Pop One", "400"], ["M PLUS Rounded 1c", "900"], ["Zen Maru Gothic", "900"], ["Kiwi Maru", "500"], ["Hachi Maru Pop", "400"], ["Dela Gothic One", "400"], ["Potta One", "400"], ["Rampart One", "400"], ["Yusei Magic", "400"], ["Kosugi Maru", "400"], ["Cherry Bomb One", "400"], ["Mochiy Pop P One", "400"], ["RocknRoll One", "400"], ["Reggae One", "400"], ["Stick", "400"], ["DotGothic16", "400"]];
 try{ const v=localStorage.getItem('promo_jfont'); if(v) $('jfont').value=v; }catch(e){}
 const jfontCss=()=>{ const [f,w]=JFONTS[($('jfont').value|0)-1]||JFONTS[0]; return {f,w}; };
@@ -424,7 +424,8 @@ renderFonts();
 $('openSet').onclick=()=>{ $('settings').hidden=false; renderLearned(); renderRecv(); $('appVer').textContent='アプリの版：'+APP_VER; document.querySelector('.fontOpt.on')?.scrollIntoView({block:'nearest'});  };
 const closeSet=()=>{ $('settings').hidden=true;  };
 $('closeSet').onclick=closeSet; $('settings').addEventListener('click',e=>{ if(e.target.id==='settings') closeSet(); });
-$('showCount').addEventListener('change',draw);
+try{ const v=localStorage.getItem('promo_showCount'); if(v!==null) $('showCount').checked=v==='1'; }catch(e){}
+$('showCount').addEventListener('change',()=>{ try{ localStorage.setItem('promo_showCount',$('showCount').checked?'1':'0'); }catch(e){} draw(); });
 // ×数字・「計○点」の色（この端末に保存）
 const TEXT_COLORS=[['ピンク','#f82da1'],['レッド','#f0304f'],['オレンジ','#ff7a1a'],['イエロー','#f2b300'],['グリーン','#22b35e'],
   ['ミント','#12b8a6'],['ブルー','#2f86ff'],['パープル','#8a5cf0'],['ブラウン','#9a5b3c'],['ブラック','#3a2f3f']];
@@ -1594,8 +1595,8 @@ function renderItems(){
   box.innerHTML='';
   items.forEach((it,n)=>{ const d=document.createElement('div'); d.className='chip';
     d.innerHTML=`<span class="no">${n+1}</span>${it.snap?`<img class="snap" src="${it.snap}" alt="元画像の所持数">`:(it.reading?'<img src="'+it.src+'" alt="">':'<span class="nosnap">所持数なし</span>')}<button type="button" class="m">−</button><b>${it.reading?'…':itemCount(it)==null?'<small style="font-size:11px">なし</small>':'×'+itemCount(it)}</b><button type="button" class="p">＋</button>`;
-    d.querySelector('.m').onclick=()=>{ it.count=Math.max(0,(itemCount(it)??1)-1); renderItems(); draw(); };
-    d.querySelector('.p').onclick=()=>{ it.count=(itemCount(it)??0)+1; renderItems(); draw(); };
+    d.querySelector('.m').onclick=()=>{ it.count=Math.max(0,(itemCount(it)??1)-1); renderItems(); draw(); renderNames(); };
+    d.querySelector('.p').onclick=()=>{ it.count=(itemCount(it)??0)+1; renderItems(); draw(); renderNames(); };
     box.appendChild(d); });
 }
 $('shot').addEventListener('click',()=>{ picking=true; }); // 写真を選んでいる最中は自動で読み直さない
@@ -1878,11 +1879,13 @@ function drawNow(){
 
 // 複数アイテム：選んだ順に左上から並べ、下に「計○点」
 function drawMulti(edge){
-  const n=Math.min(items.length,12);
+  // 「文字に入れない」にしたアイテムは画像にも出さない（画像の「計○点」と文字の合計をそろえる）
+  const its=items.some(it=>!it.skip) ? items.filter(it=>!it.skip) : items;
+  const n=Math.min(its.length,12);
   const PAD=56, TOP=70, FOOT=215, GAP=n>6?34:44;
   // カードの縦横比（アイテム上端〜名前の行まで）
-  items.forEach(it=>{ it.cardBottom = showOwned()&&it.ownedBottom ? it.ownedBottom : (it.nameBottom ?? it.cardBottom); });
-  const ratios=items.map(it=>(it.cardBottom-it.top)/it.img.width).filter(r=>r>0.5&&r<1.6);
+  its.forEach(it=>{ it.cardBottom = showOwned()&&it.ownedBottom ? it.ownedBottom : (it.nameBottom ?? it.cardBottom); });
+  const ratios=its.map(it=>(it.cardBottom-it.top)/it.img.width).filter(r=>r>0.5&&r<1.6);
   const ar=ratios.length? ratios.sort((a,b)=>a-b)[ratios.length>>1] : 1;
   const rows=bestRows(n,ar,GAP), cols=Math.max(...rows);
   const availW=S-PAD*2, availH=S-TOP-FOOT;
@@ -1890,7 +1893,7 @@ function drawMulti(edge){
   const k=cw/1000, r=Math.max(14,R*k*1.6);
   let y=TOP+(availH-(rows.length*ch+(rows.length-1)*GAP))/2, idx=0;
   const cards=[];
-  rows.forEach(c=>{ let x=(S-(c*cw+(c-1)*GAP))/2; for(let i=0;i<c;i++){ cards.push({x,y,it:items[idx++]}); x+=cw+GAP; } y+=ch+GAP; });
+  rows.forEach(c=>{ let x=(S-(c*cw+(c-1)*GAP))/2; for(let i=0;i<c;i++){ cards.push({x,y,it:its[idx++]}); x+=cw+GAP; } y+=ch+GAP; });
   cards.forEach(({x,y,it})=>{
     ctx.save(); rr(x,y,cw,ch,r); ctx.clip(); ctx.fillStyle='#fff'; ctx.fillRect(x,y,cw,ch);
     const W=it.img.width; ctx.imageSmoothingQuality='high';
@@ -1901,7 +1904,7 @@ function drawMulti(edge){
   const ht=Math.max(60,cw*.24); // 各カードの×数字の高さ
   cards.forEach(({x,y,it})=>{ const c=itemCount(it); if (c!=null) drawCount(String(c),x+cw+ht*.18,y+ht*.62,ht,edge); });
   // 合計○個（数字を大きく）
-  const total=items.slice(0,n).reduce((a,it)=>a+nOf(itemCount(it)),0);
+  const total=its.slice(0,n).reduce((a,it)=>a+nOf(itemCount(it)),0);
   const {base:fb,px}=fontPx(150), fBig=setF(fb,px), fSm=(()=>{ const {f,w}=jfontCss(); return `${w} ${Math.round(px*.52)}px "${f}"`; })();
   const m=document.createElement('canvas').getContext('2d');
   m.font=fSm; const w1=m.measureText('計').width, w3=m.measureText('点').width; m.font=fBig; const w2=m.measureText(String(total)).width;
