@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-rem 売れ筋ランキングの集計（ポケツイ・ピグパ）。setup.bat が %USERPROFILE%\gametrade-ranking に置いて、毎日自動で動かす
+rem 売れ筋ランキングの集計（ポケツイ・ピグパ）と、ポコダンの出品の記録。setup.bat が %USERPROFILE%\gametrade-ranking に置いて、毎日自動で動かす
 set "DIR=%~dp0"
 set /p RANKING_KEY=<"%DIR%key.txt"
 >> "%DIR%log.txt" echo ==== %date% %time%
@@ -11,11 +11,20 @@ cd /d "%DIR%%1"
 git pull -q --rebase >> "%DIR%log.txt" 2>&1
 >> "%DIR%log.txt" echo [%1]
 node tools\gametrade-track.mjs >> "%DIR%log.txt" 2>&1
-if errorlevel 1 (
+if errorlevel 1 goto :fail
+rem ポコダンの記録（ポケツイのフォルダでだけ。失敗してもポケツイの集計は保存する）
+if "%1"=="poketsui-app" if exist tools\pocodun-track.mjs (
+  node tools\pocodun-track.mjs >> "%DIR%log.txt" 2>&1 || git checkout -q -- data\pocodun-state.enc 2>nul
+)
+goto :save
+:fail
+if 1==1 (
   >> "%DIR%log.txt" echo [%1] 集計に失敗したので、この回は保存しません
   git checkout -q -- data
   exit /b
 )
+goto :eof
+:save
 git add data
 git diff --cached --quiet || (git commit -q -m "売れ筋ランキングを更新（パソコンから）" && git pull -q --rebase && git push -q) >> "%DIR%log.txt" 2>&1
 exit /b
