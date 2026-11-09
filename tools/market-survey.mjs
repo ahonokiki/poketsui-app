@@ -30,7 +30,7 @@ const GAMES = process.env.SURVEY_GAMES ? process.env.SURVEY_GAMES.split(',') : [
   'inazuma-cross', 'wizardry-daphne', 'another-eden', 'arknitgts', 'zzz', 'reverse1999', 'blue_archive', 'houkaistarrail', 'romasaga-reunivers',
   'shadowverse-wb', 'bang-dream', 'sololeveling', 'epicseven', 'stellasora',
   'pocodun', 'pokekoro-twin', 'pigg-party'];
-const PAGES = +(process.env.SURVEY_PAGES || 5), CHECKS = +(process.env.SURVEY_CHECKS || 30);
+const PAGES = +(process.env.SURVEY_PAGES || 5), CHECKS = +(process.env.SURVEY_CHECKS || 30), SAMPLE = +(process.env.SURVEY_SAMPLE ?? 10);
 const UA = { 'User-Agent': 'Mozilla/5.0 (personal market research)' };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function get(url) { let r = null; for (let i = 0; i < 3; i++) { try { r = await fetch(url, { headers: UA }); } catch (e) { r = null; } if (r && (r.ok || r.status === 404 || r.status === 410)) return r; await sleep(i === 0 ? 5000 : 15000 * i); } return r; }
@@ -48,11 +48,11 @@ async function listPage(g, n) {
 }
 async function detail(g, id) {
   const r = await get(`https://gametrade.jp/${g}/exhibits/${id}`);
-  if (!r) return 'unknown';
-  if (r.status === 404 || r.status === 410) return 'removed';
-  if (!r.ok) return 'unknown';
-  const h = await r.text();
-  return /取引が終了しました/.test(h) ? 'sold' : /購入する/.test(h) ? 'active' : 'pending';
+  if (!r) return { s: 'unknown' };
+  if (r.status === 404 || r.status === 410) return { s: 'removed' };
+  if (!r.ok) return { s: 'unknown' };
+  const h = await r.text(), u = (h.match(/href="\/users\/(\d+)"/) || [])[1]; // 出品者の番号（競合が何人いるかを数えるため。プロフィールは開かない）
+  return { s: /取引が終了しました/.test(h) ? 'sold' : /購入する/.test(h) ? 'active' : 'pending', u };
 }
 
 const RUN = new Date().toISOString(), jst = ms => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10), today = jst(Date.now()), daysAgo = n => jst(Date.now() - n * 864e5);
@@ -61,7 +61,7 @@ if (IN && existsSync(IN) && readFileSync(IN, 'utf8').trim()) { try { state = ope
 state.since ??= today; state.runs = (state.runs || 0) + 1;
 let totalSold = 0, totalChecked = 0, failed = 0;
 for (const g of GAMES) {
-  const G = state.games[g] ??= { since: today, L: {} }, L = G.L; // id → {t:題名, x:説明文の頭（アカウント売り・アイテム売り、初期垢・育成垢などを見分ける）, p:値段, f:初めて見た日, l:最後に一覧で見た時刻, s:'active'|'old'|'sold'|'removed'|'pending', d:終わった日}
+  const G = state.games[g] ??= { since: today, L: {} }, L = G.L; // id → {u:出品者の番号, t:題名, x:説明文の頭（アカウント売り・アイテム売り、初期垢・育成垢などを見分ける）, p:値段, f:初めて見た日, l:最後に一覧で見た時刻, s:'active'|'old'|'sold'|'removed'|'pending', d:終わった日}
   let partial = false, seen = 0;
   for (let n = 1; n <= PAGES; n++) {
     const got = await listPage(g, n);
@@ -78,11 +78,16 @@ for (const g of GAMES) {
   const pend = Object.entries(L).filter(([, o]) => o.s === 'pending');
   let c = 0;
   for (const [id, o] of [...pend, ...gone].slice(0, CHECKS)) {
-    const s = await detail(g, id); c++;
+    const { s, u } = await detail(g, id); c++; if (u) o.u = u;
     if (s === 'sold') { o.s = 'sold'; o.d = today; totalSold++; }
     else if (s === 'removed') { o.s = 'removed'; o.d = today; }
     else if (s === 'active') o.s = 'old';  // 一覧の後ろに下がっただけ
     else if (s === 'pending') o.s = 'pending';
+    await sleep(1000);
+  }
+  // 今出品している人の数を見積もるため、新しく見つけた出品を毎回少しだけ開いて出品者の番号を残す
+  for (const [id, o] of Object.entries(L).filter(([, o]) => o.s === 'active' && o.l === RUN && o.f === today && !o.u).sort(([a], [b]) => +b - +a).slice(0, SAMPLE)) {
+    const { s, u } = await detail(g, id); c++; if (u) o.u = u; if (s === 'sold') { o.s = 'sold'; o.d = today; totalSold++; }
     await sleep(1000);
   }
   G.unchecked = Object.values(L).filter(o => o.s === 'active' && o.l !== RUN).length; // 確かめきれなかった「消えた出品」の数（売れた数の見積もりに使う）
