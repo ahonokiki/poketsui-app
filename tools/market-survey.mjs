@@ -23,11 +23,11 @@ function open(text) {
   return JSON.parse(gunzipSync(Buffer.concat([d.update(buf.subarray(0, -16)), d.final()])));
 }
 
-// 調べるゲーム（全4,495本の活気とゲーム自体の人気で選んだ候補。妻の3本は物差しとして入れる）
+// 調べるゲーム（全4,495本の活気とゲーム自体の人気で選んだ候補。スマホで遊べるものだけ。妻の3本は物差しとして入れる）
 const GAMES = process.env.SURVEY_GAMES ? process.env.SURVEY_GAMES.split(',') : ['pazudora', 'dbz-dokkan', 'monst', 'efootball', 'fate-go', 'knives-out', 'prospi-a', 'onepiece-tc', 'genshin-impact', 'pokemon-tcg-pocket',
-  'wutheringwaves', 'umamusume', 'gakuen-idolmaster', 'drangonquest-walk', 'opbr', 'ggene-eternal', 'brawl-stars', 'yugio-masterduel', 'apex-legends', 'battlecats',
+  'wutheringwaves', 'umamusume', 'gakuen-idolmaster', 'drangonquest-walk', 'opbr', 'ggene-eternal', 'brawl-stars', 'yugio-masterduel', 'battlecats',
   'nikke', 'db-legends', 'mahjongsoul', 'arknights-endfield', 'yokai-punipuni', 'granblue', '7taizai-grandx', 'hololive-dreams', 'yugio', 'pawapuro',
-  'inazuma-cross', 'overwatch', 'wizardry-daphne', 'another-eden', 'arknitgts', 'zzz', 'reverse1999', 'blue_archive', 'houkaistarrail', 'romasaga-reunivers',
+  'inazuma-cross', 'wizardry-daphne', 'another-eden', 'arknitgts', 'zzz', 'reverse1999', 'blue_archive', 'houkaistarrail', 'romasaga-reunivers',
   'shadowverse-wb', 'bang-dream', 'sololeveling', 'epicseven', 'stellasora',
   'pocodun', 'pokekoro-twin', 'pigg-party'];
 const PAGES = +(process.env.SURVEY_PAGES || 5), CHECKS = +(process.env.SURVEY_CHECKS || 30);
@@ -40,7 +40,7 @@ async function listPage(g, n) {
   if (r && (r.status === 404 || r.status === 410)) return [];
   if (!r?.ok) return null;
   const out = [], html = await r.text();
-  for (const m of html.matchAll(/name="exhibit_data" type="hidden" value="([^"]+)"/g)) { try { const d = JSON.parse(dec(m[1])); out.push({ id: d.id, price: +d.price }); } catch (e) {} }
+  for (const m of html.matchAll(/name="exhibit_data" type="hidden" value="([^"]+)"/g)) { try { const d = JSON.parse(dec(m[1])); out.push({ id: d.id, price: +d.price, title: String(d.name || '').slice(0, 60) }); } catch (e) {} }
   return out;
 }
 async function detail(g, id) {
@@ -58,15 +58,15 @@ if (IN && existsSync(IN) && readFileSync(IN, 'utf8').trim()) { try { state = ope
 state.since ??= today; state.runs = (state.runs || 0) + 1;
 let totalSold = 0, totalChecked = 0, failed = 0;
 for (const g of GAMES) {
-  const G = state.games[g] ??= { since: today, L: {} }, L = G.L; // id → {p:値段, f:初めて見た日, l:最後に一覧で見た時刻, s:'active'|'old'|'sold'|'removed'|'pending', d:終わった日}
+  const G = state.games[g] ??= { since: today, L: {} }, L = G.L; // id → {t:題名（初期垢・育成垢などを見分ける）, p:値段, f:初めて見た日, l:最後に一覧で見た時刻, s:'active'|'old'|'sold'|'removed'|'pending', d:終わった日}
   let partial = false, seen = 0;
   for (let n = 1; n <= PAGES; n++) {
     const got = await listPage(g, n);
     if (got === null) { partial = true; break; }
     if (!got.length) break;
     for (const x of got) { const o = L[x.id]; seen++;
-      if (o) { o.l = RUN; o.p = x.price; if (o.s !== 'active') { o.s = 'active'; delete o.d; } }
-      else L[x.id] = { p: x.price, f: today, l: RUN, s: 'active', n: G.since !== today }; } // n：記録を始めた日より後に見つけた（売れるまでの日数が分かる）
+      if (o) { o.l = RUN; o.p = x.price; o.t = x.title; if (o.s !== 'active') { o.s = 'active'; delete o.d; } }
+      else L[x.id] = { t: x.title, p: x.price, f: today, l: RUN, s: 'active', n: G.since !== today }; } // n：記録を始めた日より後に見つけた（売れるまでの日数が分かる）
     await sleep(1000);
   }
   if (!seen) { failed++; continue; }
