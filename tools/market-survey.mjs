@@ -35,8 +35,10 @@ const GAMES = process.env.SURVEY_GAMES ? process.env.SURVEY_GAMES.split(',') : [
   'bleach-mh', 'monmusu-td', 'ayarabu', 'sakatsuku2025', 'song-for-prism', 'aigis', 'cookierun-kingdom', 'haikyu-haidori', 'krbs-sr', 'assaultlily_lb', 'jojo-oradora', 'otogi-frontier',
   // 追加：着せかえ・アバター系（妻の見立て：ポケツイ・ピグパは、お金を使うことをためらわない大人の女性の買い手が多い。似た客層のゲーム）
   'pokecolo-universe', 'pokecolo', 'pokepia', 'pocketland', 'tomotoru', 'hello-sweetdays', 'hkw2', 'koisuru-pairium', 'mylittledoll', 'sensil', 'ameba-pigg', 'livlyIsland',
+  // 追加：夜の仕事の女性など、お金を使う大人の女性に人気と調べたゲーム（女性向けの売上ランキング・体験談などから）
+  'enstar-music', 'loveanddeepspace', 'tokyodebunker', 'idolish7', 'touken', 'touken-puzzle', 'mahoyaku', 'tsumtsum', '18trip', 'breakmycase', 'a3', 'hypnosismic', 'standmyheros', 'yume-100', 'identity-v', 'sparklink-stars',
   'pocodun', 'pokekoro-twin', 'pigg-party'];
-const PAGES = +(process.env.SURVEY_PAGES || 5), CHECKS = +(process.env.SURVEY_CHECKS || 30), SAMPLE = +(process.env.SURVEY_SAMPLE ?? 10);
+const PAGES = +(process.env.SURVEY_PAGES || 5), CHECKS = +(process.env.SURVEY_CHECKS || 30), SAMPLE = +(process.env.SURVEY_SAMPLE ?? 6);
 const UA = { 'User-Agent': 'Mozilla/5.0 (personal market research)' };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function get(url) { let r = null; for (let i = 0; i < 3; i++) { try { r = await fetch(url, { headers: UA }); } catch (e) { r = null; } if (r && (r.ok || r.status === 404 || r.status === 410)) return r; await sleep(i === 0 ? 5000 : 15000 * i); } return r; }
