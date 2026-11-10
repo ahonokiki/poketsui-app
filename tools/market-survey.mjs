@@ -33,6 +33,8 @@ const GAMES = process.env.SURVEY_GAMES ? process.env.SURVEY_GAMES.split(',') : [
   'dq-tact', 'heavenburnsred', 'bleach-bravesouls', 'jujutsuphanpara', 'last-cloudia', 'madoka-exedra', 'gensosuikoden-star-leap', 'kotodaman', 'czn', 'tensura-maoryuu', 'pj_sekai', 'twsted-wanderland',
   // 追加：出品は中くらい（20〜98ページ）で競合が少なめかもしれないもの
   'bleach-mh', 'monmusu-td', 'ayarabu', 'sakatsuku2025', 'song-for-prism', 'aigis', 'cookierun-kingdom', 'haikyu-haidori', 'krbs-sr', 'assaultlily_lb', 'jojo-oradora', 'otogi-frontier',
+  // 追加：着せかえ・アバター系（妻の見立て：ポケツイ・ピグパは、お金を使うことをためらわない大人の女性の買い手が多い。似た客層のゲーム）
+  'pokecolo-universe', 'pokecolo', 'pokepia', 'pocketland', 'tomotoru', 'hello-sweetdays', 'hkw2', 'koisuru-pairium', 'mylittledoll', 'sensil', 'ameba-pigg', 'livlyIsland',
   'pocodun', 'pokekoro-twin', 'pigg-party'];
 const PAGES = +(process.env.SURVEY_PAGES || 5), CHECKS = +(process.env.SURVEY_CHECKS || 30), SAMPLE = +(process.env.SURVEY_SAMPLE ?? 10);
 const UA = { 'User-Agent': 'Mozilla/5.0 (personal market research)' };
