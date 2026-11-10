@@ -38,6 +38,9 @@ const GAMES = process.env.SURVEY_GAMES ? process.env.SURVEY_GAMES.split(',') : [
   // 追加：夜の仕事の女性など、お金を使う大人の女性に人気と調べたゲーム（女性向けの売上ランキング・体験談などから）
   'enstar-music', 'loveanddeepspace', 'tokyodebunker', 'idolish7', 'touken', 'touken-puzzle', 'mahoyaku', 'tsumtsum', '18trip', 'breakmycase', 'a3', 'hypnosismic', 'standmyheros', 'yume-100', 'identity-v', 'sparklink-stars',
   'pocodun', 'pokekoro-twin', 'pigg-party'];
+// アイテム売りの多いゲームは出品がとても多く、5ページでは消えた出品のほとんどが「後ろに下がっただけ」になるので、深く読んで確かめる数も増やす
+const DEEP = new Set(['pokekoro-twin', 'pigg-party', 'pokecolo', 'pokecolo-universe', 'pokepia', 'pocketland', 'tomotoru', 'hello-sweetdays', 'hkw2', 'koisuru-pairium', 'mylittledoll', 'sensil', 'ameba-pigg', 'livlyIsland',
+  'pokemon-tcg-pocket', 'yugio-masterduel', 'yugio', 'dbz-dokkan', 'stellasora']);
 const PAGES = +(process.env.SURVEY_PAGES || 5), CHECKS = +(process.env.SURVEY_CHECKS || 30), SAMPLE = +(process.env.SURVEY_SAMPLE ?? 6);
 const UA = { 'User-Agent': 'Mozilla/5.0 (personal market research)' };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -73,7 +76,8 @@ let totalSold = 0, totalChecked = 0, failed = 0;
 for (const g of GAMES) { try {
   const G = state.games[g] ??= { since: today, L: {} }, L = G.L; // id → {u:出品者の番号, t:題名, x:説明文の頭（アカウント売り・アイテム売り、初期垢・育成垢などを見分ける）, p:値段, f:初めて見た日, l:最後に一覧で見た時刻, s:'active'|'old'|'sold'|'removed'|'pending', d:終わった日}
   let partial = false, seen = 0;
-  for (let n = 1; n <= PAGES; n++) {
+  const pages = DEEP.has(g) && !process.env.SURVEY_PAGES ? 20 : PAGES, checks = DEEP.has(g) && !process.env.SURVEY_CHECKS ? 60 : CHECKS;
+  for (let n = 1; n <= pages; n++) {
     const got = await listPage(g, n);
     if (got === null) { partial = true; break; }
     if (!got.length) break;
@@ -87,7 +91,7 @@ for (const g of GAMES) { try {
   const gone = partial ? [] : Object.entries(L).filter(([, o]) => o.s === 'active' && o.l !== RUN).sort(([a], [b]) => +b - +a);
   const pend = Object.entries(L).filter(([, o]) => o.s === 'pending');
   let c = 0;
-  for (const [id, o] of [...pend, ...gone].slice(0, CHECKS)) {
+  for (const [id, o] of [...pend, ...gone].slice(0, checks)) {
     const { s, u } = await detail(g, id); c++; if (u) o.u = u;
     if (s === 'sold') { o.s = 'sold'; o.d = today; totalSold++; }
     else if (s === 'removed') { o.s = 'removed'; o.d = today; }
