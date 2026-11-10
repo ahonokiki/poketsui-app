@@ -47,7 +47,8 @@ async function listPage(g, n) {
   const r = await get(`https://gametrade.jp/${g}/exhibits?sort=new&page=${n}`);
   if (r && (r.status === 404 || r.status === 410)) return [];
   if (!r?.ok) return null;
-  const out = [], html = await r.text();
+  let html; try { html = await r.text(); } catch (e) { return null; } // 読んでいる途中で接続が切れたときは、読めなかった扱い
+  const out = [];
   // 出品ごとの hidden input の後ろに、説明文の最初の部分が続く（アカウント売りかアイテム売りかを見分けるために残す）
   for (const m of html.matchAll(/name="exhibit_data" type="hidden" value="([^"]+)"([\s\S]*?)(?=name="exhibit_data"|$)/g)) {
     try { const d = JSON.parse(dec(m[1])), ds = dec(((m[2].match(/class="description"><p>([\s\S]*?)<\/p>/) || [])[1] || '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
@@ -59,7 +60,8 @@ async function detail(g, id) {
   if (!r) return { s: 'unknown' };
   if (r.status === 404 || r.status === 410) return { s: 'removed' };
   if (!r.ok) return { s: 'unknown' };
-  const h = await r.text(), u = (h.match(/href="\/users\/(\d+)"/) || [])[1]; // 出品者の番号（競合が何人いるかを数えるため。プロフィールは開かない）
+  let h; try { h = await r.text(); } catch (e) { return { s: 'unknown' }; }
+  const u = (h.match(/href="\/users\/(\d+)"/) || [])[1]; // 出品者の番号（競合が何人いるかを数えるため。プロフィールは開かない）
   return { s: /取引が終了しました/.test(h) ? 'sold' : /購入する/.test(h) ? 'active' : 'pending', u };
 }
 
@@ -68,7 +70,7 @@ let state = { games: {} };
 if (IN && existsSync(IN) && readFileSync(IN, 'utf8').trim()) { try { state = open(readFileSync(IN, 'utf8')); } catch (e) { console.error('前回の記録を開けませんでした（合言葉が違う？）'); process.exit(1); } }
 state.since ??= today; state.runs = (state.runs || 0) + 1;
 let totalSold = 0, totalChecked = 0, failed = 0;
-for (const g of GAMES) {
+for (const g of GAMES) { try {
   const G = state.games[g] ??= { since: today, L: {} }, L = G.L; // id → {u:出品者の番号, t:題名, x:説明文の頭（アカウント売り・アイテム売り、初期垢・育成垢などを見分ける）, p:値段, f:初めて見た日, l:最後に一覧で見た時刻, s:'active'|'old'|'sold'|'removed'|'pending', d:終わった日}
   let partial = false, seen = 0;
   for (let n = 1; n <= PAGES; n++) {
@@ -101,6 +103,7 @@ for (const g of GAMES) {
   G.unchecked = Object.values(L).filter(o => o.s === 'active' && o.l !== RUN).length; // 確かめきれなかった「消えた出品」の数（売れた数の見積もりに使う）
   totalChecked += c;
   for (const [id, o] of Object.entries(L)) if ((o.s !== 'active' && o.s !== 'pending') && (o.d || o.f) < daysAgo(21) || o.l < daysAgo(21)) delete L[id];
+} catch (e) { failed++; console.warn(`${g}：途中で失敗（${e.message}）。このゲームは次の回に`); } // 1本の失敗で全体を止めない
 }
 writeFileSync(OUT, seal(state) + '\n');
 console.log(`調べ ${GAMES.length}本（読めなかった ${failed}本） / 確認 ${totalChecked}件（うち売れた ${totalSold}件） / ${state.runs}回目（${state.since}から）`);
