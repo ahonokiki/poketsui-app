@@ -386,7 +386,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='78'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='79'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -717,7 +717,8 @@ async function ppShop(img,lay,from){ const pp=await timeLimit(ppInit(),90000).ca
   // 枠の上端：左の余白の少し内側の列で、白から薄い色（灰色・今のショップは薄紫）に変わる所（同じ色が少し続く）
   let y=Math.round(from || lay.pinkBottom+W*.1), y1=Math.min(H-2,Math.round(y+W*.35)), top=-1, bg=null;
   for (;y<y1;y++){ const c0=at(W*.07,y); if (!pale(c0)) continue; let ok=true; for (let k=1;k<W*.02;k++) if (y+k>=H || !near(at(W*.07,y+k),c0)){ ok=false; break; } if (ok){ top=y; bg=c0; break; } }
-  if (top<0) return null; let bot=top; while (bot<H-1 && near(at(W*.07,bot+1),bg)) bot++;
+  if (top<0) return null; while (top>1 && near(at(W*.07,top-1),bg)) top--; // 探し始めが枠の中だったときも、枠の本当の上端まで戻す（一番上のタイプの行が切れないように）
+  let bot=top; while (bot<H-1 && near(at(W*.07,bot+1),bg)) bot++;
   // 枠の中の字の行（字は枠より濃い灰色）。細い点線は外す
   const ink=(x,yy)=>{ const [r,gg,b]=at(x,yy); return .3*r+.59*gg+.11*b<185; }, xa=Math.round(W*.08), xb=Math.round(W*.92), runs=[]; let s0=-1;
   for (let yy=top; yy<=bot; yy++){ let n=0; for (let x=xa;x<xb;x++) if (ink(x,yy)) n++; if (n>2&&s0<0) s0=yy; if ((n<=2||yy===bot)&&s0>=0){ runs.push([s0,yy]); s0=-1; } }
@@ -731,9 +732,16 @@ async function ppShop(img,lay,from){ const pp=await timeLimit(ppInit(),90000).ca
         const cc=document.createElement('canvas'); cc.width=W; cc.height=Math.round(h*3); const cg=cc.getContext('2d'); cg.drawImage(img,0,a-h,W,h*3,0,0,W,h*3);
         cg.fillStyle=`rgb(${bg.join(',')})`; cg.fillRect(pe+h*.08,0,W-pe,h*3); const t2=(await timeLimit(ppLine(pp,cc,{x:l,y:h,w:pe-l,h},true),20000)).t.trim(); const val=x=>x.replace(/^タイト[^:：・]*[:：・]\s*/,''), v1=val(t), v2=val(t2); if (v2 && v2.length<v1.length && v1.startsWith(v2)) t=t.slice(0,t.length-(v1.length-v2.length)); } } // 題名の後ろに字が増えていたときだけ、その字を外す（ほかは最初の読みのまま）
     if (/^タイトル/.test(t)) t=t.replace(/[后卮叵□■]$/u,''); // コピーのマークが字とくっついて読まれたときの読み違い（日本語の題名の最後には来ない字）
+    // 決まった見出し（タイプ・タイトル・公開期間）を行のどこかから探す。「：」が「・」などに読まれたり、上の点線と一緒の行になったりしても拾う
+    const fix=v=>v.replace(/\s*[~～〜]\s*/g,' 〜 ').replace(/(\d{4}年\d{1,2}月\d{1,2})(?![\d日])/g,'$1日').trim(); // 「〜」の前の「日」は読み落としやすい
+    if (/ショップ情報|公開終了|タイト[ルノ]?へ\s*$/.test(t)) continue; // ボタンの行は使わない
+    let hit=null;
+    for (const [lab,re] of [['タイトル',/タ[イィ]ト[ルノ]?(?!へ)/],['タイプ',/タ[イィ][プフブ]/],['公開期間',/公開[期朝]?間/]]){ const mm=t.match(re); if (!mm) continue;
+      const v=t.slice(mm.index+mm[0].length).replace(/^[\s:：・;；.,、。|｜]+/,''); if (v && !/^へ/.test(v)) { hit=lab+'：'+fix(v); break; } }
+    if (hit){ if (!out.some(x=>x.startsWith(hit.split('：')[0]+'：'))) out.push(hit); continue; }
     const m=t.match(/^(.{1,6}?)\s*[:：]\s*(.+)$/);
     if (!m || /ショップ情報/.test(t)) continue;
-    out.push(m[1].replace(/[^\p{L}]/gu,'')+'：'+m[2].replace(/\s*[~～〜]\s*/g,' 〜 ').replace(/(\d{4}年\d{1,2}月\d{1,2})(?![\d日])/g,'$1日').trim()); } // 「〜」の前の「日」は読み落としやすい
+    out.push(m[1].replace(/[^\p{L}]/gu,'')+'：'+fix(m[2])); }
   return out.some(x=>/^(タイプ|タイトル|公開期間)：/.test(x)) ? out : null; }
 async function analyzeShot(img){ const r=await analyzeShot0(img);
   try{ const lay=detectLayout(img); if (lay && img._shop===undefined) img._shop=await ppShop(img,lay,r?.ownedBottom); }catch(e){}
