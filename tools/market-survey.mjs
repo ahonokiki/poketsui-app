@@ -37,9 +37,11 @@ const GAMES = process.env.SURVEY_GAMES ? process.env.SURVEY_GAMES.split(',') : [
   'pokecolo-universe', 'pokecolo', 'pokepia', 'pocketland', 'tomotoru', 'hello-sweetdays', 'hkw2', 'koisuru-pairium', 'mylittledoll', 'sensil', 'ameba-pigg', 'livlyIsland',
   // 追加：夜の仕事の女性など、お金を使う大人の女性に人気と調べたゲーム（女性向けの売上ランキング・体験談などから）
   'enstar-music', 'loveanddeepspace', 'tokyodebunker', 'idolish7', 'touken', 'touken-puzzle', 'mahoyaku', 'tsumtsum', '18trip', 'breakmycase', 'a3', 'hypnosismic', 'standmyheros', 'yume-100', 'identity-v', 'sparklink-stars',
+  // 追加：妻の次の候補（モンハンのスマホ版）
+  'monsterhunternow', 'monsterhunteroutlanders',
   'pocodun', 'pokekoro-twin', 'pigg-party'];
 // アイテム売りの多いゲームは出品がとても多く、5ページでは消えた出品のほとんどが「後ろに下がっただけ」になるので、深く読んで確かめる数も増やす
-const DEEP = new Set(['pokekoro-twin', 'pigg-party', 'pokecolo', 'pokecolo-universe', 'pokepia', 'pocketland', 'tomotoru', 'hello-sweetdays', 'hkw2', 'koisuru-pairium', 'mylittledoll', 'sensil', 'ameba-pigg', 'livlyIsland',
+const DEEP = new Set(['pokekoro-twin', 'pigg-party', 'opbr', 'fate-go', 'monst', 'monsterhunternow', 'monsterhunteroutlanders', // 妻の次の候補もくわしく 'pokecolo', 'pokecolo-universe', 'pokepia', 'pocketland', 'tomotoru', 'hello-sweetdays', 'hkw2', 'koisuru-pairium', 'mylittledoll', 'sensil', 'ameba-pigg', 'livlyIsland',
   'pokemon-tcg-pocket', 'yugio-masterduel', 'yugio', 'dbz-dokkan', 'stellasora']);
 const PAGES = +(process.env.SURVEY_PAGES || 5), CHECKS = +(process.env.SURVEY_CHECKS || 30), SAMPLE = +(process.env.SURVEY_SAMPLE ?? 6);
 const UA = { 'User-Agent': 'Mozilla/5.0 (personal market research)' };
