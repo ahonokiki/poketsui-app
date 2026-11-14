@@ -1,0 +1,22 @@
+name: ガチャ背景の履歴を更新（毎日）
+on:
+  schedule:
+    - cron: '41 4 * * *'   # 毎日 13:41（日本時間）。新しいガチャは週3回ほど、いろいろな曜日の12時に公開。無ければコミットしない
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm i --no-save --no-package-lock sharp@0.33
+      # ポケツイだけ自動（ポコダンは tools/gacha-bg/add.mjs で手で入れる）
+      - run: node tools/gacha-bg/update-poketsui.mjs
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A bg-auto
+          git diff --cached --quiet || (git commit -m "ガチャ背景の履歴を更新" && git pull --rebase && git push)

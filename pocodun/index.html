@@ -59,8 +59,30 @@
   .blk .bh{display:flex;justify-content:space-between;align-items:center;gap:6px}.blk .bh span{display:flex;gap:4px}
   .blk button{border:0;background:#f3eadf;border-radius:8px;padding:4px 8px;font:inherit;font-size:12px;font-weight:800;color:#6b4a35}
   .blk textarea{width:100%;margin-top:6px;font-size:13px}
-  .bgs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-  .bg{aspect-ratio:1;border-radius:12px;border:3px solid var(--line);background:#fff center/cover;font-size:22px;color:#c9b39b}.bg.on{border-color:#e8a530}
+  /* 背景の丸い枠（2段）：上＝ガチャの背景の新しい7つ＋履歴、下＝自分の画像8つ。小さめにして作業の画面をせまくしない */
+  .bgRows{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .gRow,.oRow{display:grid;grid-template-columns:repeat(8,minmax(0,44px));justify-content:space-between;gap:4px}
+  .bg{position:relative;aspect-ratio:1;border-radius:50%;border:3px solid #fff;background:#fff center/cover;font:inherit;font-size:17px;font-weight:900;color:#c9b39b;padding:0;box-shadow:0 1px 4px #0003;cursor:pointer;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+  .bg.empty{border:2px dashed var(--line);box-shadow:none;background:#fffaf2}
+  .bg.on,.gset.on i{border-color:#e8a530;outline:2px solid #e8a530;outline-offset:1px}
+  .bg.on::after,.gset.on::after{content:"★";position:absolute;left:50%;top:-11px;transform:translateX(-50%);color:#ffc21a;font-size:11px;text-shadow:0 0 3px #fff,0 0 3px #fff}
+  .gset{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;border:0;background:none;padding:0;font:inherit;cursor:pointer;min-width:0;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+  .gset i{display:block;width:100%;aspect-ratio:1;border-radius:50%;border:3px solid #fff;background:#f3e6d6 center/cover;box-shadow:0 1px 4px #0003}
+  .gset small{display:block;max-width:100%;font-size:8px;line-height:1.2;font-weight:800;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gset.hist i{display:flex;align-items:center;justify-content:center;background:#fff;border:2px dashed var(--gold);box-shadow:none;font-style:normal;font-size:16px}
+  #gSheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:30;display:flex;align-items:flex-end;justify-content:center}
+  .gsIn{position:relative;background:#fff;border-radius:18px 18px 0 0;padding:12px 12px calc(16px + env(safe-area-inset-bottom));width:100%;max-width:560px;max-height:86vh;overflow:auto}
+  .gsIn h2{font-size:14px;margin:4px 0 6px;color:var(--brown)}
+  .gsHead{display:flex;justify-content:space-between;align-items:center;font-weight:900;font-size:16px;color:var(--brown)}.gsHead button{border:0;background:#f3eadf;border-radius:99px;width:34px;height:34px;font:inherit;font-weight:900;color:#8a6a55}
+  .gpats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .gpat{display:flex;flex-direction:column;align-items:center;gap:3px;border:3px solid var(--line);border-radius:14px;background:#fff;padding:4px;font:inherit;font-size:10.5px;font-weight:800;color:var(--ink)}
+  .gpat i{display:block;width:100%;aspect-ratio:1;border-radius:10px;background:#f3e6d6 center/cover}
+  .gpat.on{border-color:#e8a530;background:#fff6e0}
+  .ghItem{display:flex;align-items:center;gap:10px;width:100%;border:3px solid var(--line);border-radius:14px;background:#fff;padding:5px;margin:5px 0;font:inherit;text-align:left;color:var(--ink)}
+  .ghItem i{flex:none;width:50px;height:50px;border-radius:50%;background:#f3e6d6 center/cover}
+  .ghItem span{flex:1;min-width:0;font-weight:900;font-size:14px;overflow-wrap:anywhere}
+  .ghItem small{display:block;font-size:11px;font-weight:700;color:var(--sub)}
+  .ghItem.on{border-color:#e8a530;background:#fff6e0}
   .lr{display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px dashed var(--line);font-size:13px}.lr span{flex:1;color:var(--sub);font-size:12px}.lr button{border:0;background:#f3eadf;border-radius:8px;padding:3px 8px;font:inherit;font-size:12px}
   #big{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:25;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;font-weight:800}#big img{max-width:92%;max-height:80%}
   #ck{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:30;display:flex;align-items:flex-end;justify-content:center}#ck[hidden]{display:none}.ckIn{background:#fff;border-radius:18px 18px 0 0;padding:12px;width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px;font-weight:800}#ckText{width:100%;font:inherit;font-weight:500;font-size:14px;border:2px solid var(--line);border-radius:12px;padding:8px}.ckBtns{display:flex;gap:8px}.ckBtns button{flex:1;border:0;border-radius:14px;padding:12px;font:inherit;font-weight:900;background:#f3eadf;color:#8a6a55}.ckBtns button.main{background:#5fae6e;color:#fff}
@@ -81,7 +103,8 @@
       <div>選んだスクショは、この端末のブラウザの中で読み取ります（鍵マークの見分け・虹結晶の数の読み取り）。写真そのものはインターネットに送信も保存もしません。覚えたキャラ名・設定・背景は、この端末の中に保存します（設定で「ほかの端末と自動でそろえる」をつないだときだけ、ご自分の非公開の保存場所にも置きます）。</div></details>
   </section>
 
-  <section class="card"><canvas id="cv"></canvas></section>
+  <section class="card"><canvas id="cv"></canvas>
+    <div class="bgRows"><div class="gRow" id="gRow" hidden></div><div class="oRow" id="oRow"></div></div></section>
 
   <section class="card">
     <h2>出品ごとに入れる所</h2>
@@ -123,7 +146,7 @@
     <div class="row"><label><input type="checkbox" data-set="arrow"> 運UPの数に「↑」を付ける</label></div>
     <div class="row"><label>画像の列の数</label><select data-set="cols"><option value="auto">自動（いちばん大きく）</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>
   </section>
-  <section class="card"><h2>背景</h2><div class="note">＋を押して、色ごとに用意した背景を入れてください。押すと選べます。長押しで消せます。何も入っていない所を選ぶと、新しいガチャの絵の色から作った背景（8種類から選べます）になります。</div><div class="bgs" id="bgs"></div><div class="row" style="margin-top:6px"><label>何も入っていない所の背景</label><select data-set="autoBg"><option value="pearl">水彩画＋パールのキラキラ</option><option value="sparkle">キラキラ</option><option value="bokeh">ぼかし＋光の玉</option><option value="gradient">グラデーション</option><option value="aurora">オーロラ</option><option value="rays">放射線</option><option value="holo1">ホログラム＋ラメ</option><option value="holo5">星柄ホログラム</option></select></div>
+  <section class="card"><h2>背景</h2><div class="note">画像のすぐ下の丸い枠と同じです。上の段はガチャの絵の色から作った背景（新しい7つ・🕘履歴で過去の全部）、下の段は自分の画像です。押すと選べます。＋を押すと自分の画像を入れられ、長押しで消せます。ガチャの枠は、もう一度押すか長押しで模様を選べます（何も選んでいないときは最新のガチャ）。</div><div class="bgRows"><div class="gRow" id="gRowSet" hidden></div><div class="oRow bgs" id="bgs"></div></div><div class="row" style="margin-top:6px"><label>ガチャの背景の模様</label><select data-set="autoBg"><option value="pearl">水彩画＋パールのキラキラ</option><option value="sparkle">キラキラ</option><option value="bokeh">ぼかし＋光の玉</option><option value="gradient">グラデーション</option><option value="aurora">オーロラ</option><option value="rays">放射線</option><option value="holo1">ホログラム＋ラメ</option><option value="holo5">星柄ホログラム</option></select></div>
 <button type="button" class="sbtn" id="bgPearl" style="margin-top:6px">好きな画像を水彩画＋パールのキラキラにして背景に入れる</button> <button type="button" class="sbtn" id="bgWc" style="margin-top:6px">好きな画像を水彩画ふうにして背景に入れる</button> <button type="button" class="sbtn" id="bgDel" style="margin-top:6px">選んでいる背景を消す</button></section>
   <section class="card"><h2>題名の形</h2><input id="titleTpl" style="width:100%"><div class="note">差し込み：{番号} {石} {題名キャラ} {運UP} {↑}</div></section>
   <section class="card"><h2>説明文の形（ブロック）</h2>
@@ -140,6 +163,12 @@
     <div id="syncState" class="note"></div></section>
 </main></div>
 
+<div id="gSheet" hidden><div class="gsIn">
+  <div class="gsHead">🎰 ガチャの背景<button type="button" id="gClose">✕</button></div>
+  <div class="note" id="gNow" style="font-weight:800;margin:6px 0"></div>
+  <h2>模様（全部のガチャ共通・ほかの端末ともそろいます）</h2><div class="gpats" id="gPats"></div>
+  <h2 id="gHistH" style="margin-top:12px">履歴（全部のガチャ・新しい順）</h2><div id="gHist"></div>
+</div></div>
 <div id="busy" hidden>読み取り中…</div>
 <div id="toast" hidden></div>
 <div id="big" hidden><img id="bigImg" alt="出品画像"><div>画像を長押しして「写真に保存」</div></div>
@@ -281,7 +310,7 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='27';
+const APP_VER='28';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
@@ -625,24 +654,127 @@ const idb=()=>new Promise((res,rej)=>{ const r=indexedDB.open('pocodun',1); r.on
 async function bgGet(k){ const db=await idb(); return new Promise(res=>{ const q=db.transaction('bg').objectStore('bg').get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }); }
 async function bgPut(k,v,fromSync){ if (!fromSync && typeof queueBgSync==='function') queueBgSync(k); const db=await idb(); return new Promise(res=>{ const t=db.transaction('bg','readwrite'); v==null ? t.objectStore('bg').delete(k) : t.objectStore('bg').put(v,k); t.oncomplete=()=>res(); t.onerror=()=>res(); }); }
 let bgSel=load('bgSel',0);
-async function renderBg(){ const box=$('bgs'); box.innerHTML=''; for (let i=0;i<8;i++){ const v=await bgGet(i), b=document.createElement('button'); b.type='button'; b.className='bg'+(i===bgSel?' on':'');
-    b.style.backgroundImage=v?`url(${v})`:'none'; b.textContent=v?'':'＋'; b.onclick=async()=>{ if (!v){ pickBg(i); return; } bgSel=i; save('bgSel',i); await useBg(); renderBg(); };
-    if (v){ b.oncontextmenu=e=>{ e.preventDefault(); if (confirm('この背景を消しますか？')){ bgPut(i,null).then(renderBg); } }; }
-    box.appendChild(b); } }
+// 選んでいるガチャの背景：''＝自分の画像（空の枠なら最新のガチャ）、'@latest'＝いつも最新のガチャ、ほかは history.json の id
+let bgG=load('bgG','');
+let bgCache=Array(8).fill(null); // 自分の画像8つ（renderBg で読む）
+// 長押しのあと指を離したときの click は、上にかぶった画面（模様・履歴）に届くので1回だけ捨てる
+let eatClick=false;
+document.addEventListener('pointerdown',()=>{ eatClick=false; },true);
+document.addEventListener('click',e=>{ if (!eatClick) return; eatClick=false; e.stopPropagation(); e.preventDefault(); },true);
+// 長押し（550ms）と、ふつうに押したとき
+function press(b,tap,hold){ let t=0, held=false;
+  b.addEventListener('pointerdown',()=>{ held=false; clearTimeout(t); t=setTimeout(()=>{ held=true; eatClick=true; hold(); },550); });
+  ['pointerup','pointerleave','pointercancel'].forEach(e=>b.addEventListener(e,()=>clearTimeout(t)));
+  b.addEventListener('contextmenu',e=>e.preventDefault());
+  b.onclick=()=>{ if (held){ held=false; return; } tap(); }; }
+// 下の段：自分の画像8つ（画像のすぐ下と、設定の中の両方に同じものを出す）
+async function renderBg(){ for (let i=0;i<8;i++) bgCache[i]=await bgGet(i);
+  for (const id of ['oRow','bgs']){ const box=$(id); if (!box) continue; box.innerHTML='';
+    bgCache.forEach((v,i)=>{ const b=document.createElement('button'); b.type='button'; b.className='bg'+(v?'':' empty')+(!bgG && v && i===bgSel?' on':'');
+      b.style.backgroundImage=v?`url(${v})`:'none'; b.textContent=v?'':'＋'; b.title=v?'押すと選べます。長押しで消せます':'画像を入れる';
+      press(b,()=>{ if (!v){ pickBg(i); return; } selectOwn(i); },()=>{ if (v && confirm('この背景を消しますか？')) bgPut(i,null).then(()=>{ renderBg(); useBg(); }); });
+      box.appendChild(b); }); }
+  renderGacha(); }
+function selectOwn(i){ bgSel=i; save('bgSel',i); bgG=''; save('bgG',''); renderBg(); useBg(); }
 function pickBg(i,wc){ const f=document.createElement('input'); f.type='file'; f.accept='image/*'; f.onchange=async()=>{ const file=f.files[0]; if (!file) return; const img=await fileImg(file); let c=document.createElement('canvas'); const k=Math.min(1,1400/Math.max(img.width,img.height)); c.width=img.width*k; c.height=img.height*k; c.getContext('2d').drawImage(img,0,0,c.width,c.height);
   if (wc==='pearl') c=pdWcPearl(c,1080,Date.now()%997); else if (wc) c=pdWatercolor(c,1080,Date.now()%997);
-  await bgPut(i,c.toDataURL('image/jpeg',.9)); bgSel=i; save('bgSel',i); await useBg(); renderBg(); }; f.click(); }
-// 背景を選んでいないときは、開催中ガチャの絵を水彩画ふうにした背景（bg_auto.jpg）を使う
-async function useBg(){ const v=await bgGet(bgSel); if (!v){ const a=new Image(); a.onload=()=>{ if (!bgImg||bgImg.auto){ a.auto=true; bgImg=a; draw(); } }; a.onerror=()=>{ bgImg=null; draw(); }; bgImg=null; a.src=({pearl:'bg_auto_pearl.jpg',sparkle:'bg_auto_sparkle.jpg',bokeh:'bg_auto_bokeh.jpg',gradient:'bg_auto_gradient.jpg',aurora:'bg_auto_aurora.jpg',rays:'bg_auto_rays.jpg',holo1:'bg_auto_holo1.jpg',holo5:'bg_auto_holo5.jpg'}[SET.autoBg]||'bg_auto_pearl.jpg')+'?v='+APP_VER; return; } const i=new Image(); i.onload=()=>{ bgImg=i; draw(); }; i.src=v; }
+  await bgPut(i,c.toDataURL('image/jpeg',.9)); selectOwn(i); }; f.click(); }
+
+// ---- ガチャの背景（上の段）：bg-auto/history.json のガチャの絵の色から、8種類の模様をこの端末の中で作る ----
+// リポジトリには色を取るための小さな縮小（長辺256px）だけを置く。作った画像は IndexedDB にためて使い回す
+// 模様の関数は bg-auto/patterns.js の GachaPat（ポケツイ・ピグパと同じもの）。模様は設定の autoBg（ほかの端末とそろう）
+const GTOP=7, GBIG=1080, GSMALL=128; // 上の段に並べる数・背景の大きさ・枠の大きさ
+const GNAMES={pearl:'水彩＋パール',sparkle:'キラキラ',bokeh:'光の玉',gradient:'グラデ',aurora:'オーロラ',rays:'放射線',holo1:'ホロ＋ラメ',holo5:'星柄ホロ'};
+const OLDAUTO={pearl:'bg_auto_pearl.jpg',sparkle:'bg_auto_sparkle.jpg',bokeh:'bg_auto_bokeh.jpg',gradient:'bg_auto_gradient.jpg',aurora:'bg_auto_aurora.jpg',rays:'bg_auto_rays.jpg',holo1:'bg_auto_holo1.jpg',holo5:'bg_auto_holo5.jpg'};
+let gHist=[], gReady=null; // history.json の中身（新しい順）・patterns.js まで読めたら true、読めなければ false
+const gPat=()=>GNAMES[SET.autoBg] ? SET.autoBg : 'pearl';
+const gItem=id=>gHist.find(g=>g.id===id);
+const gName=it=>it.name+(it.kind && it.kind!=='ガチャ' ? `（${it.kind}）` : '');
+// 今ガチャの背景を使っているか・どのガチャか
+const usingG=()=>!!bgG || !bgCache[bgSel];
+const curGItem=()=>(bgG && bgG!=='@latest' && gItem(bgG)) || gHist[0] || null;
+const gdb=new Promise((ok,ng)=>{ const r=indexedDB.open('pocodun-gacha',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>ok(r.result); r.onerror=()=>ng(r.error); }); gdb.catch(()=>{});
+const gGet=k=>gdb.then(d=>new Promise(ok=>{ const q=d.transaction('kv').objectStore('kv').get(k); q.onsuccess=()=>ok(q.result); q.onerror=()=>ok(undefined); })).catch(()=>undefined);
+const gVer=()=>String(window.GachaPat?.ver||'1'); // 模様の関数を直すと patterns.js の版が変わる → 作り直す
+const gMem=new Map(), gSrc=new Map(), gQ={big:[],small:[]}; let gRun=false;
+// 順番待ち：背景（大きい方）を見本より先に作る
+async function gPump(){ if (gRun) return; gRun=true;
+  while (gQ.big.length || gQ.small.length){ const j=gQ.big.shift() || gQ.small.shift(); await new Promise(r=>setTimeout(r,0)); try { j.ok(await j.f()); } catch(e){ j.ng(e); } }
+  gRun=false; }
+const gEnq=(big,f)=>new Promise((ok,ng)=>{ gQ[big?'big':'small'].push({f,ok,ng}); gPump(); });
+// 模様の画像（dataURL）を返す。メモリ → IndexedDB → 作る の順。作るのは1つずつ順番に（iPhoneが固まらないように）
+function gMake(it,pat,size){ const k=`${it.id}:${pat}:${size}:${gVer()}`; if (gMem.has(k)) return gMem.get(k);
+  const p=gGet(k).then(v=>{ if (typeof v==='string') return v;
+    return gEnq(size>GSMALL,async()=>{
+      if (!gSrc.has(it.img)) gSrc.set(it.img,new Promise((ok,ng)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=ng; i.src=it.img; }));
+      const img=await gSrc.get(it.img), GP=window.GachaPat; if (!GP) throw new Error('模様の関数がありません');
+      const d=(size>GSMALL ? GP.make(img,pat,size) : GP.thumb(img,pat,size)).toDataURL('image/jpeg',size>GSMALL?.9:.85);
+      gdb.then(db=>{ db.transaction('kv','readwrite').objectStore('kv').put(d,k); }).catch(()=>{});
+      return d; }); });
+  p.catch(()=>gMem.delete(k)); gMem.set(k,p); return p; }
+const gThumb=(el,it,pat=gPat())=>gMake(it,pat,GSMALL).then(d=>{ el.style.backgroundImage=`url(${d})`; }).catch(()=>{});
+// 上の段：新しい7つ＋履歴（画像のすぐ下と、設定の中の両方）。名前は枠の下
+function renderGacha(){ const show=gReady===true && gHist.length>0, on=usingG() ? curGItem()?.id : '';
+  for (const id of ['gRow','gRowSet']){ const box=$(id); if (!box) continue; box.hidden=!show; if (!show) continue; box.innerHTML='';
+    gHist.slice(0,GTOP).forEach((it,n)=>{ const b=document.createElement('button'); b.type='button'; b.className='gset'+(it.id===on?' on':''); b.title=gName(it)+(it.date?'（'+it.date+'）':'');
+      b.innerHTML='<i></i><small></small>'; b.querySelector('small').textContent=it.name; gThumb(b.querySelector('i'),it);
+      press(b,()=>{ if (it.id===on) openGacha('pat'); else selectGacha(it.id,n===0); },()=>{ if (it.id!==on) selectGacha(it.id,n===0); openGacha('pat'); });
+      box.appendChild(b); });
+    const h=document.createElement('button'); h.type='button'; h.className='gset hist'; h.innerHTML='<i>🕘</i><small>履歴</small>'; h.onclick=()=>openGacha('hist'); box.appendChild(h); }
+  if (!$('gSheet').hidden) renderGSheet(); }
+// latest：一番新しいガチャを選んだとき（次に新しいガチャが出たら、そちらに変わる）
+function selectGacha(id,latest){ const it=gItem(id); if (!it) return; bgG=latest ? '@latest' : id; save('bgG',bgG);
+  toast('🎰 '+gName(it)+(it.date?'（'+it.date+'）':'')+(latest?'\n新しいガチャが出たら、自動でそのガチャの背景になります':'')); renderBg(); useBg(); }
+function openGacha(mode){ const s=$('gSheet'); s.hidden=false; renderGSheet(); const box=s.querySelector('.gsIn'); box.scrollTop=mode==='hist' ? $('gHistH').offsetTop-8 : 0; }
+function renderGSheet(){ const it=curGItem(), pat=gPat();
+  $('gNow').textContent=usingG()&&it ? '今の背景：'+gName(it)+(it.date?'（'+it.date+'）':'')+(bgG==='@latest'||!bgG?' ・いつも最新':'') : '自分の画像の背景を使っています（下の履歴から選べます）';
+  const pb=$('gPats'); pb.innerHTML='';
+  Object.entries(GNAMES).forEach(([k,label])=>{ const b=document.createElement('button'); b.type='button'; b.className='gpat'+(k===pat?' on':''); b.innerHTML='<i></i>'; b.append(label);
+    if (it) gThumb(b.querySelector('i'),it,k);
+    b.onclick=()=>{ SET.autoBg=k; saveSet(); gPatChanged(); }; pb.appendChild(b); });
+  const hb=$('gHist'); hb.innerHTML='';
+  gHist.forEach((g,n)=>{ const b=document.createElement('button'); b.type='button'; b.className='ghItem'+(usingG()&&g.id===it?.id?' on':'');
+    b.innerHTML='<i></i><span></span>'; const sp=b.querySelector('span'); sp.textContent=g.name;
+    const sm=document.createElement('small'); sm.textContent=[g.kind,g.date].filter(Boolean).join('・'); sp.appendChild(sm);
+    gThumb(b.querySelector('i'),g,pat); b.onclick=()=>{ selectGacha(g.id,n===0); $('gSheet').hidden=true; }; hb.appendChild(b); }); }
+// 模様が変わったとき（この端末で選んだ・設定で選んだ・ほかの端末からそろった）
+let gPatShown=gPat();
+function gPatChanged(){ gPatShown=gPat(); const sel=document.querySelector('[data-set="autoBg"]'); if (sel) sel.value=gPat(); renderGacha(); if (usingG()) useBg(); }
+$('gClose').onclick=()=>{ $('gSheet').hidden=true; };
+// 外側を押して閉じるのは、押し始めも外側だったときだけ
+let gDownOut=false;
+$('gSheet').addEventListener('pointerdown',e=>{ gDownOut=e.target.id==='gSheet'; });
+$('gSheet').addEventListener('click',e=>{ if (e.target.id==='gSheet' && gDownOut) $('gSheet').hidden=true; gDownOut=false; });
+// history.json と patterns.js を読む（patterns.js はポケツイの bg-auto のもの。無ければ pocodun/bg-auto）。読めないときは上の段を出さず、前の背景（bg_auto_*.jpg）を使う
+const addScript=src=>new Promise((ok,ng)=>{ const sc=document.createElement('script'); sc.src=src; sc.onload=()=>window.GachaPat?ok():ng(); sc.onerror=ng; document.head.appendChild(sc); });
+const gLoad=fetch('bg-auto/history.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
+  const items=(Array.isArray(j)?j:Array.isArray(j?.items)?j.items:[]).filter(g=>g && typeof g.id==='string' && g.name && (g.src||g.img))
+    .map(g=>({...g, img:g.img||'bg-auto/'+g.src})) // src は bg-auto/ の中の縮小jpgの名前
+    .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  if (!items.length) throw 0; gHist=items;
+  return window.GachaPat || addScript('../bg-auto/patterns.js?v='+APP_VER).catch(()=>addScript('bg-auto/patterns.js?v='+APP_VER));
+}).then(()=>{ gReady=true;
+  // 模様の版が変わった古い画像は消す
+  gdb.then(db=>{ const q=db.transaction('kv','readwrite').objectStore('kv').openCursor(); q.onsuccess=()=>{ const c=q.result; if (!c) return; if (!String(c.key).endsWith(':'+gVer())) c.delete(); c.continue(); }; }).catch(()=>{});
+}).catch(()=>{ gReady=false; gHist=[]; }).then(()=>renderGacha());
+// 背景を描く。自分の画像を選んでいればそれ、ほかはガチャの背景（何も選んでいないときは最新のガチャ）
+let bgTok=0;
+const loadImg=src=>new Promise((ok,ng)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=ng; i.src=src; });
+async function useBg(){ const tok=++bgTok, set=i=>{ if (tok===bgTok){ bgImg=i; draw(); } };
+  if (!bgG){ const v=await bgGet(bgSel); bgCache[bgSel]=v; if (v){ loadImg(v).then(set,()=>set(null)); return; } }
+  await gLoad; if (tok!==bgTok) return;
+  const it=curGItem(), pat=gPat();
+  if (gReady===true && it){ try{ const d=await gMake(it,pat,GBIG); if (tok!==bgTok) return; set(await loadImg(d)); return; }catch(e){ if (tok!==bgTok) return; } }
+  loadImg((OLDAUTO[pat]||OLDAUTO.pearl)+'?v='+APP_VER).then(set,()=>set(null)); } // ガチャの背景を作れないときは前の背景
 const bgMake=async(type)=>{ let i=0; for (;i<8;i++) if (!(await bgGet(i))) break; if (i>=8){ toast('背景が8つ入っています。どれかを消してから作ってください'); return; } pickBg(i,type); };
 $('bgWc').onclick=()=>bgMake(true); $('bgPearl').onclick=()=>bgMake('pearl');
-$('bgDel').onclick=async()=>{ if (await bgGet(bgSel) && confirm('選んでいる背景を消しますか？')){ await bgPut(bgSel,null); bgImg=null; draw(); renderBg(); } };
+$('bgDel').onclick=async()=>{ if (bgG){ toast('ガチャの背景は消せません（自分の画像を選んでから押してください）'); return; } if (await bgGet(bgSel) && confirm('選んでいる背景を消しますか？')){ await bgPut(bgSel,null); renderBg(); useBg(); } };
 
 // ---- 設定画面 ----
 $('openSet').onclick=()=>{ renderSet(); $('settings').hidden=false; };
 $('closeSet').onclick=()=>{ $('settings').hidden=true; renderAll(); };
 function renderSet(){
-  document.querySelectorAll('[data-set]').forEach(el=>{ const k=el.dataset.set; if (el.type==='checkbox') el.checked=!!SET[k]; else el.value=SET[k]; el.onchange=()=>{ SET[k]=el.type==='checkbox'?el.checked:el.value; saveSet(); renderAll(); if (k==='autoBg') useBg(); }; });
+  document.querySelectorAll('[data-set]').forEach(el=>{ const k=el.dataset.set; if (el.type==='checkbox') el.checked=!!SET[k]; else el.value=SET[k]; el.onchange=()=>{ SET[k]=el.type==='checkbox'?el.checked:el.value; saveSet(); renderAll(); if (k==='autoBg') gPatChanged(); }; });
   $('titleTpl').value=SET.titleTpl; $('titleTpl').onchange=()=>{ SET.titleTpl=$('titleTpl').value; saveSet(); };
   const box=$('blocks'); box.innerHTML='';
   SET.blocks.forEach((b,i)=>{ const d=document.createElement('div'); d.className='blk';
@@ -735,6 +867,7 @@ async function syncNow(push){ if (!syncOn()) return false; if (syncing){ syncAga
   finally{ syncing=false; if (syncAgain){ syncAgain=false; queueSync(); } } }
 // そろえで内容が変わったときだけ描き直す。文字を打っている途中なら、欄を離れてから（打ちかけの文字・キーボードを消さない）
 function redrawAfterSync(){ const a=document.activeElement; if (a && (a.tagName==='TEXTAREA' || (a.tagName==='INPUT' && !['checkbox','radio','button','file'].includes(a.type)))){ a.addEventListener('blur',()=>setTimeout(redrawAfterSync,0),{once:true}); return; }
+  if (gPat()!==gPatShown) gPatChanged(); // ほかの端末でガチャ背景の模様を変えたとき
   if (!$('settings').hidden) renderSet(); renderAll(); }
 // 背景：8つの場所ごとに bg/0.jpg〜bg/7.jpg。変えた場所だけ送り、ほかの端末で変わった場所だけ受け取る
 const bgDirty=new Set(load('bgDirty',[]));
@@ -755,7 +888,7 @@ $('syncNowBtn').onclick=async()=>toast((await syncNow(true)) ? 'そろえまし�
 $('syncOff').onclick=()=>{ if (!confirm('この端末で、ほかの端末とそろえるのをやめますか？（この端末の中のデータは残ります。ポケツイ・ピグパはそのままです）')) return; save('syncOff',true); SYNC.bg={}; saveSync(); renderSync(); };
 document.addEventListener('visibilitychange',()=>{ if (!document.hidden && syncOn()) syncNow(false); });
 renderSync(); if (syncOn()) syncNow(false);
-useBg(); (async()=>{ const ok=await restoreWork(); renderAll(); if (ok) toast('前回の作業を復元しました'); })();
+renderBg(); useBg(); (async()=>{ const ok=await restoreWork(); renderAll(); if (ok) toast('前回の作業を復元しました'); })();
 // ---- 新しい版の確認：開いたときに新しい版があれば読み直す（作業は自動保存されているので、読み直しても続きから） ----
 // 開いてから何も触っていないときだけ自動で読み直す（写真を選んでいる途中・文字を打っている途中に読み直さない）。触ったあとは、消えない案内に「読み直す」ボタンを出す
 let touched=false; ['pointerdown','keydown','focusin'].forEach(t=>document.addEventListener(t,()=>{ touched=true; },{capture:true,passive:true}));
