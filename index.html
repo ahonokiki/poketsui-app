@@ -240,7 +240,6 @@
     <ul>
       <li>選んだ写真の文字（アイテム名・所持数）は、このiPhoneのSafariの中で読み取ります。読み取りの仕組みはアプリを開いたときにiPhoneに読み込まれ、そのあとはiPhoneの中だけで動きます。</li>
       <li>写真そのものは、インターネット（サーバー・GitHubなど）に送信も保存もしません。読み取った名前と数の文字だけを使って、画像と文字を作ります。</li>
-      <li>ショートカットを使うときも、iPhoneの「テキストを抽出」で読んだ文字だけがアプリに渡ります（写真は渡しません）。</li>
       <li>アプリがインターネットから受け取るのは、アプリ本体・読み取りの仕組み・アイテム名の一覧・壁紙だけです。</li>
       <li>できた画像は「画像を保存」を押したときだけ、このiPhoneに保存されます。</li>
       <li>※ 設定の「全端末で共有（GitHub）」に鍵を入れて背景を共有したときだけ、その背景画像を送ります（アイテムの写真は送りません）。</li>
@@ -319,8 +318,8 @@
     <div class="note">{n} が合計の数に置き換わります。変えた書式は次回も使われます。</div>
   </div></section>
 
-  <section class="card"><h2>ショートカット連携（iPhone・使わなくてOK）</h2><div class="in">
-    <div class="note">写真を選ぶだけでアプリの中で名前と所持数を読み取るので、ショートカットは使わなくても大丈夫です。使う場合は、iPhoneの「ショートカット」にスクショの文字を読ませて、このアプリに渡せます。背面タップで起動すれば、スクショを撮って背面を3回たたくだけで名前と所持数が入ります。</div>
+  <section class="card" hidden><!-- ショートカット連携：写真を選ぶだけで読めるので画面には出さない（受け取りの仕組みと中の部品は残す） --><h2>ショートカット連携（iPhone）</h2><div class="in">
+    <div class="note">iPhoneの「ショートカット」にスクショの文字を読ませて、このアプリに渡せます。背面タップで起動すれば、スクショを撮って背面を3回たたくだけで名前と所持数が入ります。</div>
     <a class="pill wide" href="shortcut.html" style="margin-top:8px;text-decoration:none;display:flex">📱 ショートカットの作り方</a>
     <div class="row" style="margin-top:10px"><label>受け取るスクショ：直近 <select id="shotWin" style="width:auto;display:inline-block;padding:6px 10px"><option value="15">15</option><option value="30">30</option><option value="60">60</option><option value="120">120</option></select> 分</label></div>
     <div class="note">この時間に撮ったスクショの名前を、画像を選んだときに当てはめます。これより前に撮ったスクショは、名前だけ覚えておき、あとでそのスクショを選ぶと黄色で出します（撮った時刻が分かるときだけ）。ショートカットの「写真を検索」の期間（おすすめ：1時間）と同じにしてください（はじめは60分）。</div>
@@ -386,7 +385,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='80'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='81'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
