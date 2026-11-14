@@ -1,4 +1,4 @@
-// ガチャの画像を手で入れて、背景の履歴（history.json と縮小jpg）に足す。ポコダンは自動で取れる所がないのでこれを使う
+// ガチャの画像を手で入れて、背景の履歴（history.json と縮小jpg）に足す。ポコダンの公式YouTubeに出ないガチャなどに使う
 // 使い方: node tools/gacha-bg/add.mjs フォルダ 画像（ファイルかURL） ガチャの名前 [日付 YYYY-MM-DD] [id]
 //   例: node tools/gacha-bg/add.mjs pocodun/bg-auto ゴッドラッシュ1.png ゴッドラッシュ1 2026-11-07
 // 同じ id（省略すると「日付＋名前」）がもう入っていれば何もしない
