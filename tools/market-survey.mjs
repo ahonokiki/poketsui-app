@@ -41,7 +41,8 @@ const GAMES = process.env.SURVEY_GAMES ? process.env.SURVEY_GAMES.split(',') : [
   'monsterhunternow', 'monsterhunteroutlanders',
   'pocodun', 'pokekoro-twin', 'pigg-party'];
 // アイテム売りの多いゲームは出品がとても多く、5ページでは消えた出品のほとんどが「後ろに下がっただけ」になるので、深く読んで確かめる数も増やす
-const DEEP = new Set(['pokekoro-twin', 'pigg-party', 'opbr', 'fate-go', 'monst', 'monsterhunternow', 'monsterhunteroutlanders', // 妻の次の候補もくわしく 'pokecolo', 'pokecolo-universe', 'pokepia', 'pocketland', 'tomotoru', 'hello-sweetdays', 'hkw2', 'koisuru-pairium', 'mylittledoll', 'sensil', 'ameba-pigg', 'livlyIsland',
+// 妻の次の候補（モンハン・着せかえ系）もくわしく
+const DEEP = new Set(['pokekoro-twin', 'pigg-party', 'opbr', 'fate-go', 'monst', 'monsterhunternow', 'monsterhunteroutlanders', 'pokecolo', 'pokecolo-universe', 'pokepia', 'pocketland', 'tomotoru', 'hello-sweetdays', 'hkw2', 'koisuru-pairium', 'mylittledoll', 'sensil', 'ameba-pigg', 'livlyIsland',
   'pokemon-tcg-pocket', 'yugio-masterduel', 'yugio', 'dbz-dokkan', 'stellasora']);
 const PAGES = +(process.env.SURVEY_PAGES || 5), CHECKS = +(process.env.SURVEY_CHECKS || 30), SAMPLE = +(process.env.SURVEY_SAMPLE ?? 6);
 const UA = { 'User-Agent': 'Mozilla/5.0 (personal market research)' };
@@ -74,8 +75,12 @@ const RUN = new Date().toISOString(), jst = ms => new Date(ms + 9 * 3600e3).toIS
 let state = { games: {} };
 if (IN && existsSync(IN) && readFileSync(IN, 'utf8').trim()) { try { state = open(readFileSync(IN, 'utf8')); } catch (e) { console.error('前回の記録を開けませんでした（合言葉が違う？）'); process.exit(1); } }
 state.since ??= today; state.runs = (state.runs || 0) + 1;
-let totalSold = 0, totalChecked = 0, failed = 0;
-for (const g of GAMES) { try {
+let totalSold = 0, totalChecked = 0, failed = 0, done = 0;
+// 時間の予算（定期の2時間に収めるため、開始から BUDGET 分を過ぎたら残りは次の回に回す）。物差しの3本は毎回先に、残りは前の回の続きから
+const BUDGET = +(process.env.SURVEY_BUDGET_MIN || 75) * 60e3, T0 = Date.now(), RULER = ['pocodun', 'pokekoro-twin', 'pigg-party'];
+const head = GAMES.filter(g => RULER.includes(g)), rest = GAMES.filter(g => !RULER.includes(g)), from = (state.next || 0) % (rest.length || 1);
+const ORDER = [...head, ...rest.slice(from), ...rest.slice(0, from)];
+for (const g of ORDER) { if (Date.now() - T0 > BUDGET) break; done++; try {
   const G = state.games[g] ??= { since: today, L: {} }, L = G.L; // id → {u:出品者の番号, t:題名, x:説明文の頭（アカウント売り・アイテム売り、初期垢・育成垢などを見分ける）, p:値段, f:初めて見た日, l:最後に一覧で見た時刻, s:'active'|'old'|'sold'|'removed'|'pending', d:終わった日}
   let partial = false, seen = 0;
   const pages = DEEP.has(g) && !process.env.SURVEY_PAGES ? 20 : PAGES, checks = DEEP.has(g) && !process.env.SURVEY_CHECKS ? 60 : CHECKS;
@@ -111,5 +116,6 @@ for (const g of GAMES) { try {
   for (const [id, o] of Object.entries(L)) if ((o.s !== 'active' && o.s !== 'pending') && (o.d || o.f) < daysAgo(21) || o.l < daysAgo(21)) delete L[id];
 } catch (e) { failed++; console.warn(`${g}：途中で失敗（${e.message}）。このゲームは次の回に`); } // 1本の失敗で全体を止めない
 }
+const later = ORDER.length - done; state.next = (from + Math.max(0, done - head.length)) % (rest.length || 1); // 次の回はここから
 writeFileSync(OUT, seal(state) + '\n');
-console.log(`調べ ${GAMES.length}本（読めなかった ${failed}本） / 確認 ${totalChecked}件（うち売れた ${totalSold}件） / ${state.runs}回目（${state.since}から）`);
+console.log(`調べ ${GAMES.length}本（読めなかった ${failed}本${later ? `・時間切れで次の回に ${later}本` : ''}） / 確認 ${totalChecked}件（うち売れた ${totalSold}件） / ${state.runs}回目（${state.since}から）`);

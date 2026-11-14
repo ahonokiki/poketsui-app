@@ -17,6 +17,11 @@
  *   REG_CODE … グループで「登録 ○○○○○○」と送るときの6桁の番号（実行ログに出る。30分で無効。登録したら、または5回まちがえたら消える）
  *   GROUP    … 登録したグループのID
  *   OWNER    … 登録した人（夫）の LINE のID（うまく渡せないときのお知らせ先。メールでも知らせる）
+ * 手順：コードを貼る → setup を実行して権限を許可 → デプロイ（ウェブアプリ・次のユーザーとして実行＝自分・アクセスできるユーザー＝全員）
+ *       → /exec の URL を WEB_URL に入れる → setup をもう一度（ログに Webhook URL と登録の番号が出る）→ testFire を実行して Claude の会話に届くか確かめる
+ *       → ログの Webhook URL を LINE に入れて「Webhookの利用」をオン → グループに招待して「登録 番号」。
+ * コードを直したとき：「デプロイを管理 → 編集（鉛筆）→ バージョン：新バージョン → デプロイ」。「新しいデプロイ」にすると URL が変わり、つなぎ直しが要る。
+ * LINE の「検証」ボタンは 302 のエラーになるが、そのままでよい（Google の仕組み。実際の受信は動く）。
  * LINE 側の設定：グループ・複数人トークへの参加を許可する＝オン、応答メッセージ・あいさつメッセージ＝オフ、Webhookの再送＝オフ。
  * 夫は公式アカウントを友だち追加しておく（止まったときの LINE のお知らせが届くように）。
  */
@@ -211,6 +216,8 @@ function failed_(res) {
   if (n === 1) notify_('Claudeに渡せませんでした（' + res.code + '）。少ししてから、自動でやり直します。');
   schedule_(BACKOFF_MIN[n - 1] * 60000);
 }
+// つないだか確かめる：Claude の会話に「テスト」を1回だけ届ける（LINE をつなぐ前に、エディタから実行）
+function testFire() { const r = fire_([{ who: 'テスト', at: Date.now(), t: 'グループ中継のテストです（Apps Script の testFire から）。届いたら返事だけしてください。' }]); Logger.log(r.ok ? '届けました（' + r.code + '）。Claude の会話を見てください' : '届けられませんでした：' + r.code + ' ' + r.msg); }
 // 止まったあと、設定を直してから手で実行する
 function resume() { P.deleteProperty('FIRE_STOP'); P.deleteProperty('FIRE_FAIL'); P.deleteProperty('FLUSHING'); flush(true); }
 
