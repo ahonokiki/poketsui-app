@@ -281,12 +281,14 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='26';
+const APP_VER='27';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
 const load=(k,def)=>{ try{ const v=localStorage.getItem(PFX+k); return v==null ? def : JSON.parse(v); }catch(e){ return def; } };
 const save=(k,v)=>{ try{ localStorage.setItem(PFX+k,JSON.stringify(v)); }catch(e){ toast('保存できませんでした（容量がいっぱいかもしれません）'); } if (['chars','hist','set','luck'].includes(k) && typeof queueSync==='function') queueSync(); };
+// 変えた時刻：今の時刻と「前の時刻+1」の大きいほう（時計が進んだ端末で付いた先の時刻があっても、あとから変えたほうが勝つ）
+const tNext=(...p)=>Math.max(Date.now(),...p.map(x=>(x||0)+1));
 let toastT=0; function toast(t){ const e=$('toast'); e.textContent=t; e.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>e.hidden=true,2600); }
 
 // 過去の出品から拾った物（見出し・絵文字・呼称の候補）
@@ -308,20 +310,22 @@ const SET0={titleName:'nick', descName:'name', cand:true, times:false, autoOrder
 let SET={...SET0, ...load('set',{})}; if (!Array.isArray(SET.blocks)) SET.blocks=BLOCKS0;
 // 「押したらすぐコピーする」は一度だけ必ずオフに戻す（このあと自分でオンにしたらそのまま）
 if (!SET.autoCopyOff1){ SET.autoCopy=false; SET.autoCopyOff1=true; try{ localStorage.setItem(PFX+'set',JSON.stringify(SET)); }catch(e){} }
-const saveSet=()=>{ SET._t=Date.now(); save('set',SET); };
+const saveSet=()=>{ SET._t=tNext(SET._t); save('set',SET); };
 
 // ---- 覚えた物 ----
 let CHARS=load('chars',{});      // 正式名 -> {nick:'登録した呼称', fps:[[...]], no:true(候補を出さない)}
 let HIST=load('hist',{heads:HEADS0.slice(), emojis:[], nums:[]});
 const saveChars=()=>save('chars',CHARS), saveHist=()=>save('hist',HIST);
+const histMark=(w,k)=>(HIST[w] ??= {})[k]=tNext(HIST.rmAt?.[k],HIST.backAt?.[k]); // 消した印・覚え直した印（相手の印より必ず新しく）
 // 名前の項目を作る。前に「消す」で忘れた名前を覚え直したときは、消した印より新しいことを残す（そろえで消し直されないように）
-function charOf(name){ if (!CHARS[name] && HIST.rmChars?.includes(name)){ HIST.rmChars=HIST.rmChars.filter(x=>x!==name); (HIST.backAt ??= {})['c:'+name]=Date.now(); saveHist(); } return CHARS[name] ??= {nick:'',fps:[]}; }
+function charOf(name){ if (!CHARS[name] && HIST.rmChars?.includes(name)){ HIST.rmChars=HIST.rmChars.filter(x=>x!==name); histMark('backAt','c:'+name); saveHist(); } return CHARS[name] ??= {nick:'',fps:[]}; }
 // 絵ごとの覚えた時刻（fps と同じ並び）。そろえで同じ絵が2つの名前に入ったとき、絵ごとに新しいほうを残すため（時刻のない古いデータは名前の ft）
 const ftsOf=c=>c.fts=(c.fps||[]).map((_,i)=>c.fts?.[i] ?? c.ft ?? 0);
-function rememberFP(name,fp){ if (!name||!fp) return; const now=Date.now();
+function rememberFP(name,fp){ if (!name||!fp) return; let gone=0;
   // 同じ絵がほかの名前に入っていたら外す（まちがえた名前を直したとき、次回まちがいのほうが出ないように）。絵も呼称もなくなった名前は消す
-  for (const [n,o] of Object.entries(CHARS)){ if (n===name || !o.fps?.length) continue; const k=o.fps.length, t=ftsOf(o), keep=o.fps.map(f=>pdDist(f,fp)>=1.5); o.fps=o.fps.filter((_,i)=>keep[i]); o.fts=t.filter((_,i)=>keep[i]); if (o.fps.length<k && !o.fps.length && !o.nick && !o.no) delete CHARS[n]; }
-  const c=charOf(name), t=ftsOf(c), i=c.fps.findIndex(f=>pdDist(f,fp)<1.5); c.ft=now; if (i>=0) t[i]=now; else { c.fps.push(fp); t.push(now); if (c.fps.length>8){ c.fps.shift(); t.shift(); } } saveChars(); }
+  for (const [n,o] of Object.entries(CHARS)){ if (n===name || !o.fps?.length) continue; const k=o.fps.length, t=ftsOf(o), keep=o.fps.map(f=>pdDist(f,fp)>=1.5); t.forEach((x,i)=>{ if (!keep[i]) gone=Math.max(gone,x||0); }); o.fps=o.fps.filter((_,i)=>keep[i]); o.fts=t.filter((_,i)=>keep[i]); if (o.fps.length<k && !o.fps.length && !o.nick && !o.no) delete CHARS[n]; }
+  // 覚えた時刻は外した絵・前の時刻より必ず新しく（時計の進んだ端末で付いた先の時刻に、そろえで負けないように）
+  const c=charOf(name), t=ftsOf(c), i=c.fps.findIndex(f=>pdDist(f,fp)<1.5), now=tNext(gone, i>=0?t[i]:0, c.ft); c.ft=now; if (i>=0) t[i]=now; else { c.fps.push(fp); t.push(now); if (c.fps.length>8){ c.fps.shift(); t.shift(); } } saveChars(); }
 function guessName(fp){ let best=null,bd=1e9; for (const [n,c] of Object.entries(CHARS)) for (const f of c.fps||[]){ const d=pdDist(f,fp); if (d<bd){bd=d;best=n;} } return bd<6 ? best : null; }
 const nickOf=n=>CHARS[n]?.nick||'';
 // 呼称の候補：前の出品から作った表。なければ、長い正式名を「・」や「(」の前で区切った短い名前（例：ルーデウス・グレイラット(少年期ver.) → ルーデウス）
@@ -342,21 +346,24 @@ $('shot').addEventListener('change', async e=>{ const files=[...e.target.files];
   try{
     for (const f of files){ const img=await fileImg(f); shots.push({img}); await readShot(img, shots.length-1); }
   }catch(err){ toast('画像を読めませんでした：'+(err?.message||err)); }
-  $('busy').hidden=true;
+  $('busy').hidden=true; lucky.forEach(l=>l.fresh=!icons.length); // fresh：鍵キャラより後に入れたラッキー
   if (!icons.length && !lucky.length) toast('鍵マークの付いたアイコンが見つかりませんでした。鍵がはっきり出ている瞬間に撮ったスクショで試してください');
   // 前の作業があって同じ種類のスクショを読んだら、足すか入れ替えるかを聞く（入れ忘れた1枚だけ足したとき、確認ずみの作業を消さない）
   const newI=icons.length>0, newL=lucky.length>0;
   const addI=newI && old.icons.length>0 && confirm('鍵キャラのスクショを、いまの作業に足しますか？\n\nOK：足す（入れ忘れた1枚など）\nキャンセル：新しい出品として入れ替える');
   const addL=!newI && newL && old.lucky.length>0 && confirm('ラッキーのスクショを、いまの分に足しますか？\n\nOK：足す\nキャンセル：入れ替える');
   // 鍵キャラを残す：鍵キャラを読まなかったとき・足すとき。ラッキーを残す：何も読めなかったとき・足すとき・鍵キャラが初めて（ラッキーを先に入れた）のとき
-  const keepI=old.icons.length>0 && (!newI || addI), keepL=old.lucky.length>0 && (newI ? (addI || !old.icons.length) : (!newL || addL));
+  // 鍵キャラを入れ替えるときは、前の出品のラッキーは捨てるが、鍵キャラより後に入れたラッキー（fresh）は残す
+  const oldL=newI && !addI && old.icons.length ? old.lucky.filter(l=>l.fresh) : old.lucky;
+  const keepI=old.icons.length>0 && (!newI || addI), keepL=oldL.length>0 && (newI || !newL || addL);
   if (keepI||keepL){ const off=old.shots.length; icons.forEach(ic=>ic.src+=off); lucky.forEach(l=>l.si+=off); shots=[...old.shots,...shots]; } // 足した分のスクショ番号は前の分のあとから
   if (addI){ // 足す：重なって写った同じキャラ（readShot と同じ見分け）は除き、確認ずみの並びのうしろに付ける
-    const add=icons.filter(ic=>!old.icons.some(o=>pdDist(o.fp,ic.fp)<1.2 && pdDist(o.full,ic.full)<3)); let n=old.icons.filter(o=>o.inTitle).length; add.forEach(ic=>ic.inTitle=n++<4);
+    const add=icons.filter(ic=>!old.icons.some(o=>pdDist(o.fp,ic.fp)<1.2 && (o.fullOld || pdDist(o.full,ic.full)<3))); let n=old.icons.filter(o=>o.inTitle).length; add.forEach(ic=>ic.inTitle=n++<4);
     icons=[...old.icons,...add]; if (old.stone.v) stone=old.stone; titleManual=old.titleManual; }
   else if (keepI){ icons=old.icons; stone=old.stone; titleManual=old.titleManual; }
   else if (newI){ autoOrder(); titleManual=false; $('stone').dataset.typed=''; lastRand=''; numMine=''; } // 新しい出品：おまかせの挨拶も選び直す
-  if (keepL) lucky=[...old.lucky,...lucky.filter(x=>!(x.cnt && old.lucky.some(l=>l.cnt===x.cnt && pdDist(l.fp,x.fp)<30)))]; // 重なって写った同じマス（同じ種類・同じ x数）は1回だけ
+  if (keepL) lucky=[...oldL,...lucky.filter(x=>!(x.cnt && oldL.some(l=>l.cnt===x.cnt && pdDist(l.fp,x.fp)<30)))]; // 重なって写った同じマス（同じ種類・同じ x数）は1回だけ
+  if (newI) lucky.forEach(l=>l.fresh=false);
   if (newL || (newI && !keepL)){ $('unup').dataset.typed=''; $('unup').value=''; } // ラッキーが変わったら運UP欄を数え直す（新しい出品でラッキーがなければ空にして注意を出す）
   fillUnup(); renderAll(); });
 // 名前の並び順（はじめ）：強い順（GameWith の最強ランキング。ランキングにないものは新しい順）。あとは ↑↓ で入れ替える
@@ -535,9 +542,9 @@ function renderIcons(){ const box=$('icons'); box.innerHTML=''; $('iconHead').hi
       ic.cands.filter(c=>c.n).forEach(c=>{ const b=document.createElement('button'); b.type='button'; b.innerHTML=`${esc(c.n)} <small>No.${esc(c.i)}・${c.d.toFixed(0)}</small>`; if (c.n===ic.name) b.className='on'; b.title='図鑑No.'+c.i+'（数字が小さいほど似ている）'; b.onclick=()=>{ ic.name=c.n; ic.guess=''; ic.picked=true; rememberFP(ic.name,ic.fp); renderAll(); }; cs.appendChild(b); }); candBox=cs; }
     if (ic.name){ const nk=document.createElement('div'); nk.className='nick'; const reg=nickOf(ic.name), cand=candOf(ic.name);
       nk.innerHTML=`<span>呼称：</span>`; const ni=document.createElement('input'); ni.type='text'; ni.className=reg?'':'cand'; ni.value=reg||cand; ni.placeholder='（なし＝正式名）';
-      ni.onchange=()=>{ const c=charOf(ic.name); c.nick=ni.value.trim(); c.nt=Date.now(); if (!c.nick && cand) c.no=true; saveChars(); renderAll(); }; // nt：呼称を変えた時刻（空にしたのもそろえで戻らないように）
+      ni.onchange=()=>{ const c=charOf(ic.name); c.nick=ni.value.trim(); c.nt=tNext(c.nt); if (!c.nick && cand) c.no=true; saveChars(); renderAll(); }; // nt：呼称を変えた時刻（空にしたのもそろえで戻らないように）
       nk.appendChild(ni);
-      if (!reg && cand){ const b=document.createElement('button'); b.type='button'; b.className='reg'; b.textContent='呼称を登録'; b.onclick=()=>{ const c=charOf(ic.name); c.nick=ni.value.trim()||cand; c.nt=Date.now(); saveChars(); renderAll(); toast(`「${ic.name}」の呼称を「${c.nick}」で登録しました`); }; nk.appendChild(b); }
+      if (!reg && cand){ const b=document.createElement('button'); b.type='button'; b.className='reg'; b.textContent='呼称を登録'; b.onclick=()=>{ const c=charOf(ic.name); c.nick=ni.value.trim()||cand; c.nt=tNext(c.nt); saveChars(); renderAll(); toast(`「${ic.name}」の呼称を「${c.nick}」で登録しました`); }; nk.appendChild(b); }
       m.appendChild(nk); }
     const ops=document.createElement('div'); ops.className='ops';
     const t=document.createElement('label'); t.className='tt'; t.innerHTML=`<input type="checkbox" ${ic.inTitle?'checked':''}>題名に入れる`; t.querySelector('input').onchange=e=>{ titleManual=true; icons.forEach(x=>{ if (x===ic || (ic.name && x.name===ic.name)) x.inTitle=e.target.checked; }); renderText(); }; ops.appendChild(t);
@@ -561,10 +568,10 @@ $('emoRand').onclick=()=>{ $('emo').value=''; lastRand=''; renderText(); };
 // 前に打った物（見出し・絵文字）：押すと入る、✕で消す
 function renderChips(){ for (const [key,id] of [['heads','head'],['emojis','emo']]){ const box=$(id+'Chips'); box.innerHTML='';
   (HIST[key]||[]).forEach((v,i)=>{ const c=document.createElement('span'); c.className='chip'; const a=document.createElement('button'); a.type='button'; a.textContent=v; a.onclick=()=>{ $(id).value=v; if (id==='emo') lastRand=''; renderText(); };
-    const x=document.createElement('button'); x.type='button'; x.className='x'; x.textContent='✕'; x.setAttribute('aria-label','この履歴を消す'); x.onclick=()=>{ (HIST.rm ??= []).push(HIST[key][i]); (HIST.rmAt ??= {})['h:'+HIST[key][i]]=Date.now(); HIST[key].splice(i,1); saveHist(); renderChips(); };
+    const x=document.createElement('button'); x.type='button'; x.className='x'; x.textContent='✕'; x.setAttribute('aria-label','この履歴を消す'); x.onclick=()=>{ (HIST.rm ??= []).push(HIST[key][i]); histMark('rmAt','h:'+HIST[key][i]); HIST[key].splice(i,1); saveHist(); renderChips(); };
     c.append(a,x); box.appendChild(c); }); } }
-function remember(){ const h=$('head').value.trim(), e=$('emo').value.trim(), n=$('num').value.trim(); const up=(k,v)=>{ if (!v) return; if (HIST.rm?.includes(v)){ HIST.rm=HIST.rm.filter(x=>x!==v); (HIST.backAt ??= {})['h:'+v]=Date.now(); } HIST[k]=[v,...(HIST[k]||[]).filter(x=>x!==v)].slice(0,30); };
-  up('heads',h); up('emojis',e||lastRand); if (!e && lastRand){ HIST.greetUsed=[lastRand,...(HIST.greetUsed||[]).filter(x=>x!==lastRand)].slice(0,30); } if (n && !HIST.nums.includes(n)){ HIST.nums.push(n); numMine=n; } saveHist(); saveWork(true); } // numMine をすぐ作業データにも書く（ゲームトレードへ切りかえてページが読み直されても残す）
+function remember(){ const h=$('head').value.trim(), e=$('emo').value.trim(), n=$('num').value.trim(); const up=(k,v)=>{ if (!v) return; if (HIST.rm?.includes(v)){ HIST.rm=HIST.rm.filter(x=>x!==v); histMark('backAt','h:'+v); } HIST[k]=[v,...(HIST[k]||[]).filter(x=>x!==v)].slice(0,30); };
+  up('heads',h); up('emojis',e||lastRand); if (!e && lastRand){ HIST.greetUsed=[lastRand,...(HIST.greetUsed||[]).filter(x=>x!==lastRand)].slice(0,30); } if (n && !HIST.nums.includes(n)){ HIST.nums.push(n); numMine=n; } saveHist(); lucky.forEach(l=>l.fresh=false); saveWork(true); } // コピーしたらいまのラッキーはこの出品の分（次の鍵キャラの入れ替えで捨てる）。numMine をすぐ作業データにも書く（ゲームトレードへ切りかえてページが読み直されても残す）
 let numMine=''; // いまの出品で記録した管理番号（この番号には「前に使った番号です」を出さない）
 async function copy(t,what){ try{ await navigator.clipboard.writeText(t); toast(what+'をコピーしました'); }catch(e){ const ta=$(what==='題名'?'titleOut':'descOut'); ta.focus(); ta.select(); try{ document.execCommand('copy'); toast(what+'をコピーしました'); }catch(_){ toast('コピーできませんでした。長押しでコピーしてください'); } } }
 // コピーの前に気をつけること（確かめる画面に赤字で出す）
@@ -652,7 +659,7 @@ function renderSet(){
 $('addBlock').onclick=()=>{ const l=prompt('新しいブロックの名前'); if (!l) return; SET.blocks.push({label:l,on:true,t:''}); saveSet(); renderSet(); };
 $('resetBlocks').onclick=()=>{ if (confirm('文字の形を、はじめの形（最新の出品と同じ）に戻しますか？')){ SET.blocks=JSON.parse(JSON.stringify(BLOCKS0)); SET.titleTpl=SET0.titleTpl; saveSet(); renderSet(); } };
 function renderLearned(){ const box=$('learned'); const ks=Object.keys(CHARS); box.innerHTML=ks.length?'':'<div class="note">まだありません</div>';
-  ks.forEach(n=>{ const d=document.createElement('div'); d.className='lr'; d.innerHTML=`<b>${esc(n)}</b><span>${CHARS[n].nick?'呼称：'+esc(CHARS[n].nick):''}</span><button type="button">消す</button>`; d.querySelector('button').onclick=()=>{ if (confirm(`「${n}」を忘れますか？（覚えた絵も消えます）`)){ delete CHARS[n]; (HIST.rmChars ??= []).push(n); (HIST.rmAt ??= {})['c:'+n]=Date.now(); saveHist(); saveChars(); renderLearned(); } }; box.appendChild(d); }); }
+  ks.forEach(n=>{ const d=document.createElement('div'); d.className='lr'; d.innerHTML=`<b>${esc(n)}</b><span>${CHARS[n].nick?'呼称：'+esc(CHARS[n].nick):''}</span><button type="button">消す</button>`; d.querySelector('button').onclick=()=>{ if (confirm(`「${n}」を忘れますか？（覚えた絵も消えます）`)){ delete CHARS[n]; (HIST.rmChars ??= []).push(n); histMark('rmAt','c:'+n); saveHist(); saveChars(); renderLearned(); } }; box.appendChild(d); }); }
 $('exportBtn').onclick=()=>{ const b=new Blob([JSON.stringify({chars:CHARS,hist:HIST,set:SET},null,1)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='pocodun-覚えた物.json'; a.click(); };
 $('importBtn').onclick=()=>{ const f=document.createElement('input'); f.type='file'; f.accept='application/json'; f.onchange=async()=>{ try{ const j=JSON.parse(await f.files[0].text()); if (j.chars){ CHARS={...CHARS,...j.chars}; saveChars(); } if (j.hist){ HIST=j.hist; saveHist(); } if (j.set){ SET={...SET0,...j.set}; saveSet(); } renderSet(); toast('読み込みました'); }catch(e){ toast('読み込めませんでした'); } }; f.click(); };
 
@@ -660,18 +667,19 @@ $('ver').textContent='試作 v'+APP_VER;
 // ---- 作業の自動保存（読み取った結果と入力した内容。使い方を見たり画面を閉じても、次に開くと続きから） ----
 let workT=0, restoring=false;
 function saveWork(now){ if (restoring) return; clearTimeout(workT); const run=()=>{ // now===true：待たずにその場で書く（アプリを切りかえるとタイマーが動かないことがある）
+  if (!$('busy').hidden) return; // 読み取り中は作業が空に見えるので書かない（終わったら renderAll で書く）
   const empty=!icons.length && !lucky.length && !['num','head','emo','unup','stone'].some(id=>$(id).value.trim()); if (empty){ try{ localStorage.removeItem(PFX+'work'); }catch(e){} return; }
   const j=(withLucky)=>JSON.stringify({v:1, f:Object.fromEntries(['num','head','emo','unup','stone'].map(id=>[id,$(id).value])), unupTyped:$('unup').dataset.typed||'', stoneTyped:$('stone').dataset.typed||'',
     stone, shotsN:shots.length, titleManual, lastRand, numMine,
-    icons:icons.map(i=>({img:i.canvas.toDataURL('image/jpeg',.8), fp:i.fp, name:i.name, guess:i.guess, why:i.why||'', inTitle:i.inTitle, picked:!!i.picked, src:i.src, cands:(i.cands||[]).map(c=>({n:c.n,i:c.i,a:c.a,o:c.o,d:c.d}))})),
-    lucky:withLucky ? lucky.map(l=>({img:l.canvas.toDataURL('image/jpeg',.7), fp:l.fp, cnt:l.cnt||0, si:l.si, kind:l.kind})) : []});
+    icons:icons.map(i=>({img:i.canvas.toDataURL('image/jpeg',.8), fp:i.fp, name:i.name, guess:i.guess, why:i.why||'', inTitle:i.inTitle, picked:!!i.picked, src:i.src, full:i.fullOld?null:i.full, cands:(i.cands||[]).map(c=>({n:c.n,i:c.i,a:c.a,o:c.o,d:c.d}))})),
+    lucky:withLucky ? lucky.map(l=>({img:l.canvas.toDataURL('image/jpeg',.7), fp:l.fp, cnt:l.cnt||0, si:l.si, kind:l.kind, fresh:!!l.fresh})) : []});
   try{ localStorage.setItem(PFX+'work',j(true)); }catch(e){ try{ localStorage.setItem(PFX+'work',j(false)); }catch(_){} } }; if (now===true) run(); else workT=setTimeout(run,500); }
 const toCanvas=u=>new Promise(res=>{ const i=new Image(); i.onload=()=>{ const c=document.createElement('canvas'); c.width=i.width; c.height=i.height; c.getContext('2d').drawImage(i,0,0); res(c); }; i.onerror=()=>res(null); i.src=u; });
 async function restoreWork(){ const w=load('work',null); if (!w||w.v!==1) return false; restoring=true;
   try{ for (const [id,v] of Object.entries(w.f||{})) $(id).value=v; $('unup').dataset.typed=w.unupTyped; $('stone').dataset.typed=w.stoneTyped;
     stone=w.stone||stone; shots=Array.from({length:w.shotsN||0},()=>({})); titleManual=!!w.titleManual; lastRand=w.lastRand||''; numMine=w.numMine||'';
-    icons=[]; for (const x of w.icons||[]){ const c=await toCanvas(x.img); if (!c) continue; icons.push({...x, canvas:c, full:fullFP(c), key:Math.random()}); }
-    lucky=[]; for (const x of w.lucky||[]){ const c=await toCanvas(x.img); if (!c) continue; lucky.push({canvas:c, fp:x.fp, cnt:x.cnt, si:x.si, kind:x.kind}); }
+    icons=[]; for (const x of w.icons||[]){ const c=await toCanvas(x.img); if (!c) continue; icons.push({...x, canvas:c, full:x.full||fullFP(c), fullOld:!x.full, key:Math.random()}); } // full は元の絵の値（JPEG から作り直すとずれて、同じキャラが「足す」で2回入る）
+    lucky=[]; for (const x of w.lucky||[]){ const c=await toCanvas(x.img); if (!c) continue; lucky.push({canvas:c, fp:x.fp, cnt:x.cnt, si:x.si, kind:x.kind, fresh:!!x.fresh}); }
   }finally{ restoring=false; } return icons.length||lucky.length||Object.values(w.f||{}).some(v=>v); }
 function clearWork(){ if (!confirm('いまの作業（読み取ったキャラ・入力した番号など）を消して、最初からにしますか？')) return;
   icons=[]; shots=[]; lucky=[]; stone={v:'',sure:true,crop:''}; titleManual=false; lastRand=''; numMine=''; ['num','head','emo','unup','stone'].forEach(id=>{ $(id).value=''; $(id).dataset.typed=''; });
@@ -681,10 +689,16 @@ $('clearWork').onclick=clearWork;
 // ---- ほかの端末と自動でそろえる（GitHub の非公開リポジトリに、覚えたキャラ・運気・設定・履歴・背景を置く。写真は送らない） ----
 const SYNC_API='https://api.github.com';
 let SYNC=load('sync',{repo:'ahonokiki/pocodun-sync', token:'', last:'', bg:{}});
-const syncOn=()=>!!(SYNC.token && SYNC.repo);
-const b64e=t=>btoa(String.fromCharCode(...new TextEncoder().encode(t))), b64d=b=>new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g,'')),c=>c.charCodeAt(0)));
+// 鍵と保存場所は毎回 'poco_sync' から読み直す（ポケツイ・ピグパで入れ直した新しい鍵を、開いたままのこの画面が古い鍵で上書きしない）
+const reKey=()=>{ const k=load('sync',null); if (k && typeof k==='object'){ SYNC.token=k.token||''; SYNC.repo=k.repo||''; } };
+const saveSync=()=>{ reKey(); save('sync',SYNC); }; // 自分の last・err・bg だけ書き足す
+const syncOn=()=>{ reKey(); return !!(SYNC.token && SYNC.repo) && !load('syncOff',false); }; // syncOff：この端末のポコダンだけやめた印（鍵は消さない）
+window.addEventListener('storage',e=>{ if (e.key===PFX+'sync' || e.key===PFX+'syncOff'){ reKey(); renderSync(); } });
+// 長い中身を一度に String.fromCharCode に渡すと止まる（iPhone の Safari は引数が多すぎると止まる）ので 8192 ずつ
+const b64e=t=>{ const u=new TextEncoder().encode(t); let s=''; for (let i=0;i<u.length;i+=8192) s+=String.fromCharCode(...u.subarray(i,i+8192)); return btoa(s); }, b64d=b=>new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g,'')),c=>c.charCodeAt(0)));
 async function gh(path,opt={}){ const r=await fetch(`${SYNC_API}/repos/${SYNC.repo}/contents/${path}`,{...opt, headers:{Authorization:'Bearer '+SYNC.token, Accept:'application/vnd.github+json', ...(opt.body?{'Content-Type':'application/json'}:{})}, cache:'no-store'});
-  if (r.status===404) return null; if (!r.ok) throw new Error(r.status===401||r.status===403 ? '鍵（トークン）が使えません' : 'GitHub '+r.status); return r.json(); }
+  if (r.status===404 && !opt.method) return null; // 読むときの 404 は「まだ無い」。書く・消すときの 404 は保存場所が無いか鍵が見られない
+  if (r.status===404) throw new Error('保存場所が見つからないか、鍵がこのリポジトリを見られません'); if (!r.ok) throw new Error(r.status===401||r.status===403 ? '鍵（トークン）が使えません' : 'GitHub '+r.status); return r.json(); }
 // 2台の内容を合わせる：呼称・覚えた絵・運気・履歴は両方を足し合わせる（消したものは消したまま）。設定は新しく変えたほう
 function mergeIn(j){ const mx=(a,b)=>{ const o={...(a||{})}; for (const [k,v] of Object.entries(b||{})) o[k]=Math.max(o[k]||0,v); return o; };
   // 消した印（rmAt）と覚え直した印（backAt）の時刻を比べ、消したあとで覚え直した・使い直したものは消さない（時刻のない古い印は消す）
@@ -716,8 +730,8 @@ async function syncNow(push){ if (!syncOn()) return false; if (syncing){ syncAga
   try{ for (let tries=0; tries<3; tries++){ const f=await gh('data.json'); if (f) mergeIn(JSON.parse(b64d(f.content))); storeAll();
       const body=JSON.stringify(mine()); if (f && b64d(f.content)===body){ break; }
       try{ await gh('data.json',{method:'PUT', body:JSON.stringify({message:'覚えたデータを更新', content:b64e(body), ...(f?{sha:f.sha}:{})})}); break; }catch(e){ if (!/409|422/.test(e.message) || tries===2) throw e; } }
-    await syncBg(); SYNC.last=new Date().toLocaleString('ja-JP'); SYNC.err=''; save('sync',SYNC); renderSync(); if (JSON.stringify(mine())!==before) redrawAfterSync(); return true;
-  }catch(e){ SYNC.err=e.message; save('sync',SYNC); renderSync(); return false; }
+    await syncBg(); SYNC.last=new Date().toLocaleString('ja-JP'); SYNC.err=''; saveSync(); renderSync(); if (JSON.stringify(mine())!==before) redrawAfterSync(); return true;
+  }catch(e){ SYNC.err=e.message; saveSync(); renderSync(); return false; }
   finally{ syncing=false; if (syncAgain){ syncAgain=false; queueSync(); } } }
 // そろえで内容が変わったときだけ描き直す。文字を打っている途中なら、欄を離れてから（打ちかけの文字・キーボードを消さない）
 function redrawAfterSync(){ const a=document.activeElement; if (a && (a.tagName==='TEXTAREA' || (a.tagName==='INPUT' && !['checkbox','radio','button','file'].includes(a.type)))){ a.addEventListener('blur',()=>setTimeout(redrawAfterSync,0),{once:true}); return; }
@@ -725,7 +739,7 @@ function redrawAfterSync(){ const a=document.activeElement; if (a && (a.tagName=
 // 背景：8つの場所ごとに bg/0.jpg〜bg/7.jpg。変えた場所だけ送り、ほかの端末で変わった場所だけ受け取る
 const bgDirty=new Set(load('bgDirty',[]));
 function queueBgSync(k){ bgDirty.add(k); save('bgDirty',[...bgDirty]); queueSync(); }
-async function syncBg(){ const list=(await fetch(`${SYNC_API}/repos/${SYNC.repo}/contents/bg`,{headers:{Authorization:'Bearer '+SYNC.token},cache:'no-store'}).then(r=>r.ok?r.json():[]).catch(()=>[]))||[];
+async function syncBg(){ const list=(await gh('bg'))||[]; // 鍵が使えないときは空の一覧にしない（送っていない背景の印を消さない）
   const remote=Object.fromEntries(list.map(x=>[x.name.replace(/\.jpg$/,''),x.sha]));
   for (const k of [...bgDirty]){ const v=await bgGet(k), sha=remote[k];
     if (v){ const r=await gh(`bg/${k}.jpg`,{method:'PUT', body:JSON.stringify({message:'背景を更新', content:v.split(',')[1], ...(sha?{sha}:{})})}); SYNC.bg[k]=r?.content?.sha||''; }
@@ -735,27 +749,31 @@ async function syncBg(){ const list=(await fetch(`${SYNC_API}/repos/${SYNC.repo}
   for (const k of Object.keys(SYNC.bg)) if (!(k in remote) && !bgDirty.has(+k) && !bgDirty.has(k)){ /* ほかの端末で消された背景 */ if (await bgGet(+k)){ await bgPut(+k,null,true); } delete SYNC.bg[k]; }
   renderBg(); useBg(); }
 function renderSync(msg){ const e=$('syncState'); if (!e) return; e.textContent= msg || (!syncOn() ? 'つないでいません（この端末の中だけに保存）' : SYNC.err ? '⚠ そろえられませんでした：'+SYNC.err : SYNC.last ? '✓ そろえました（'+SYNC.last+'）' : 'つなぎました'); e.className='note'+(SYNC.err?' warn':''); $('syncToken').value=SYNC.token?'••••••••（入っています）':''; }
-$('syncSave').onclick=async()=>{ const v=$('syncToken').value.trim(); if (!v || v.startsWith('••')){ toast('鍵（トークン）を貼り付けてください'); return; } SYNC.token=v; SYNC.err=''; save('sync',SYNC);
+$('syncSave').onclick=async()=>{ const v=$('syncToken').value.trim(); if (!v || v.startsWith('••')){ toast('鍵（トークン）を貼り付けてください'); return; } reKey(); SYNC.token=v; SYNC.err=''; save('sync',SYNC); try{ localStorage.removeItem(PFX+'syncOff'); }catch(e){}
   for (let i=0;i<8;i++) if (await bgGet(i)) bgDirty.add(i); save('bgDirty',[...bgDirty]); toast((await syncNow(true)) ? 'つなぎました。ほかの端末とそろえました' : 'つなげませんでした。鍵を確かめてください'); };
 $('syncNowBtn').onclick=async()=>toast((await syncNow(true)) ? 'そろえました' : 'そろえられませんでした');
-$('syncOff').onclick=()=>{ if (!confirm('この端末で、ほかの端末とそろえるのをやめますか？（この端末の中のデータは残ります）')) return; SYNC.token=''; SYNC.bg={}; save('sync',SYNC); renderSync(); };
+$('syncOff').onclick=()=>{ if (!confirm('この端末で、ほかの端末とそろえるのをやめますか？（この端末の中のデータは残ります。ポケツイ・ピグパはそのままです）')) return; save('syncOff',true); SYNC.bg={}; saveSync(); renderSync(); };
 document.addEventListener('visibilitychange',()=>{ if (!document.hidden && syncOn()) syncNow(false); });
 renderSync(); if (syncOn()) syncNow(false);
 useBg(); (async()=>{ const ok=await restoreWork(); renderAll(); if (ok) toast('前回の作業を復元しました'); })();
 // ---- 新しい版の確認：開いたときに新しい版があれば読み直す（作業は自動保存されているので、読み直しても続きから） ----
 // 開いてから何も触っていないときだけ自動で読み直す（写真を選んでいる途中・文字を打っている途中に読み直さない）。触ったあとは、消えない案内に「読み直す」ボタンを出す
 let touched=false; ['pointerdown','keydown','focusin'].forEach(t=>document.addEventListener(t,()=>{ touched=true; },{capture:true,passive:true}));
-(async()=>{ try{
+let verAt=0; async function checkVer(){ verAt=Date.now(); try{
   const r=await fetch(location.pathname+'?vc='+Date.now(),{cache:'no-store'}); if(!r.ok) return;
   const v=((await r.text()).match(/const APP_VER='([^']+)'/)||[])[1]; if(!v || !(+v > +APP_VER)) return; // 新しい版のときだけ
-  const go=()=>{ saveWork(); setTimeout(()=>location.replace(location.pathname+'?v='+v),600); }; // 打った内容を保存してから読み直す
+  const go=()=>{ if (!$('busy').hidden || restoring){ toast('読み取りが終わってから押してください'); return; } saveWork(); setTimeout(()=>location.replace(location.pathname+'?v='+v),600); }; // 打った内容を保存してから読み直す
   let tried=null; try{ tried=sessionStorage.getItem(PFX+'reloadFor'); }catch(e){}
   if (tried!==v && !touched && !restoring && $('busy').hidden){ try{ sessionStorage.setItem(PFX+'reloadFor',v); }catch(e){} go(); return; } // 同じ版のために何度も自動で読み直さない
-  const d=document.createElement('div'); d.id='newVer';
+  let d=$('newVer'); if (!d){ d=document.createElement('div'); d.id='newVer'; document.body.appendChild(d); } // 二重に出さない
   d.style.cssText='position:fixed;left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));top:calc(8px + env(safe-area-inset-top,0px));z-index:50;background:#3b2a1a;color:#fff;border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:center;font-size:14px;box-shadow:0 4px 14px rgba(0,0,0,.3)';
   d.innerHTML='<span style="flex:1">新しい版（v'+v+'）があります。読み直しても作業は続きから戻ります</span><button type="button" style="font:inherit;font-weight:900;border:0;border-radius:999px;padding:6px 12px;background:#e8a530;color:#3b2a1a">読み直す</button>';
-  d.querySelector('button').onclick=go; document.body.appendChild(d);
-}catch(e){} })();
+  d.querySelector('button').onclick=go;
+}catch(e){} }
+checkVer();
+// 開いたままのタブに戻ったとき（Safari は読み込み直さずそのまま出すことが多い）も確かめる。間を10分あける
+document.addEventListener('visibilitychange',()=>{ if (!document.hidden && Date.now()-verAt>10*60*1000) checkVer(); });
+window.addEventListener('pageshow',e=>{ if (e.persisted) checkVer(); });
 
 </script>
 </body></html>

@@ -394,7 +394,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='83'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='84'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -1322,16 +1322,25 @@ window.addEventListener('hashchange',takeHashText); takeHashText(); recoverRaw()
 window.addEventListener('pageshow',()=>{ takeHashText(); renderPendNote(); });
 document.addEventListener('visibilitychange',()=>{ if (!document.hidden){ takeHashText(); renderPendNote(); } });
 window.addEventListener('storage',e=>{ if (e.key===PENDING_KEY) renderPendNote(); });
-// ---- 新しい版の確認：開いたときに新しい版があれば読み直す（古いページのままだと、直した読み取りや機能が使えないため） ----
-(async()=>{ try{
+// ---- 新しい版の確認：開いたとき・画面に戻ったとき（10分おき）に新しい版があれば読み直す（古いページのままだと、直した読み取りや機能が使えないため） ----
+// Safari はタブを開いたままだと、戻っても読み込み直さないので、読み込み時の1回だけでは古い版のまま使い続けてしまう
+let verAt=0;
+async function checkVer(){ verAt=Date.now(); try{
   const r=await fetch(location.pathname+'?vc='+Date.now(),{cache:'no-store'}); if(!r.ok) return;
   const v=((await r.text()).match(/const APP_VER='([^']+)'/)||[])[1]; if(!v || !(+v > +APP_VER)) return; // 新しい版のときだけ
   let tried=null; try{ tried=sessionStorage.getItem('promo_reloadFor'); }catch(e){}
-  if (tried===v) return; // 同じ版のために何度も読み直さない
-  try{ sessionStorage.setItem('promo_reloadFor',v); }catch(e){}
-  if (!picking && !shotImg && items.length===0){ location.replace(location.pathname+'?v='+v); } // まだ画像を選んでいなければ自動で読み直す（受け取った名前は端末に保存済み）
-  else toast('新しい版があります。画面を下に引っぱって読み直してください');
-}catch(e){} })();
+  const go=()=>location.replace(location.pathname+'?v='+v);
+  if (tried!==v && !picking && !shotImg && items.length===0){ try{ sessionStorage.setItem('promo_reloadFor',v); }catch(e){} go(); return; } // まだ画像を選んでいなければ自動で読み直す（受け取った名前は端末に保存済み）。同じ版のために何度も自動では読み直さない
+  // それ以外は、消えない案内に「読み直す」ボタン（画像を選んでいる途中で勝手に読み直さない）
+  let d=$('newVer'); if (!d){ d=document.createElement('div'); d.id='newVer';
+    d.style.cssText='margin:10px max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px));background:#333;color:#fff;border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:center;font-size:14px;box-shadow:0 4px 14px rgba(0,0,0,.3)';
+    d.innerHTML='<span style="flex:1"></span><button type="button" style="font:inherit;font-weight:900;border:0;border-radius:999px;padding:6px 12px;background:#ff8fb1;color:#333">読み直す</button>';
+    document.querySelector('header').after(d); } // 上に固定すると設定・ランキングのボタンを隠すので、見出しのすぐ下（ページの流れの中）に出す
+  d.querySelector('span').textContent='新しい版（v'+v+'）があります。読み直すと選んだ画像は消えます（受け取った名前は残ります）'; d.querySelector('button').onclick=go;
+}catch(e){} }
+checkVer();
+document.addEventListener('visibilitychange',()=>{ if (!document.hidden && Date.now()-verAt>10*60e3) checkVer(); });
+window.addEventListener('pageshow',e=>{ if (e.persisted && Date.now()-verAt>10*60e3) checkVer(); });
 // ---- 読み取った名前の確認（一覧・決めた名前と一致＝緑、iPhoneで読んだ＝黄、どちらでもない＝赤。赤はコピーの前に一度確かめてもらう） ----
 const nameOk=n=>!!n && (dictExact.has(n) || okNames.has(n) || learnedNames().has(n));
 // 'ok'＝一覧・覚えた名前と一致（緑）、'iph'＝一覧にないがiPhoneで読んだ名前（黄・コピーできる）、'ng'＝赤
@@ -2093,6 +2102,9 @@ const SYNC_API='https://api.github.com', SYNC_FILE=(PFX==='pigpa_'?'piggparty':'
 // エラーの記録・切り替えの目印（fontDefault・autoCopyOff1・winMoved）・背景（curSlot・sets・IndexedDB）・ghToken・版の確認（sessionStorage）
 const SYNC_KEYS=['ct','cs','font','jfont','showCount','showOwned','numColor','totalColor','nameLayout','defCount',
   'txtStyle','titleOne','titleSep','titleTotal','autoCopy','txtShop','txtShopPos','txtShopLine','txtHead','txtTotal','txtFoot'];
+// 起動時に自動で書く初期値（fontDefault の書体10番・autoCopyOff1 の自動コピーなし）。時刻0のままこの値なら、自分で決めていない値として送らない
+// （先にそろえた新しい端末の初期値が、使い込んだ端末の書体などを上書きしないように）
+const SYNC_AUTO={font:'10', autoCopy:'0'};
 const lsGet=k=>{ try{ return localStorage.getItem(PFX+k); }catch(e){ return null; } };
 const lsSet=(k,v)=>{ try{ localStorage.setItem(PFX+k,v); return true; }catch(e){ return false; } };
 const syncKey=()=>{ try{ const j=JSON.parse(localStorage.getItem('poco_sync')||'null'); return j&&typeof j==='object'?j:null; }catch(e){ return null; } };
@@ -2104,27 +2116,33 @@ const saveSST=()=>lsSet('syncState',JSON.stringify(SST));
 let SMETA=(()=>{ try{ const j=JSON.parse(lsGet('syncMeta')||'null'); return j&&j.l&&j.s ? j : null; }catch(e){ return null; } })();
 let sFirst=!SMETA; SMETA ??= {l:{},s:{}};
 const saveMeta=()=>lsSet('syncMeta',JSON.stringify(SMETA));
-// 今の中身と、前に見た中身を比べて、変わったところに今の時刻を付ける（消した名前は消した印）
-function syncMark(){ const now=sFirst?0:Date.now(), L=learned.all(); let ch=sFirst;
-  for (const k in L){ const j=JSON.stringify(L[k]), m=SMETA.l[k]; if (!m || m.del || m.j!==j){ SMETA.l[k]={j,t:now}; ch=true; } }
-  for (const k in SMETA.l) if (!SMETA.l[k].del && !(k in L)){ SMETA.l[k]={del:1,t:Date.now()}; ch=true; }
-  for (const k of SYNC_KEYS){ const v=lsGet(k), m=SMETA.s[k]; if (v!==null && (!m || m.v!==v)){ SMETA.s[k]={v,t:now}; ch=true; } }
+// 今の中身と、前に見た中身を比べて、変わったところに今の時刻を付ける（消した名前は消した印）。n:1＝この端末で変えてまだ送っていない印（送らない）
+// 時刻は「今」と「その項目の前の時刻+1」の大きいほう（時計が進んだ端末が付けた先の時刻があっても、あとから変えたほうが勝つように）
+const tNext=m=>Math.max(Date.now(),(m?.t||0)+1);
+// この端末の時計が進んでいたときに付けた、今より1日以上先の時刻は0にする（時計を直したあと、ほかの端末で変えた値に負け続けないように）
+function syncMark(){ const L=learned.all(); let ch=sFirst;
+  for (const m of [...Object.values(SMETA.l),...Object.values(SMETA.s)]) if (m.t>Date.now()+864e5){ m.t=0; ch=true; }
+  for (const k in L){ const j=JSON.stringify(L[k]), m=SMETA.l[k]; if (!m || m.del || m.j!==j){ SMETA.l[k]={j,t:sFirst?0:tNext(m),...(sFirst?{}:{n:1})}; ch=true; } }
+  for (const k in SMETA.l) if (!SMETA.l[k].del && !(k in L)){ SMETA.l[k]={del:1,t:tNext(SMETA.l[k]),n:1}; ch=true; }
+  for (const k of SYNC_KEYS){ const v=lsGet(k), m=SMETA.s[k]; if (v!==null && (!m || m.v!==v)){ SMETA.s[k]={v,t:sFirst?0:tNext(m),...(sFirst?{}:{n:1})}; ch=true; } }
   sFirst=false; if (ch) saveMeta(); return ch; }
 // 保存場所の中身を合わせる。キーごとに時刻の新しいほう（同じ時刻なら保存場所のほう）。変わった名前・設定を返す
-function syncMerge(j){ const L=learned.all(), keep=JSON.stringify(SMETA), sets=[]; let lc=false;
-  for (const [k,r] of Object.entries(j?.learned||{})){ if (!r || typeof r!=='object' || typeof r.t!=='number') continue; const m=SMETA.l[k];
-    if (m && m.t>r.t) continue; // この端末のほうが新しい
+const syncAuto=(k,r)=>r.t===0 && SYNC_AUTO[k]===r.v; // 自動で書いた初期値（自分で決めていない）は送らない・受け取らない
+// 今より1日以上先の時刻（時計が進んだ端末が付けたもの）は今の時刻に切り下げる。切り下げた項目は、この端末にまだ送っていない変更があればこの端末が勝つ
+function syncMerge(j){ const L=learned.all(), keep=JSON.stringify(SMETA), sets=[], now=Date.now(), cl=r=>({...r, t:r.t>now+864e5?now:r.t, c:r.t>now+864e5}); let lc=false;
+  for (let [k,r] of Object.entries(j?.learned||{})){ if (!r || typeof r!=='object' || typeof r.t!=='number') continue; r=cl(r); const m=SMETA.l[k];
+    if (m && (m.t>r.t || (r.c && m.n))) continue; // この端末のほうが新しい
     if (r.del){ if (k in L){ delete L[k]; lc=true; } SMETA.l[k]={del:1,t:r.t}; continue; }
     if (r.v==null) continue; const s=JSON.stringify(r.v); if (!(m && !m.del && m.j===s)){ L[k]=r.v; lc=true; } SMETA.l[k]={j:s,t:r.t}; }
   if (lc && !learnedSave0(L)){ SMETA=JSON.parse(keep); throw new Error('端末の保存がいっぱいです'); } // 保存できないのに時刻だけ進めると、消したことになってしまう
-  for (const [k,r] of Object.entries(j?.set||{})){ if (!SYNC_KEYS.includes(k) || typeof r?.v!=='string' || typeof r.t!=='number') continue; const m=SMETA.s[k];
-    if (m && m.t>r.t) continue;
+  for (let [k,r] of Object.entries(j?.set||{})){ if (!SYNC_KEYS.includes(k) || typeof r?.v!=='string' || typeof r.t!=='number') continue; r=cl(r); if (syncAuto(k,r)) continue; const m=SMETA.s[k];
+    if (m && (m.t>r.t || (r.c && m.n))) continue;
     if (lsGet(k)!==r.v){ if (!lsSet(k,r.v)) continue; sets.push(k); } SMETA.s[k]={v:r.v,t:r.t}; }
   saveMeta(); return {l:lc, sets}; }
 // 保存場所に置く形（キーの順をそろえて、同じ中身なら同じ文字にする）
 function syncMine(){ const l={}, s={};
   for (const k of Object.keys(SMETA.l).sort()){ const m=SMETA.l[k]; l[k]=m.del ? {del:1,t:m.t} : {v:JSON.parse(m.j),t:m.t}; }
-  for (const k of Object.keys(SMETA.s).sort()) s[k]={v:SMETA.s[k].v,t:SMETA.s[k].t};
+  for (const k of Object.keys(SMETA.s).sort()) if (!syncAuto(k,SMETA.s[k])) s[k]={v:SMETA.s[k].v,t:SMETA.s[k].t};
   return {v:1, learned:l, set:s}; }
 const b64e=t=>{ const u=new TextEncoder().encode(t); let s=''; for (let i=0;i<u.length;i+=0x8000) s+=String.fromCharCode(...u.subarray(i,i+0x8000)); return btoa(s); };
 const b64d=b=>new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g,'')),c=>c.charCodeAt(0)));
@@ -2141,8 +2159,10 @@ function syncSetTok(t){ const k={repo:SYNC_REPO0, token:'', last:'', bg:{}, ...(
 async function syncNow(){ if (!syncOn()) return false; if (syncing){ syncAgain=true; return false; } syncing=true; renderSync('そろえています…'); let lc=false; const sets=new Set();
   const run=async()=>{ for (let tries=0; tries<3; tries++){ const f=await syncGh(SYNC_FILE); syncMark(); // 待っている間に変えた分も時刻を付けてから合わせる
       if (f){ const r=syncMerge(JSON.parse(b64d(f.content))); lc||=r.l; r.sets.forEach(k=>sets.add(k)); }
-      const body=JSON.stringify(syncMine()); if (f && b64d(f.content)===body) break;
-      try{ await syncGh(SYNC_FILE,{method:'PUT', body:JSON.stringify({message:'覚えた名前・設定を更新', content:b64e(body), ...(f?{sha:f.sha}:{})})}); break; }
+      const body=JSON.stringify(syncMine()), sent=[...Object.values(SMETA.l),...Object.values(SMETA.s)].filter(m=>m.n);
+      const done=()=>{ if (sent.length){ sent.forEach(m=>delete m.n); saveMeta(); } }; // 送れた分だけ「まだ送っていない」印を消す（送っている間に変えた分は残る）
+      if (f && b64d(f.content)===body){ done(); break; }
+      try{ await syncGh(SYNC_FILE,{method:'PUT', body:JSON.stringify({message:'覚えた名前・設定を更新', content:b64e(body), ...(f?{sha:f.sha}:{})})}); done(); break; }
       catch(e){ if (!/409|422/.test(e.message) || tries===2) throw e; } } }; // ほかの端末と同時に書いたら、読み直してやり直す
   try{ try{ await run(); if (syncKey()?.token!==lsGet('syncTok')) lsSet('syncTok',syncKey()?.token||''); }
     catch(e){ // 開いたままのポコダンが古い鍵に戻したときは、この端末で入れた鍵で試して、使えたら 'poco_sync' に戻す
