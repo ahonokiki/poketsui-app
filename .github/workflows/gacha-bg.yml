@@ -15,9 +15,11 @@ jobs:
       - run: npm i --no-save --no-package-lock sharp@0.33
       # ポケツイ・ポコダンを自動（どちらも手で足すときは tools/gacha-bg/add.mjs）
       - run: node tools/gacha-bg/update-poketsui.mjs
+        continue-on-error: true   # 片方が失敗しても、もう片方の分はコミットする
       - run: node tools/gacha-bg/update-pocodun.mjs   # ポコダン：公式YouTubeの新しい動画のサムネイル
+        continue-on-error: true
       - run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add -A bg-auto pocodun/bg-auto tools/gacha-bg/pocodun-yt-seen.json
+          git add -A bg-auto pocodun/bg-auto tools/gacha-bg
           git diff --cached --quiet || (git commit -m "ガチャ背景の履歴を更新" && git pull --rebase && git push)
