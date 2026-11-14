@@ -357,18 +357,17 @@
     <div class="note" id="edgeNote">「おすすめ」は背景から浮き上がる同系色のネオンカラー。選んだ色は今の背景セットに保存されます。</div>
   </div></section>
 
-  <section class="card"><h2>全端末で共有（GitHub）</h2><div class="in">
-    <div class="row"><input type="password" id="ghToken" placeholder="GitHubの鍵（github_pat_…）" autocomplete="off" style="flex:1;min-width:0;border:2px solid #ffd0e6;border-radius:14px;padding:9px 12px;font-size:16px"></div>
-    <div class="row"><button type="button" class="delBtn" id="ghSave" style="--slot:#a98be0">鍵を保存</button><button type="button" class="delBtn" id="ghClear" style="--slot:#a8a3ad">鍵を消す</button><span class="note" id="ghState" style="margin:0"></span></div>
-    <div class="note">鍵を入れた端末では、背景の登録・フチ色の変更・削除が全端末に反映されます（反映まで1〜2分）。鍵はこの端末の中だけに保存されます。</div>
-  </div></section>
-
   <section class="card"><h2>全端末でそろえる（覚えた名前・設定）</h2><div class="in">
     <div class="note" style="margin-top:0">覚えた名前と設定（文字の書式・書体・色など）を、ご自分の非公開の保存場所（GitHub）に置いて、つないだ端末どうしで自動でそろえます。機種を変えても残ります。鍵はポコダンと同じです（ポコダンでつないでいれば入れなくて大丈夫）。画像は送りません。</div>
     <div class="row"><input type="password" id="syncToken" placeholder="鍵（トークン）を貼り付ける" autocomplete="off" style="flex:1;min-width:0;border:2px solid #ffd0e6;border-radius:14px;padding:9px 12px;font-size:16px"></div>
     <div class="row"><button type="button" class="delBtn" id="syncSave" style="--slot:#a98be0">つなぐ</button><button type="button" class="delBtn" id="syncNowBtn" style="--slot:#7fb8e6">今すぐそろえる</button><button type="button" class="delBtn" id="syncOff" style="--slot:#a8a3ad">この端末でやめる</button></div>
     <div class="note" id="syncState"></div>
     <div class="note">鍵を入れ直したときは、開いたままのポコダンを一度とじて開き直してください。</div>
+    <div class="note" id="ghState"></div>
+    <details style="margin-top:6px"><summary class="note" style="cursor:pointer;margin:0">背景セットの共有に別の鍵を使う（ふつうは不要）</summary>
+      <div class="row"><input type="password" id="ghToken" placeholder="GitHubの鍵（github_pat_…）" autocomplete="off" style="flex:1;min-width:0;border:2px solid #ffd0e6;border-radius:14px;padding:9px 12px;font-size:16px"></div>
+      <div class="row"><button type="button" class="delBtn" id="ghSave" style="--slot:#a98be0">鍵を保存</button><button type="button" class="delBtn" id="ghClear" style="--slot:#a8a3ad">鍵を消す</button></div>
+    </details>
   </div></section>
 
   <section class="card"><h2>背景セットの管理</h2><div class="in">
@@ -427,7 +426,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='85'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='86'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -1727,7 +1726,20 @@ function toast(t){ if (!$('fixSheet').hidden){ fixNote(t); fixLate=t; return; } 
   el.textContent=t; el.classList.add('show'); clearTimeout(el._t); if(!/中…$/.test(t)) el._t=setTimeout(()=>el.classList.remove('show'),t.includes('\n')?6000:3500); }
 // ---- GitHub への保存（鍵がある端末だけ）：背景画像は bg/、割り当ては sets.json ----
 const GH={owner:'ahonokiki',repo:'poketsui-app',branch:'main'};
-const ghToken=()=>{ try{ return localStorage.getItem('promo_ghToken')||''; }catch(e){ return ''; } };
+const ghOwn=()=>{ try{ return localStorage.getItem('promo_ghToken')||''; }catch(e){ return ''; } };
+// 「全端末でそろえる」の鍵（'poco_sync'）が、このアプリの置き場にも書けると確かめてあれば、背景セットの共有にも使う（鍵を1つにまとめる）
+const ghSyncTok=()=>{ try{ const t=(JSON.parse(localStorage.getItem('poco_sync')||'null')||{}).token||''; return t && localStorage.getItem('promo_ghOkSync')===t.slice(-8) ? t : ''; }catch(e){ return ''; } };
+const ghToken=()=>ghOwn()||ghSyncTok();
+// 鍵がこのアプリの置き場に書けるか確かめる（書ければ true）
+async function ghCanPush(tok){ try{ const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}`,{headers:{Authorization:'Bearer '+tok}}); const j=await r.json(); return r.ok && !!j.permissions?.push; }catch(e){ return null; } }
+// 「そろえる」の鍵を確かめて、印（末尾8文字）を残す。通信できないときは前の印のまま
+async function ghCheckSync(){ let t=''; try{ t=(JSON.parse(localStorage.getItem('poco_sync')||'null')||{}).token||''; }catch(e){}
+  if (!t){ ghShow(); return; } const ok=await ghCanPush(t); if (ok==null){ ghShow(); return; }
+  try{ if (ok) localStorage.setItem('promo_ghOkSync',t.slice(-8)); else localStorage.removeItem('promo_ghOkSync'); }catch(e){}
+  ghShow(); if (typeof renderSets==='function') try{ renderSets(); }catch(e){} }
+function ghShow(){ const el=$('ghState'); if (!el) return;
+  el.textContent=ghOwn() ? '背景セットの共有：別に入れた鍵で全端末に反映します' : ghSyncTok() ? '背景セットの共有：この鍵で全端末に反映できます' : syncKey0() ? '背景セットの共有：この鍵ではできません（この端末の中だけ）' : ''; }
+const syncKey0=()=>{ try{ return (JSON.parse(localStorage.getItem('poco_sync')||'null')||{}).token||''; }catch(e){ return ''; } };
 async function ghApi(path,opt={}){
   const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${path}`+(opt.method?'':`?ref=${GH.branch}&t=${Date.now()}`),
     {...opt,headers:{Authorization:'Bearer '+ghToken(),Accept:'application/vnd.github+json',...(opt.headers||{})}});
@@ -1741,7 +1753,7 @@ function ghRun(label,fn){ // 書き込みは1つずつ順番に
   ghQueue=ghQueue.then(async()=>{ ghMsg(label+'中…'); try{ await fn(); ghMsg(label+'しました（全端末に1〜2分で反映）'); }catch(e){ ghMsg(label+'できませんでした：'+(e.message.includes('401')?'鍵が正しくありません':e.message)); } });
   return ghQueue;
 }
-function ghMsg(t){ toast(t); $('ghState').textContent=t; const n=$('edgeNote'); if(n) n.textContent=t; }
+function ghMsg(t){ toast(t); if(!/^鍵(OK|は保存|なし)/.test(t)) $('ghState').textContent=t; else setTimeout(ghShow,0); const n=$('edgeNote'); if(n) n.textContent=t; }
 async function ghEditSets(fn){ // sets.json を読み込んで書き換える
   const cur=await ghApi('sets.json'); let j={sets:[]};
   if (cur) j=JSON.parse(decodeURIComponent(escape(atob(cur.content.replace(/\n/g,'')))));
@@ -1749,15 +1761,15 @@ async function ghEditSets(fn){ // sets.json を読み込んで書き換える
   await ghApi('sets.json',{method:'PUT',body:JSON.stringify({message:'背景セットを更新（アプリから）',content:b64utf8(JSON.stringify(j,null,2)+'\n'),branch:GH.branch,...(cur?{sha:cur.sha}:{})})});
 }
 async function ghDeleteFile(path){ const f=await ghApi(path); if(f) await ghApi(path,{method:'DELETE',body:JSON.stringify({message:'背景画像を削除（アプリから）',sha:f.sha,branch:GH.branch})}); }
-$('ghToken').value=ghToken() ? '********' : '';
-$('ghState').textContent=ghToken() ? '鍵あり' : '鍵なし';
+$('ghToken').value=ghOwn() ? '********' : '';
+ghShow(); setTimeout(ghCheckSync,1500);
 $('ghSave').onclick=async()=>{ const v=$('ghToken').value.trim(); if(!v || v==='********') return;
   try{ localStorage.setItem('promo_ghToken',v); }catch(e){}
   ghMsg('確認中…');
   try{ const r=await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}`,{headers:{Authorization:'Bearer '+v}}); const j=await r.json();
     ghMsg(r.ok && j.permissions?.push ? '鍵OK：全端末に保存できます' : '鍵は保存しましたが、書き込み権限がないようです'); $('ghToken').value='********';
   }catch(e){ ghMsg('確認できませんでした（通信を確認してください）'); } };
-$('ghClear').onclick=()=>{ try{ localStorage.removeItem('promo_ghToken'); }catch(e){} $('ghToken').value=''; ghMsg('鍵なし'); };
+$('ghClear').onclick=()=>{ try{ localStorage.removeItem('promo_ghToken'); }catch(e){} $('ghToken').value=''; ghMsg('鍵なし'); ghShow(); };
 
 // 端末だけの背景セットを全端末共通にする（背景画像を bg/ に保存し、sets.json に登録）
 async function toJpegData(src){ if (src.startsWith('data:image/jpeg')) return src;
@@ -2333,7 +2345,7 @@ $('syncSave').onclick=async()=>{ const v=$('syncToken').value.trim();
     if (!was) await pocoBgDirty(); // ポコダンの「つなぐ」と同じ：初めてつなぐ端末は、ポコダンの背景を送る印を付けておく
     if (!syncSetTok(v)){ toast('保存できませんでした'); return; } }
   try{ localStorage.removeItem(PFX+'syncOff'); }catch(e){} SST.err=''; saveSST();
-  toast((await syncNow()) ? 'つなぎました。ほかの端末とそろえました' : 'つなげませんでした。鍵を確かめてください'); };
+  toast((await syncNow()) ? 'つなぎました。ほかの端末とそろえました' : 'つなげませんでした。鍵を確かめてください');  ghCheckSync();};
 // ポコダンの背景（IndexedDB 'pocodun'）がある場所を 'poco_bgDirty' に足す（ポコダンが次に開いたとき送る）
 async function pocoBgDirty(){ try{ const db=await new Promise((res,rej)=>{ const r=indexedDB.open('pocodun',1); r.onupgradeneeded=()=>r.result.createObjectStore('bg'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
     const ks=await new Promise(res=>{ const q=db.transaction('bg').objectStore('bg').getAllKeys(); q.onsuccess=()=>res(q.result||[]); q.onerror=()=>res([]); }); db.close();
