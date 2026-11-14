@@ -281,7 +281,7 @@ async function ppLine(pp,img,box){ const pad=box.h*.5, x0=Math.max(0,box.x-pad),
   return {t:ch.map(q=>q.c).join(''), low:ch.filter(q=>q.p<.7).map(q=>q.c).join('')}; }
 
 // ---- ポコダン画像加工（試作） ----
-const APP_VER='24';
+const APP_VER='25';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const PFX='poco_';
@@ -698,6 +698,20 @@ $('syncOff').onclick=()=>{ if (!confirm('この端末で、ほかの端末とそ
 document.addEventListener('visibilitychange',()=>{ if (!document.hidden && syncOn()) syncNow(false); });
 renderSync(); if (syncOn()) syncNow(false);
 useBg(); (async()=>{ const ok=await restoreWork(); renderAll(); if (ok) toast('前回の作業を復元しました'); })();
+// ---- 新しい版の確認：開いたときに新しい版があれば読み直す（作業は自動保存されているので、読み直しても続きから） ----
+// 開いてから何も触っていないときだけ自動で読み直す（写真を選んでいる途中・文字を打っている途中に読み直さない）。触ったあとは、消えない案内に「読み直す」ボタンを出す
+let touched=false; ['pointerdown','keydown','focusin'].forEach(t=>document.addEventListener(t,()=>{ touched=true; },{capture:true,passive:true}));
+(async()=>{ try{
+  const r=await fetch(location.pathname+'?vc='+Date.now(),{cache:'no-store'}); if(!r.ok) return;
+  const v=((await r.text()).match(/const APP_VER='([^']+)'/)||[])[1]; if(!v || !(+v > +APP_VER)) return; // 新しい版のときだけ
+  const go=()=>{ saveWork(); setTimeout(()=>location.replace(location.pathname+'?v='+v),600); }; // 打った内容を保存してから読み直す
+  let tried=null; try{ tried=sessionStorage.getItem(PFX+'reloadFor'); }catch(e){}
+  if (tried!==v && !touched && !restoring && $('busy').hidden){ try{ sessionStorage.setItem(PFX+'reloadFor',v); }catch(e){} go(); return; } // 同じ版のために何度も自動で読み直さない
+  const d=document.createElement('div'); d.id='newVer';
+  d.style.cssText='position:fixed;left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));top:calc(8px + env(safe-area-inset-top,0px));z-index:50;background:#3b2a1a;color:#fff;border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:center;font-size:14px;box-shadow:0 4px 14px rgba(0,0,0,.3)';
+  d.innerHTML='<span style="flex:1">新しい版（v'+v+'）があります。読み直しても作業は続きから戻ります</span><button type="button" style="font:inherit;font-weight:900;border:0;border-radius:999px;padding:6px 12px;background:#e8a530;color:#3b2a1a">読み直す</button>';
+  d.querySelector('button').onclick=go; document.body.appendChild(d);
+}catch(e){} })();
 
 </script>
 </body></html>
