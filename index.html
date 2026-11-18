@@ -114,7 +114,7 @@
   header::before,header::after{display:none}
   .gear{width:34px;height:34px;font-size:18px}
   main.one{padding:8px 12px calc(76px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;align-items:center}
-  main.one .preview{width:min(100%,calc(100dvh - 330px));padding:5px;border-radius:22px}
+  main.one .preview{width:min(100%,calc(100svh - 330px));padding:5px;border-radius:22px}
   main.one .preview::after{display:none}
   canvas{border-radius:16px}
   #sets{width:100%;display:grid;grid-template-columns:repeat(10,1fr);gap:5px;margin:2px 0 0}
@@ -126,7 +126,7 @@
   /* ガチャの背景（上の段）：新しい7つ＋履歴。名前は枠の下 */
   #gRow{width:100%;display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin:4px 0 0}
   #gRow[hidden]{display:none}
-  body.hasG main.one .preview{width:min(100%,calc(100dvh - 385px))}
+  body.hasG main.one .preview{width:min(100%,calc(100svh - 385px))}
   .gset{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;padding:0;font:inherit;cursor:pointer;min-width:0;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
   .gset i{display:block;width:100%;aspect-ratio:1;border-radius:50%;border:3px solid #fff;background:#f3e6f6 center/cover;box-shadow:0 1px 5px #0003}
   .gset.on i{border-color:var(--pink);outline:2px solid var(--pink);outline-offset:1px}
@@ -427,7 +427,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='86'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='87'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
