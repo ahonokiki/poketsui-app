@@ -114,7 +114,7 @@
   header::before,header::after{display:none}
   .gear{width:34px;height:34px;font-size:18px}
   main.one{padding:8px 12px calc(76px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;align-items:center}
-  main.one .preview{width:min(100%,calc(100svh - 330px));padding:5px;border-radius:22px}
+  main.one .preview{width:min(100%,calc((100svh - 330px) * var(--ar,1)));padding:5px;border-radius:22px}
   main.one .preview::after{display:none}
   canvas{border-radius:16px}
   #sets{width:100%;display:grid;grid-template-columns:repeat(10,1fr);gap:5px;margin:2px 0 0}
@@ -126,7 +126,7 @@
   /* ガチャの背景（上の段）：新しい7つ＋履歴。名前は枠の下 */
   #gRow{width:100%;display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin:4px 0 0}
   #gRow[hidden]{display:none}
-  body.hasG main.one .preview{width:min(100%,calc(100svh - 385px))}
+  body.hasG main.one .preview{width:min(100%,calc((100svh - 385px) * var(--ar,1)))}
   .gset{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;padding:0;font:inherit;cursor:pointer;min-width:0;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
   .gset i{display:block;width:100%;aspect-ratio:1;border-radius:50%;border:3px solid #fff;background:#f3e6f6 center/cover;box-shadow:0 1px 5px #0003}
   .gset.on i{border-color:var(--pink);outline:2px solid var(--pink);outline-offset:1px}
@@ -427,7 +427,7 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='88'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='89'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
@@ -2049,10 +2049,12 @@ let drawT=0;
 function draw(){ if (drawT) return; drawT=setTimeout(()=>requestAnimationFrame(()=>{ drawT=0; drawNow(); }), itemsBusy && itemsBusy===ocrSeq ? 1500 : 0); } // 複数の読み取りが今まさに動いているときだけ待つ
 function flushDraw(){ if (drawT){ clearTimeout(drawT); drawT=0; } drawNow(); }
 function drawNow(){
-  ctx.clearRect(0,0,S,S);
-  if (bgImg){ const k=Math.max(S/bgImg.width,S/bgImg.height), w=bgImg.width*k, h=bgImg.height*k;
-    ctx.drawImage(bgImg,(S-w)/2,(S-h)/2,w,h); }
-  else { ctx.fillStyle='#ff7aa8'; ctx.fillRect(0,0,S,S); }
+  const H=multiLayout()?.H||S; // 7個以上は縦長（横は同じ1254px、カードの大きさは6個のときと同じ）
+  if (cv.height!==H){ cv.height=H; cv.parentElement.style.setProperty('--ar',S/H); }
+  ctx.clearRect(0,0,S,H);
+  if (bgImg){ const k=Math.max(S/bgImg.width,H/bgImg.height), w=bgImg.width*k, h=bgImg.height*k;
+    ctx.drawImage(bgImg,(S-w)/2,(H-h)/2,w,h); }
+  else { ctx.fillStyle='#ff7aa8'; ctx.fillRect(0,0,S,H); }
   const edge = $('edgeColor').value;
   if (items.length>1) return drawMulti(edge);
 
@@ -2075,18 +2077,27 @@ function drawNow(){
 }
 
 // 複数アイテム：選んだ順に左上から並べ、下に「計○点」
-function drawMulti(edge){
+// 複数アイテムの並べ方。6個までは正方形、7個以上は3列のまま下に段を足して縦長にする
+function multiLayout(){
+  if (items.length<2) return null;
   // 「文字に入れない」にしたアイテムは画像にも出さない（画像の「計○点」と文字の合計をそろえる）
   const its=items.some(it=>!it.skip) ? items.filter(it=>!it.skip) : items;
   const n=Math.min(its.length,12);
-  const PAD=56, TOP=70, FOOT=215, GAP=n>6?34:44;
+  const PAD=56, TOP=70, FOOT=215, availW=S-PAD*2;
   // カードの縦横比（アイテム上端〜名前の行まで）
   its.forEach(it=>{ it.cardBottom = showOwned()&&it.ownedBottom ? it.ownedBottom : (it.nameBottom ?? it.cardBottom); });
   const ratios=its.map(it=>(it.cardBottom-it.top)/it.img.width).filter(r=>r>0.5&&r<1.6);
   const ar=ratios.length? ratios.sort((a,b)=>a-b)[ratios.length>>1] : 1;
-  const rows=bestRows(n,ar,GAP), cols=Math.max(...rows);
-  const availW=S-PAD*2, availH=S-TOP-FOOT;
-  const cw=Math.min((availW-GAP*(cols-1))/cols, (availH-GAP*(rows.length-1))/rows.length/ar), ch=cw*ar;
+  if (n<=6){ const GAP=44, rows=bestRows(n,ar,GAP), cols=Math.max(...rows), availH=S-TOP-FOOT;
+    const cw=Math.min((availW-GAP*(cols-1))/cols, (availH-GAP*(rows.length-1))/rows.length/ar);
+    return {its,n,ar,rows,cw,GAP,TOP,availH,H:S}; }
+  const GAP=44, cw=Math.min((availW-GAP*2)/3, (S-TOP-FOOT-GAP)/2/ar); // 6個（3列2段）のときと同じ大きさ
+  const nr=Math.ceil(n/3), rows=Array.from({length:nr},(_,i)=>Math.min(3,n-i*3));
+  const availH=nr*cw*ar+(nr-1)*GAP;
+  return {its,n,ar,rows,cw,GAP,TOP,availH,H:Math.max(S,Math.round(TOP+availH+FOOT))};
+}
+function drawMulti(edge){
+  const L=multiLayout(), {its,n,ar,rows,cw,GAP,TOP,availH,H}=L, ch=cw*ar;
   const k=cw/1000, r=Math.max(14,R*k*1.6);
   let y=TOP+(availH-(rows.length*ch+(rows.length-1)*GAP))/2, idx=0;
   const cards=[];
@@ -2105,7 +2116,7 @@ function drawMulti(edge){
   const {base:fb,px}=fontPx(150), fBig=setF(fb,px), fSm=(()=>{ const {f,w}=jfontCss(); return `${w} ${Math.round(px*.52)}px "${f}"`; })();
   const m=document.createElement('canvas').getContext('2d');
   m.font=fSm; const w1=m.measureText('計').width, w3=m.measureText('点').width; m.font=fBig; const w2=m.measureText(String(total)).width;
-  const gap=18, tw=w1+w2+w3+gap*2, bx=(S-tw)/2, by=S-62;
+  const gap=18, tw=w1+w2+w3+gap*2, bx=(S-tw)/2, by=H-62;
   puffy([{t:'計',f:fSm,x:bx,y:by},{t:String(total),f:fBig,x:bx+w1+gap,y:by+6},{t:'点',f:fSm,x:bx+w1+w2+gap*2,y:by}],150/205,edge,$('totalColor').value);
 }
 dbGet('slots').catch(()=>undefined).then(v=>{ // 端末に保存できない環境でも共通の背景セットは読む
