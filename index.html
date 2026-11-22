@@ -427,12 +427,12 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='87'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='88'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
 // アイテム画像の位置・サイズは常に固定（正方形）
-const BOX = {x:127, y:128, size:1000};
+const BOX = {x:85, y:85, size:1084}; // 背景のフチは左右上下 85px（前は127px。3分の1ほど細くしてアイテムを大きく）
 const R = 44;        // 四隅の丸み（アイテム画像とフチで共通）
 const EDGE_IN = 6, EDGE_CORE = 8; // フチ：内側ピンク6px＋白い芯8px＋外側の光（常に同じ太さ）
 const FONT_LIST = [["Mochiy Pop One", "400"], ["Baloo 2", "800"], ["Nunito", "900"], ["Fredoka", "700"], ["Sniglet", "800"], ["Titan One", "400"], ["Paytone One", "400"], ["DynaPuff", "700"], ["Coiny", "400"], ["Cherry Bomb One", "400"], ["Rampart One", "400"], ["Rubik Bubbles", "400"], ["Modak", "400"], ["Chango", "400"], ["Lilita One", "400"], ["Grandstander", "900"], ["Varela Round", "400"], ["Kosugi Maru", "400"], ["Potta One", "400"], ["Chewy", "400"], ["Bubblegum Sans", "400"], ["Luckiest Guy", "400"], ["Rubik", "900"], ["M PLUS Rounded 1c", "900"], ["Zen Maru Gothic", "900"], ["Hachi Maru Pop", "400"], ["Yusei Magic", "400"], ["Mochiy Pop P One", "400"], ["Rounded Mplus 1c", "800"], ["Kiwi Maru", "500"], ["Dela Gothic One", "400"], ["Bowlby One", "400"], ["Carter One", "400"], ["Gluten", "900"], ["Fuzzy Bubbles", "700"]];
@@ -2071,7 +2071,7 @@ function drawNow(){
   ctx.restore();
   neon(x,y,size,size,R,edge,1);
   const cnt=countValue();
-  if ($('showCount').checked && cnt!==null) drawCount(String(cnt),1194,262,205,edge);
+  if ($('showCount').checked && cnt!==null) drawCount(String(cnt),BOX.x+BOX.size+35,BOX.y+150,205,edge);
 }
 
 // 複数アイテム：選んだ順に左上から並べ、下に「計○点」
