@@ -183,6 +183,15 @@
   .defBar{width:100%;display:flex;gap:4px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:11px;color:var(--sub);font-weight:800}
   .defBar button{border:0;border-radius:99px;padding:4px 9px;font:inherit;font-size:11px;font-weight:900;background:#f3eef5;color:#8a7a8e;cursor:pointer}
   .defBar button.on{background:var(--pink);color:#fff}
+  .wBar{position:absolute;left:10px;right:10px;bottom:10px;display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-size:11px;color:var(--sub);font-weight:800;pointer-events:none}
+  .wBar>*{pointer-events:auto}
+  .wBar button{border:0;border-radius:99px;padding:5px 10px;font:inherit;font-size:11px;font-weight:900;background:#fffffff0;color:#c0478a;cursor:pointer;box-shadow:0 2px 8px #0002}
+  .wBar #edgeWOpen.on{background:var(--pink);color:#fff}
+  .wIn{width:100%;display:flex;align-items:center;gap:6px;background:#fffffff2;border-radius:14px;padding:8px 10px;box-shadow:0 2px 10px #0003}
+  .wIn[hidden],.wBar[hidden]{display:none}
+  .wIn button{box-shadow:none;background:#f3eef5;color:#8a7a8e}
+  .wIn input{flex:1;min-width:0;accent-color:#f06aa8}
+  .wIn b{min-width:3.6em;text-align:right;color:var(--ink)}
   .chip{display:flex;align-items:center;justify-content:space-between;gap:3px;min-width:0;background:#fff;border-radius:99px;padding:3px 6px 3px 3px;box-shadow:0 2px 0 #f6cfe2}
   .chip .no{width:18px;height:18px;border-radius:50%;background:var(--pink);color:#fff;font-size:11px;font-weight:900;line-height:18px;text-align:center}
   .chip img{width:30px;height:30px;object-fit:cover;object-position:50% 30%;border-radius:8px}
@@ -251,7 +260,10 @@
   <a class="gear left" id="openRank" href="ranking.html" aria-label="売れ筋ランキング"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.5 21H2V9h5.5v12zm7.25-18h-5.5v18h5.5V3zM22 11h-5.5v10H22V11z"/></svg></a>
   <button class="gear" id="openSet" type="button" aria-label="設定"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg></button></header>
 <main class="one">
-<div class="preview"><canvas id="cv" width="1254" height="1254"></canvas></div>
+<div class="preview"><canvas id="cv" width="1254" height="1254"></canvas>
+  <div class="wBar" id="edgeWBar"><button type="button" id="edgeWOpen" aria-expanded="false">＋ 枠の幅変更</button>
+    <div class="wIn" id="edgeWBox" hidden><span>細く</span><input type="range" id="edgeW" min="40" max="200" step="1" value="127"><span>太く</span><b id="edgeWView">127px</b><button type="button" id="edgeWReset">元に戻す</button></div></div>
+</div>
 
 <div id="gRow" hidden></div>
 <div id="sets"></div><input type="file" id="bg" accept="image/*" hidden>
@@ -351,12 +363,6 @@
     <div class="note" id="appVer" style="text-align:right"></div>
   </div></section>
 
-  <section class="card"><h2>背景のフチの幅</h2><div class="in">
-    <div class="row"><input type="range" id="edgeW" min="40" max="200" step="1" value="127" style="flex:1;min-width:0;accent-color:#f06aa8"><b id="edgeWView" style="min-width:4em;text-align:right">127px</b></div>
-    <div class="row"><button type="button" class="delBtn" id="edgeWReset" style="--slot:#f48fbf">最初の幅（127px）に戻す</button></div>
-    <div class="note">アイテム1個の画像で、アイテムの枠のまわりに見える背景の幅です。右へ動かすと背景が太く（アイテムが小さく）、左へ動かすと細く（アイテムが大きく）なります。</div>
-  </div></section>
-
   <section class="card"><h2>フチの色</h2><div class="in">
     <div class="row" id="swatches"></div>
     <div class="row"><label>自由に指定 <input type="color" id="edgeColor" value="#ec5fd0"></label></div>
@@ -438,7 +444,7 @@ const PFX='promo_'; // この端末に保存するときの名前の頭（ピグ
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
 // アイテム画像の位置・サイズは常に固定（正方形）
-// 背景のフチ（左右上下の幅）は設定の「背景のフチの幅」で変えられる。最初は127px（85pxに細くしたら、前に戻してと言われた）
+// 背景のフチ（左右上下の幅）は編集画面の「＋ 枠の幅変更」で変えられる。最初は127px（85pxに細くしたら、前に戻してと言われた）
 const EDGE_W0 = 127, EDGE_WMIN = 40, EDGE_WMAX = 200;
 const edgeW = ()=>{ const v=Math.round(+$('edgeW').value); return v>=EDGE_WMIN && v<=EDGE_WMAX ? v : EDGE_W0; };
 const box = ()=>{ const m=edgeW(); return {x:m, y:m, size:S-2*m}; };
@@ -484,6 +490,8 @@ const edgeWShow=()=>{ $('edgeWView').textContent=edgeW()+'px'; };
 edgeWShow();
 $('edgeW').addEventListener('input',()=>{ edgeWShow(); try{ localStorage.setItem(PFX+'edgeW',String(edgeW())); }catch(e){} draw(); });
 $('edgeWReset').addEventListener('click',()=>{ $('edgeW').value=EDGE_W0; $('edgeW').dispatchEvent(new Event('input')); });
+$('edgeWOpen').addEventListener('click',()=>{ const b=$('edgeWBox'), open=b.hidden; b.hidden=!open; $('edgeWOpen').classList.toggle('on',open);
+  $('edgeWOpen').setAttribute('aria-expanded',String(open)); $('edgeWOpen').textContent=(open?'－':'＋')+' 枠の幅変更'; });
 try{ const v=localStorage.getItem('promo_showCount'); if(v!==null) $('showCount').checked=v==='1'; }catch(e){}
 $('showCount').addEventListener('change',()=>{ try{ localStorage.setItem('promo_showCount',$('showCount').checked?'1':'0'); }catch(e){} draw(); });
 // ×数字・「計○点」の色（この端末に保存）
@@ -2070,6 +2078,7 @@ function drawNow(){
     ctx.drawImage(bgImg,(S-w)/2,(H-h)/2,w,h); }
   else { ctx.fillStyle='#ff7aa8'; ctx.fillRect(0,0,S,H); }
   const edge = $('edgeColor').value;
+  $('edgeWBar').hidden=items.length>1; // 枠の幅はアイテム1個の画像だけ（2個以上は並べ方で決まる）
   if (items.length>1) return drawMulti(edge);
 
   const {x,y,size} = box();
