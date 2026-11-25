@@ -351,6 +351,12 @@
     <div class="note" id="appVer" style="text-align:right"></div>
   </div></section>
 
+  <section class="card"><h2>背景のフチの幅</h2><div class="in">
+    <div class="row"><input type="range" id="edgeW" min="40" max="200" step="1" value="127" style="flex:1;min-width:0;accent-color:#f06aa8"><b id="edgeWView" style="min-width:4em;text-align:right">127px</b></div>
+    <div class="row"><button type="button" class="delBtn" id="edgeWReset" style="--slot:#f48fbf">最初の幅（127px）に戻す</button></div>
+    <div class="note">アイテム1個の画像で、アイテムの枠のまわりに見える背景の幅です。右へ動かすと背景が太く（アイテムが小さく）、左へ動かすと細く（アイテムが大きく）なります。</div>
+  </div></section>
+
   <section class="card"><h2>フチの色</h2><div class="in">
     <div class="row" id="swatches"></div>
     <div class="row"><label>自由に指定 <input type="color" id="edgeColor" value="#ec5fd0"></label></div>
@@ -427,12 +433,15 @@
 
 <script src="ocr/tesseract.min.js"></script>
 <script>
-const APP_VER='89'; // 変えたら上げる（古いページを読み直すための目印）
+const APP_VER='90'; // 変えたら上げる（古いページを読み直すための目印）
 const PFX='promo_'; // この端末に保存するときの名前の頭（ピグパは pigpa_）
 document.getElementById('verLabel').textContent='v'+APP_VER;
 const S = 1254;
 // アイテム画像の位置・サイズは常に固定（正方形）
-const BOX = {x:85, y:85, size:1084}; // 背景のフチは左右上下 85px（前は127px。3分の1ほど細くしてアイテムを大きく）
+// 背景のフチ（左右上下の幅）は設定の「背景のフチの幅」で変えられる。最初は127px（85pxに細くしたら、前に戻してと言われた）
+const EDGE_W0 = 127, EDGE_WMIN = 40, EDGE_WMAX = 200;
+const edgeW = ()=>{ const v=Math.round(+$('edgeW').value); return v>=EDGE_WMIN && v<=EDGE_WMAX ? v : EDGE_W0; };
+const box = ()=>{ const m=edgeW(); return {x:m, y:m, size:S-2*m}; };
 const R = 44;        // 四隅の丸み（アイテム画像とフチで共通）
 const EDGE_IN = 6, EDGE_CORE = 8; // フチ：内側ピンク6px＋白い芯8px＋外側の光（常に同じ太さ）
 const FONT_LIST = [["Mochiy Pop One", "400"], ["Baloo 2", "800"], ["Nunito", "900"], ["Fredoka", "700"], ["Sniglet", "800"], ["Titan One", "400"], ["Paytone One", "400"], ["DynaPuff", "700"], ["Coiny", "400"], ["Cherry Bomb One", "400"], ["Rampart One", "400"], ["Rubik Bubbles", "400"], ["Modak", "400"], ["Chango", "400"], ["Lilita One", "400"], ["Grandstander", "900"], ["Varela Round", "400"], ["Kosugi Maru", "400"], ["Potta One", "400"], ["Chewy", "400"], ["Bubblegum Sans", "400"], ["Luckiest Guy", "400"], ["Rubik", "900"], ["M PLUS Rounded 1c", "900"], ["Zen Maru Gothic", "900"], ["Hachi Maru Pop", "400"], ["Yusei Magic", "400"], ["Mochiy Pop P One", "400"], ["Rounded Mplus 1c", "800"], ["Kiwi Maru", "500"], ["Dela Gothic One", "400"], ["Bowlby One", "400"], ["Carter One", "400"], ["Gluten", "900"], ["Fuzzy Bubbles", "700"]];
@@ -470,6 +479,11 @@ renderFonts();
 $('openSet').onclick=()=>{ $('settings').hidden=false; renderLearned(); renderRecv(); $('appVer').textContent='アプリの版：'+APP_VER; document.querySelector('.fontOpt.on')?.scrollIntoView({block:'nearest'});  };
 const closeSet=()=>{ $('settings').hidden=true;  };
 $('closeSet').onclick=closeSet; $('settings').addEventListener('click',e=>{ if(e.target.id==='settings') closeSet(); });
+{ let v=null; try{ v=localStorage.getItem(PFX+'edgeW'); }catch(e){} if (v!==null && +v>=EDGE_WMIN && +v<=EDGE_WMAX) $('edgeW').value=v; }
+const edgeWShow=()=>{ $('edgeWView').textContent=edgeW()+'px'; };
+edgeWShow();
+$('edgeW').addEventListener('input',()=>{ edgeWShow(); try{ localStorage.setItem(PFX+'edgeW',String(edgeW())); }catch(e){} draw(); });
+$('edgeWReset').addEventListener('click',()=>{ $('edgeW').value=EDGE_W0; $('edgeW').dispatchEvent(new Event('input')); });
 try{ const v=localStorage.getItem('promo_showCount'); if(v!==null) $('showCount').checked=v==='1'; }catch(e){}
 $('showCount').addEventListener('change',()=>{ try{ localStorage.setItem('promo_showCount',$('showCount').checked?'1':'0'); }catch(e){} draw(); });
 // ×数字・「計○点」の色（この端末に保存）
@@ -2058,7 +2072,7 @@ function drawNow(){
   const edge = $('edgeColor').value;
   if (items.length>1) return drawMulti(edge);
 
-  const {x,y,size} = BOX;
+  const {x,y,size} = box();
   // アイテム画像（正方形切り抜き・縦横同倍率・ピクセルはそのまま）
   ctx.save(); rr(x,y,size,size,R); ctx.clip();
   ctx.fillStyle='#fff'; ctx.fillRect(x,y,size,size);
@@ -2073,7 +2087,7 @@ function drawNow(){
   ctx.restore();
   neon(x,y,size,size,R,edge,1);
   const cnt=countValue();
-  if ($('showCount').checked && cnt!==null) drawCount(String(cnt),BOX.x+BOX.size+35,BOX.y+150,205,edge);
+  if ($('showCount').checked && cnt!==null) drawCount(String(cnt),x+size+35,y+150,205,edge);
 }
 
 // 複数アイテム：選んだ順に左上から並べ、下に「計○点」
@@ -2249,7 +2263,7 @@ const SYNC_API='https://api.github.com', SYNC_FILE=(PFX==='pigpa_'?'piggparty':'
 // そろえる設定（この端末に PFX 付きで保存しているもの）。そろえないもの：読み取りの途中・ショートカットの受け取り（shotWin など）・前の記録・
 // エラーの記録・切り替えの目印（fontDefault・autoCopyOff1・winMoved）・背景（curSlot・sets・IndexedDB）・ghToken・版の確認（sessionStorage）
 const SYNC_KEYS=['ct','cs','font','jfont','showCount','showOwned','numColor','totalColor','nameLayout','defCount','gachaPat',
-  'txtStyle','titleOne','titleSep','titleTotal','autoCopy','txtShop','txtShopPos','txtShopLine','txtHead','txtTotal','txtFoot'];
+  'txtStyle','titleOne','titleSep','titleTotal','autoCopy','txtShop','txtShopPos','txtShopLine','txtHead','txtTotal','txtFoot','edgeW'];
 // 起動時に自動で書く初期値（fontDefault の書体10番・autoCopyOff1 の自動コピーなし）。時刻0のままこの値なら、自分で決めていない値として送らない
 // （先にそろえた新しい端末の初期値が、使い込んだ端末の書体などを上書きしないように）
 const SYNC_AUTO={font:'10', autoCopy:'0'};
@@ -2327,7 +2341,7 @@ function redrawAfterSync(lc,sets){ const a=document.activeElement; if (a && (a.t
     else if (k==='defCount'){ $('defCount').value=v; document.querySelectorAll('.defBar button').forEach(b=>b.classList.toggle('on',b.dataset.m===defCnt())); renderItems(); }
     else if (k==='ct'||k==='cs') continue; // 切り抜き位置は、次に開いたとき・画像を読んだときに使う（今の画像の欄は画像に合わせて決めているので書き換えない）
     else if (k==='nameLayout') $('layPick').querySelectorAll('button').forEach(x=>x.classList.toggle('on',+x.dataset.n===nameLayout()));
-    else if ($(k)){ $(k).value=v; if (k==='numColor'||k==='totalColor') $(k).dispatchEvent(new Event('input')); } }
+    else if ($(k)){ $(k).value=v; if (k==='numColor'||k==='totalColor'||k==='edgeW') $(k).dispatchEvent(new Event('input')); } }
   if (sets.includes('gachaPat')) gPatChanged(); // ガチャの背景の模様
   if (sets.includes('font')) renderFonts();
   if (sets.includes('jfont')){ renderJFonts(); const {f,w}=jfontCss(); document.fonts.load(`${w} 100px "${f}"`,'計点').then(draw,draw); }
