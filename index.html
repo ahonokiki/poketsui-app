@@ -187,9 +187,9 @@
   .wBar>*{pointer-events:auto}
   .wBar button{border:0;border-radius:99px;padding:5px 10px;font:inherit;font-size:11px;font-weight:900;background:#fffffff0;color:#c0478a;cursor:pointer;box-shadow:0 2px 8px #0002}
   .wBar #edgeWOpen.on{background:var(--pink);color:#fff}
-  .wIn{width:100%;display:flex;align-items:center;gap:6px;background:#fffffff2;border-radius:14px;padding:8px 10px;box-shadow:0 2px 10px #0003}
+  .wIn{width:100%;box-sizing:border-box;display:flex;align-items:center;gap:6px;background:#fff;border-radius:14px;padding:8px 10px;box-shadow:0 2px 10px #ff8fc033;font-size:11px;color:var(--sub);font-weight:800}
   .wIn[hidden],.wBar[hidden]{display:none}
-  .wIn button{box-shadow:none;background:#f3eef5;color:#8a7a8e}
+  .wIn button{border:0;border-radius:99px;padding:5px 10px;font:inherit;font-size:11px;font-weight:900;background:#f3eef5;color:#8a7a8e;cursor:pointer}
   .wIn input{flex:1;min-width:0;accent-color:#f06aa8}
   .wIn b{min-width:3.6em;text-align:right;color:var(--ink)}
   .chip{display:flex;align-items:center;justify-content:space-between;gap:3px;min-width:0;background:#fff;border-radius:99px;padding:3px 6px 3px 3px;box-shadow:0 2px 0 #f6cfe2}
@@ -262,8 +262,9 @@
 <main class="one">
 <div class="preview"><canvas id="cv" width="1254" height="1254"></canvas>
   <div class="wBar" id="edgeWBar"><button type="button" id="edgeWOpen" aria-expanded="false">＋ 枠の幅変更</button>
-    <div class="wIn" id="edgeWBox" hidden><span>細く</span><input type="range" id="edgeW" min="40" max="200" step="1" value="127"><span>太く</span><b id="edgeWView">127px</b><button type="button" id="edgeWReset">元に戻す</button></div></div>
+    </div>
 </div>
+<div class="wIn" id="edgeWBox" hidden><span>細く</span><input type="range" id="edgeW" min="40" max="200" step="1" value="127"><span>太く</span><b id="edgeWView">127px</b><button type="button" id="edgeWReset">元に戻す</button></div>
 
 <div id="gRow" hidden></div>
 <div id="sets"></div><input type="file" id="bg" accept="image/*" hidden>
@@ -2078,7 +2079,7 @@ function drawNow(){
     ctx.drawImage(bgImg,(S-w)/2,(H-h)/2,w,h); }
   else { ctx.fillStyle='#ff7aa8'; ctx.fillRect(0,0,S,H); }
   const edge = $('edgeColor').value;
-  $('edgeWBar').hidden=items.length>1; // 枠の幅はアイテム1個の画像だけ（2個以上は並べ方で決まる）
+  $('edgeWBar').hidden=items.length>1; if (items.length>1 && !$('edgeWBox').hidden) $('edgeWOpen').click(); // 枠の幅はアイテム1個の画像だけ（2個以上は並べ方で決まる）
   if (items.length>1) return drawMulti(edge);
 
   const {x,y,size} = box();
